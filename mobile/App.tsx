@@ -8,14 +8,14 @@ import RecordScreen from "./screens/RecordScreen";
 // ──────────────────────────────────────────────────────────────────────────────
 // Theme (minimal)
 // ──────────────────────────────────────────────────────────────────────────────
-const theme = extendTheme({
-  colors: {
-    primary: {
-      50: "#fffff",
-      500: "#0077ff",
+const theme = // in your theme extension
+  extendTheme({
+    colors: {
+      background: { 500: "#1A153A" }, // deep navy-purple
+      ring: { 500: "#8A46FF" }, // bright purple glow
+      text: { 500: "#FFFFFF" }, // off-white
     },
-  },
-});
+  });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Navigation
