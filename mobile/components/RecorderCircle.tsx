@@ -12,13 +12,11 @@ import { Waveform } from "./Waveform";
 
 export function RecorderCircle({
   isRecording,
-  onPressIn,
-  onPressOut,
+  onPress,
   durationText,
 }: {
   isRecording: boolean;
-  onPressIn: () => void;
-  onPressOut: () => void;
+  onPress: () => void;
   durationText: string;
 }) {
   const ringAnim = useSharedValue(0);
@@ -35,7 +33,7 @@ export function RecorderCircle({
   }));
 
   return (
-    <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
+    <Pressable onPress={onPress}>
       <LinearGradient
         // gradient ring container
         colors={["#8A46FF33", "#8A46FF"]}
@@ -62,11 +60,7 @@ export function RecorderCircle({
             innerStyle,
           ]}
         >
-          <MaterialCommunityIcons
-            name="microphone-cloud-outline"
-            size={64}
-            color="#FFFFFF"
-          />
+          <MaterialCommunityIcons name="microphone" size={64} color="#FFFFFF" />
         </Animated.View>
       </LinearGradient>
 

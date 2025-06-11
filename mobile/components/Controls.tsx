@@ -1,14 +1,16 @@
-import { Button, IconButton } from "native-base";
+import { Button, IconButton, HStack } from "native-base";
 import { Ionicons } from "@expo/vector-icons";
 
 export function Controls({
   fileUri,
   onCancel,
   onUpload,
+  onRecordAgain,
 }: {
   fileUri: string | null;
   onCancel: () => void;
   onUpload: () => Promise<void>;
+  onRecordAgain: () => void;
 }) {
   if (fileUri === null) {
     return (
@@ -20,14 +22,21 @@ export function Controls({
     );
   }
   return (
-    <Button
-      mt={6}
-      w="60%"
-      onPress={onUpload}
-      colorScheme="green"
-      _text={{ fontWeight: "bold" }}
-    >
-      Upload Recording
-    </Button>
+    <HStack space={4} mt={6} justifyContent="center">
+      <Button
+        onPress={onRecordAgain}
+        colorScheme="purple"
+        _text={{ fontWeight: "bold" }}
+      >
+        Record Again
+      </Button>
+      <Button
+        onPress={onUpload}
+        colorScheme="green"
+        _text={{ fontWeight: "bold" }}
+      >
+        Upload
+      </Button>
+    </HStack>
   );
 }
