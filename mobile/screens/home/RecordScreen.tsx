@@ -14,6 +14,7 @@ import { ChevronLeft } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { PROCESS_DREAM_URL } from "../../config";
 
 /*───────────────────────────────────────────────
   HEADER
@@ -159,10 +160,29 @@ export default function RecordScreen() {
     reset();
     navigation.goBack();
   };
-  const upload = () => {
-    if (uri) {
-      Alert.alert("Pretend", "Would upload here");
-      navigation.navigate("Processing");
+  const upload = async () => {
+    if (!uri) return;
+    try {
+      setStatus("Uploading…");
+      const form = new FormData();
+      form.append("audio", {
+        uri,
+        name: "dream.m4a",
+        type: "audio/m4a",
+      } as any);
+      form.append("user_id", "00000000-0000-0000-0000-000000000000");
+
+      const res = await fetch(PROCESS_DREAM_URL, {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { urls } = await res.json();
+      navigation.navigate("ComicResult", { urls });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Upload failed", String(e));
+      setStatus("Upload failed");
     }
   };
 

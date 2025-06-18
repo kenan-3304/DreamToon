@@ -31,7 +31,7 @@ export type RootStackParamList = {
   CreateToon: undefined;
   Dashboard: undefined;
   Processing: undefined;
-  ComicResult: undefined;
+  ComicResult: { urls: string[] };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

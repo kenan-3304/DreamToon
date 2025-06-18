@@ -192,32 +192,20 @@ serve(async (req) => {
       console.log(`🖼️  Panel ${i + 1} generated`);
     }
 
-    /* 5 — stitch */
-    const stitch = await fetch(
-      `https://${projectRef}.functions.supabase.co/stitch_panels`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({ urls }),
-      }
-    );
-    if (!stitch.ok) throw new Error(await stitch.text());
-    const { url: composite } = await stitch.json();
-
-    /* 6 — record + respond */
+    /* 5 — record + respond (no stitching) */
     await admin.from("dreams").insert({
       user_id: userId,
       transcript,
       panel_count: sb.panels.length,
       storyboard: sb,
-      composite_url: composite,
+      composite_url: null,
       cost_cents: 5 * sb.panels.length,
     });
 
-    return new Response(composite, { status: 200 });
+    return new Response(JSON.stringify({ urls }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error(e);
     return new Response(String(e), { status: 500 });
