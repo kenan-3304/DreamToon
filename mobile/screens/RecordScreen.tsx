@@ -7,6 +7,7 @@ import { Header } from "../components/Header";
 import { StatusText } from "../components/StatusText";
 import { RecorderCircle } from "../components/RecorderCircle";
 import { Controls } from "../components/Controls";
+import { PROCESS_DREAM_URL } from "../config";
 
 export default function RecordScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -112,17 +113,14 @@ export default function RecordScreen() {
         console.log(pair[0], pair[1]);
       }
 
-      const res = await fetch(
-        "https://lzrhocmfiulykdxjzaku.functions.supabase.co/process_dream",
-        {
+      const res = await fetch(PROCESS_DREAM_URL, {
           method: "POST",
           headers: {
             Accept: "application/json",
             "Content-Type": "multipart/form-data",
           },
           body: formData,
-        }
-      );
+        });
 
       const result = await res.text();
       console.log("Server response:", result);
