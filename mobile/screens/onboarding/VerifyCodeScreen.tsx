@@ -13,7 +13,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../App"; // adjust the relative path if App.tsx lives elsewhere
 
 // Re‑use the shiny button we already built
-import { ShinyGradientButton } from "./WelcomeScreen"; // 🔔 move to components/ when you refactor paths
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 // Type‑safe route params
 type VerifyCodeRouteProp = RouteProp<RootStackParamList, "VerifyCode">;

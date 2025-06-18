@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Home, Book, Settings } from "lucide-react-native";
 
 // reuse gradient button from WelcomeScreen (move to components/ later)
-import { ShinyGradientButton } from "../onboarding/WelcomeScreen";
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 const DashboardScreen: React.FC = () => {
   const navigation = useNavigation();

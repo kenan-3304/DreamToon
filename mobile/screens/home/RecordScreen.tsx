@@ -11,7 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import { useNavigation } from "@react-navigation/native";
 import { ChevronLeft } from "lucide-react-native";
-import { ShinyGradientButton } from "../onboarding/WelcomeScreen";
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 

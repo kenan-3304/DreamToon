@@ -15,7 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 // ShinyGradientButton — imported *re‑export* so it stays DRY.
 // Move this component into a dedicated `components/Button.tsx` later for cleaner paths.
 // import { ShinyGradientButton } from '../components/ShinyGradientButton';
-import { ShinyGradientButton } from "./WelcomeScreen"; // ✅ temporary path
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 // ────────────────────────────────────────────────────────────────────────────────
 
 const CreateAccountScreen: React.FC = () => {

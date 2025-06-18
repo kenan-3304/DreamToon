@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { Heart, Share2, Download, X } from "lucide-react-native";
-import { ShinyGradientButton } from "../onboarding/WelcomeScreen";
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 // dummy 6‑panel placeholders (swap uri for your real images)
 const PANELS = [1, 2, 3, 4, 5, 6].map((n) => ({

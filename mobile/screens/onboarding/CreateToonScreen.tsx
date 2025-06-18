@@ -14,7 +14,7 @@ import { Camera, ChevronDown } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Picker } from "@react-native-picker/picker";
 
-import { ShinyGradientButton } from "./WelcomeScreen";
+import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Constants
