@@ -3,10 +3,10 @@ import { Alert } from "react-native";
 import { VStack } from "native-base";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 
-import { Header } from "../components/Header";
-import { StatusText } from "../components/StatusText";
-import { RecorderCircle } from "../components/RecorderCircle";
-import { Controls } from "../components/Controls";
+import { Header } from "../../components/Header";
+import { StatusText } from "../../components/StatusText";
+import { RecorderCircle } from "../../components/RecorderCircle";
+import { Controls } from "../../components/Controls";
 
 export default function RecordScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
