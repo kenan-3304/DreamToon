@@ -9,18 +9,27 @@ import {
   Easing,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Heart, Share2, Download, X } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
-// dummy 6‑panel placeholders (swap uri for your real images)
-const PANELS = [1, 2, 3, 4, 5, 6].map((n) => ({
+interface RouteParams {
+  urls: string[];
+}
+
+// fallback dummy when no urls passed
+const FALLBACK = [1, 2, 3, 4, 5, 6].map((n) => ({
   id: n,
   uri: require("../../assets/image-3.png"),
 }));
 
 export default function ComicResultScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const params = (route.params as RouteParams | undefined) ?? { urls: [] };
+  const PANELS = params.urls.length
+    ? params.urls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
+    : FALLBACK;
   const [liked, setLiked] = useState(false);
 
   /* floating comic board animation */

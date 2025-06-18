@@ -60,7 +60,7 @@ export default function ProcessingScreen() {
       );
       if (elapsed >= TOTAL_MS) {
         clearInterval(int);
-        navigation.navigate("ComicResult" as never);
+        navigation.navigate("ComicResult" as never, { urls: [] } as never);
       }
     }, tick);
     return () => clearInterval(int);
