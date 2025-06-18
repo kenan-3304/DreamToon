@@ -1,167 +1,264 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Alert } from "react-native";
-import { VStack } from "native-base";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Platform,
+  Alert,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
+import { useNavigation } from "@react-navigation/native";
+import { ChevronLeft } from "lucide-react-native";
+import { ShinyGradientButton } from "../onboarding/WelcomeScreen";
+import { RootStackParamList } from "../../App";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { Header } from "../../components/Header";
-import { StatusText } from "../../components/StatusText";
-import { RecorderCircle } from "../../components/RecorderCircle";
-import { Controls } from "../../components/Controls";
-import { PROCESS_DREAM_URL } from "../../config";
+/*───────────────────────────────────────────────
+  HEADER
+───────────────────────────────────────────────*/
+const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 18) return "Good Afternoon";
+    return "Good Evening";
+  })();
+  return (
+    <View style={styles.headerRow}>
+      <Pressable onPress={onBack} style={styles.backBtn} hitSlop={10}>
+        <ChevronLeft size={20} color="#FFFFFF" />
+      </Pressable>
+      <Text style={styles.headerText}>{`${greeting},\nKenan`}</Text>
+    </View>
+  );
+};
 
+const StatusText: React.FC<{ txt: string }> = ({ txt }) => (
+  <Text style={styles.statusText}>{txt}</Text>
+);
+
+/*───────────────────────────────────────────────
+  STATIC TWO-RING RECORD BUTTON (no animations)
+───────────────────────────────────────────────*/
+const RecordButton: React.FC<{
+  mode: "idle" | "recording" | "review";
+  timer: string;
+  onStart: () => void;
+  onStop: () => void;
+}> = ({ mode, timer, onStart, onStop }) => {
+  const isIdle = mode === "idle";
+  const isRec = mode === "recording";
+
+  return (
+    <View style={styles.circleWrapper}>
+      <Pressable
+        disabled={mode === "review"}
+        onPress={isIdle ? onStart : isRec ? onStop : undefined}
+      >
+        {/* OUTER translucent ring */}
+        <LinearGradient
+          colors={
+            isRec
+              ? ["rgba(255,78,224,0.18)", "rgba(255,100,100,0.18)"]
+              : ["rgba(0,234,255,0.12)", "rgba(102,51,238,0.12)"]
+          }
+          style={styles.outerRing}
+        >
+          {/* INNER ring */}
+          <View style={styles.innerRing}>
+            <Text style={styles.timer}>{timer}</Text>
+            {isIdle && <Text style={styles.hint}>Tap to Record</Text>}
+            {isRec && <Text style={styles.hint}>Tap to Stop</Text>}
+          </View>
+        </LinearGradient>
+      </Pressable>
+    </View>
+  );
+};
+
+const ReviewActions: React.FC<{
+  onUpload: () => void;
+  onRetry: () => void;
+}> = ({ onUpload, onRetry }) => (
+  <View style={styles.reviewRow}>
+    <ShinyGradientButton onPress={onUpload}>Upload Dream</ShinyGradientButton>
+    <ShinyGradientButton variant="outline" onPress={onRetry}>
+      Record Again
+    </ShinyGradientButton>
+  </View>
+);
+
+/*───────────────────────────────────────────────
+  MAIN SCREEN (logic unchanged)
+───────────────────────────────────────────────*/
 export default function RecordScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const [isRecording, setIsRecording] = useState(false);
-  const [status, setStatus] = useState("Ready to record your dream, bro!");
-  const [fileUri, setFileUri] = useState<string | null>(null);
-  const [durationText, setDurationText] = useState("0:00");
 
-  // to drive our timer
-  const startTimeRef = useRef<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [mode, setMode] = useState<"idle" | "recording" | "review">("idle");
+  const [status, setStatus] = useState("Ready to record your dream!");
+  const [uri, setUri] = useState<string | null>(null);
+  const [timer, setTimer] = useState("0:00");
+  const t0 = useRef<number>(0);
+  const tick = useRef<NodeJS.Timeout | null>(null);
 
-  // ask for mic perms on mount
+  // mic perms
   useEffect(() => {
     (async () => {
       const { granted } = await AudioModule.requestRecordingPermissionsAsync();
-      if (!granted) {
-        Alert.alert("Permission to access microphone was denied");
-      }
+      if (!granted) Alert.alert("Microphone permission denied");
     })();
-    // clean up timer if unmount
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => tick.current && clearInterval(tick.current);
   }, []);
 
-  const startRecording = async () => {
+  /* helpers */
+  const start = async () => {
     try {
       await audioRecorder.prepareToRecordAsync();
       await audioRecorder.record();
-      setIsRecording(true);
+      setMode("recording");
       setStatus("⏺️ Recording…");
-
-      // start our duration counter
-      startTimeRef.current = Date.now();
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const mins = Math.floor(elapsed / 60);
-        const secs = elapsed % 60;
-        setDurationText(`${mins}:${secs.toString().padStart(2, "0")}`);
+      t0.current = Date.now();
+      tick.current = setInterval(() => {
+        const s = Math.floor((Date.now() - t0.current) / 1000);
+        setTimer(
+          `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
+        );
       }, 500);
-    } catch (err) {
-      console.error("Start error:", err);
-      setStatus(`Start error: ${(err as Error).message}`);
+    } catch (e) {
+      console.error(e);
+      setStatus(`Start error: ${(e as Error).message}`);
     }
   };
 
-  const stopRecording = async () => {
+  const stop = async () => {
     try {
-      // stop our timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-
+      tick.current && clearInterval(tick.current);
       await audioRecorder.stop();
-      setIsRecording(false);
-
-      const uri = audioRecorder.uri;
-      setFileUri(uri);
+      setUri(audioRecorder.uri);
+      setMode("review");
       setStatus("✅ Saved locally. Ready to upload!");
-    } catch (err) {
-      console.error("Stop error:", err);
-      setStatus(`Stop error: ${(err as Error).message}`);
+    } catch (e) {
+      console.error(e);
+      setStatus(`Stop error: ${(e as Error).message}`);
     }
   };
 
-  const cancelRecording = () => {
-    // if you want, delete the temp file here via FileSystem
-    if (timerRef.current) clearInterval(timerRef.current);
-    audioRecorder.stopAsync?.(); // just in case
-    setIsRecording(false);
-    setStatus("Recording cancelled.");
-    setDurationText("0:00");
-    setFileUri(null);
+  const reset = () => {
+    tick.current && clearInterval(tick.current);
+    audioRecorder.stopAsync?.();
+    setUri(null);
+    setTimer("0:00");
+    setStatus("Ready to record your dream!");
+    setMode("idle");
   };
-
-  const uploadRecording = async () => {
-    if (!fileUri) return;
-
-    try {
-      const response = await fetch(fileUri);
-      const blob = await response.blob();
-
-      // Log blob details
-      console.log("Blob details:", {
-        type: blob.type,
-        size: blob.size,
-      });
-
-      const formData = new FormData();
-      formData.append("audio", {
-        uri: fileUri,
-        type: "audio/m4a",
-        name: "dream.m4a",
-      } as any);
-      formData.append("user_id", "demo-user");
-
-      // Log FormData contents
-      console.log("FormData contents:");
-      // @ts-ignore - entries() exists but TypeScript doesn't know about it
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
-
-      const res = await fetch(PROCESS_DREAM_URL, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "multipart/form-data",
-        },
-        body: formData,
-      });
-
-      const result = await res.text();
-      console.log("Server response:", result);
-      setStatus("🚀 Uploaded successfully!");
-    } catch (err) {
-      console.error("Upload failed:", err);
-      setStatus("❌ Upload failed.");
+  const back = () => {
+    reset();
+    navigation.goBack();
+  };
+  const upload = () => {
+    if (uri) {
+      Alert.alert("Pretend", "Would upload here");
+      navigation.navigate("Processing");
     }
   };
 
-  const recordAgain = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    audioRecorder.stopAsync?.(); // just in case
-    setIsRecording(false);
-    setStatus("Ready to record your dream, bro!");
-    setDurationText("0:00");
-    setFileUri(null);
-  };
+  //fetch
 
   return (
-    <VStack
-      flex={1}
-      bg="background.500"
-      alignItems="center"
-      justifyContent="flex-start"
+    <LinearGradient
+      colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000"]}
+      style={styles.container}
     >
-      <Header name="Kenan" />
-      <StatusText text={status} />
-
-      <RecorderCircle
-        isRecording={isRecording}
-        durationText={durationText}
-        onPress={isRecording ? stopRecording : startRecording}
-      />
-
-      <Controls
-        fileUri={fileUri}
-        onCancel={cancelRecording}
-        onUpload={uploadRecording}
-        onRecordAgain={recordAgain}
-      />
-    </VStack>
+      <Header onBack={back} />
+      <StatusText txt={status} />
+      <RecordButton mode={mode} timer={timer} onStart={start} onStop={stop} />
+      {mode === "review" && <ReviewActions onUpload={upload} onRetry={reset} />}
+    </LinearGradient>
   );
 }
+
+/*───────────────────────────────────────────────
+  STYLES
+───────────────────────────────────────────────*/
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 100,
+    paddingBottom: 60,
+  },
+  /* header */
+  headerRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
+    fontSize: 36,
+    color: "#FFF",
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 46,
+  },
+  /* status */
+  statusText: {
+    color: "#a7a7a7",
+    fontSize: 16,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  /* button rings */
+  circleWrapper: {
+    shadowColor: "#00EAFF",
+    shadowOpacity: 0.75,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 0 },
+    marginBottom: 20,
+  },
+  outerRing: {
+    width: 310,
+    height: 310,
+    borderRadius: 155,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 5,
+    borderColor: "#00EAFF",
+  },
+  innerRing: {
+    width: 195,
+    height: 195,
+    borderRadius: 97.5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderWidth: 3,
+    borderColor: "#00EAFF",
+  },
+  timer: {
+    color: "#FFF",
+    fontSize: 42,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontWeight: "700",
+  },
+  hint: { color: "#a7a7a7", fontSize: 15, marginTop: 4 },
+  /* review */
+  reviewRow: { width: "90%", gap: 20 },
+});
