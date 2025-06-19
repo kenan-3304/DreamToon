@@ -158,7 +158,8 @@ serve(async (req) => {
       })
       .then((r) => JSON.parse(r.choices[0].message.content!));
 
-    console.log("📜 Storyboard:", JSON.stringify(sb, null, 2));
+    if (DEBUG)
+      console.log("📜 Storyboard:", JSON.stringify(sb, null, 2));
 
     sb.panels = sb.panels.slice(0, MAX_PANELS);
     if (sb.panels.length < MIN_PANELS) {
@@ -167,64 +168,69 @@ serve(async (req) => {
     const SHARED = sharedBlock(sb);
 
     /* 4 — generate each panel (no retry) */
-    const paths: string[] = [];
-    const pubUrls: string[] = [];
-    for (let i = 0; i < sb.panels.length; i++) {
-      const prompt = panelPrompt(sb.panels[i], i, SHARED);
+const paths: string[] = [];
+const pubUrls: string[] = [];
 
-      console.log(`🖼️  Panel ${i + 1} (${prompt.length} chars) ⇢ ${prompt}`);
+for (let i = 0; i < sb.panels.length; i++) {
+  const prompt = panelPrompt(sb.panels[i], i, SHARED);
 
-      const res = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          model: "dall-e-3",
-          prompt,
-          n: 1,
-          quality: "standard",
-          size: "1024x1024",
-        }),
-      });
+  if (DEBUG) console.log(`🖼️  Panel ${i + 1} prompt (${prompt.length} chars)`);
 
-      if (!res.ok) {
-        const errTxt = await res.text();
-        console.error(
-          `❌ Panel ${
-            i + 1
-          } generation failed\nPrompt:\n${prompt}\nRaw error:\n${errTxt}`
-        );
-        const fallbackPath =
-          "00000000-0000-0000-0000-000000000000/18a6b2c4-b370-435a-b7bb-44d693ce63fb.png";
-        paths.push(fallbackPath);
-        pubUrls.push(
-          "https://lzrhocmfiulykdxjzaku.supabase.co/storage/v1/object/public/comics/" +
-            fallbackPath
-        );
-        continue;
-      }
-      const openUrl = (await res.json()).data[0].url as string;
-      const img = await fetch(openUrl);
-      if (!img.ok) {
-        throw new Error(`Failed to fetch generated image: ${await img.text()}`);
-      }
-      const array = new Uint8Array(await img.arrayBuffer());
-      const panelPath = `${userId}/${dreamId}/${i + 1}.png`;
-      const { error } = await supabase.storage
-        .from("comics")
-        .upload(panelPath, array, {
-          upsert: true,
-          contentType: "image/png",
-        });
-      if (error) {
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-      const { data: pub } = supabase.storage
-        .from("comics")
-        .getPublicUrl(panelPath);
-      paths.push(panelPath);
-      pubUrls.push(pub.publicUrl);
-      console.log(`🖼️  Panel ${i + 1} generated`);
-    }
+  /* call DALL-E */
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({
+      model: "dall-e-3",
+      prompt,
+      n: 1,
+      quality: "standard",
+      size: "1024x1024",
+    }),
+  });
+
+  if (!res.ok) {
+    const errTxt = await res.text();
+    if (DEBUG)
+      console.error(
+        `❌ Panel ${i + 1} generation failed\nPrompt:\n${prompt}\n${errTxt}`
+      );
+
+    /* fallback image */
+    const fallbackPath =
+      "00000000-0000-0000-0000-000000000000/18a6b2c4-b370-435a-b7bb-44d693ce63fb.png";
+    paths.push(fallbackPath);
+    pubUrls.push(
+      `https://${projectRef}.supabase.co/storage/v1/object/public/comics/${fallbackPath}`
+    );
+    continue;
+  }
+
+  /* fetch actual PNG */
+  const openUrl = (await res.json()).data[0].url as string;
+  const imgRes = await fetch(openUrl);
+  if (!imgRes.ok) {
+    throw new Error(`Failed to fetch generated image: ${await imgRes.text()}`);
+  }
+  const bytes = new Uint8Array(await imgRes.arrayBuffer());
+
+  /* upload to Storage: comics/{user}/{dream}/{idx}.png */
+  const panelPath = `${userId}/${dreamId}/${i + 1}.png`;
+  const { error } = await supabase.storage
+    .from("comics")
+    .upload(panelPath, bytes, {
+      upsert: true,
+      contentType: "image/png",
+    });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  const { data: pub } = supabase.storage.from("comics").getPublicUrl(panelPath);
+  paths.push(panelPath);
+  pubUrls.push(pub.publicUrl);
+
+  if (DEBUG) console.log(`✅ Panel ${i + 1} uploaded`);
+}
+
 
     /* 5 — stitch panels */
     const stitch = await fetch(
@@ -263,7 +269,7 @@ serve(async (req) => {
       }
     );
   } catch (e) {
-    console.error(e);
+    if (DEBUG) console.error(e);
     return new Response(String(e), { status: 500 });
   }
 });

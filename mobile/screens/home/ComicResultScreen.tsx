@@ -18,6 +18,8 @@ import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 
+const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
+
 interface RouteParams {
   urls: string[];
 }
@@ -78,7 +80,7 @@ export default function ComicResultScreen() {
       });
 
       if (result.action === Share.sharedAction) {
-        console.log("Shared successfully");
+        if (DEBUG) console.log("Shared successfully");
       }
     } catch (error) {
       Alert.alert("Error sharing comic", "Failed to share the comic");
