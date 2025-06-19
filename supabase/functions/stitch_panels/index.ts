@@ -7,6 +7,7 @@ import {
 } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
 
 const env = Deno.env.toObject();
+const DEBUG = (env.DEBUG ?? "").toLowerCase() === "true";
 const supabase = createClient(
   env.EXPO_PUBLIC_SUPABASE_URL!,
   env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -91,7 +92,7 @@ serve(async (req) => {
       .from("comics")
       .upload(path, finalBuffer, { upsert: true, contentType: "image/png" });
     if (error) {
-      console.error("Upload error:", error);
+      if (DEBUG) console.error("Upload error:", error);
       return new Response(`Upload failed: ${error.message}`, { status: 500 });
     }
 
@@ -102,7 +103,7 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error(err);
+    if (DEBUG) console.error(err);
     const msg = err instanceof Error ? err.message : String(err);
     return new Response(`Internal server error: ${msg}`, { status: 500 });
   }

@@ -17,6 +17,8 @@ import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PROCESS_DREAM_URL } from "../../config";
 
+const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
+
 /*───────────────────────────────────────────────
   HEADER
 ───────────────────────────────────────────────*/
@@ -150,7 +152,7 @@ export default function RecordScreen() {
         ])
       ).start();
     } catch (e) {
-      console.error(e);
+      if (DEBUG) console.error(e);
       setStatus(`Start error: ${(e as Error).message}`);
     }
   };
@@ -167,7 +169,7 @@ export default function RecordScreen() {
       pulseAnim.stopAnimation();
       pulseAnim.setValue(0);
     } catch (e) {
-      console.error(e);
+      if (DEBUG) console.error(e);
       setStatus(`Stop error: ${(e as Error).message}`);
     }
   };
@@ -207,7 +209,7 @@ export default function RecordScreen() {
       const { urls } = await res.json();
       navigation.navigate("ComicResult", { urls });
     } catch (e) {
-      console.error(e);
+      if (DEBUG) console.error(e);
       Alert.alert("Upload failed", String(e));
       setStatus("Upload failed");
     }

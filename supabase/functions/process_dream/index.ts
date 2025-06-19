@@ -157,7 +157,8 @@ serve(async (req) => {
       })
       .then((r) => JSON.parse(r.choices[0].message.content!));
 
-    console.log("📜 Storyboard:", JSON.stringify(sb, null, 2));
+    if (DEBUG)
+      console.log("📜 Storyboard:", JSON.stringify(sb, null, 2));
 
     sb.panels = sb.panels.slice(0, MAX_PANELS);
     if (sb.panels.length < MIN_PANELS) {
@@ -170,7 +171,8 @@ serve(async (req) => {
     for (let i = 0; i < sb.panels.length; i++) {
       const prompt = panelPrompt(sb.panels[i], i, SHARED);
 
-      console.log(`🖼️  Panel ${i + 1} (${prompt.length} chars) ⇢ ${prompt}`);
+      if (DEBUG)
+        console.log(`🖼️  Panel ${i + 1} (${prompt.length} chars) ⇢ ${prompt}`);
 
       const res = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
@@ -186,18 +188,19 @@ serve(async (req) => {
 
       if (!res.ok) {
         const errTxt = await res.text();
-        console.error(
-          `❌ Panel ${
-            i + 1
-          } generation failed\nPrompt:\n${prompt}\nRaw error:\n${errTxt}`
-        );
+        if (DEBUG)
+          console.error(
+            `❌ Panel ${
+              i + 1
+            } generation failed\nPrompt:\n${prompt}\nRaw error:\n${errTxt}`
+          );
         urls.push(
           "https://lzrhocmfiulykdxjzaku.supabase.co/storage/v1/object/public/comics/00000000-0000-0000-0000-000000000000/18a6b2c4-b370-435a-b7bb-44d693ce63fb.png"
         );
         continue;
       }
       urls.push((await res.json()).data[0].url as string);
-      console.log(`🖼️  Panel ${i + 1} generated`);
+      if (DEBUG) console.log(`🖼️  Panel ${i + 1} generated`);
     }
 
     /* 5 — record + respond (no stitching) */
@@ -216,7 +219,7 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error(e);
+    if (DEBUG) console.error(e);
     return new Response(String(e), { status: 500 });
   }
 });

@@ -16,6 +16,8 @@ import { Home, Book, Settings, X } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { PROCESS_DREAM_URL } from "../../config";
 
+const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
+
 const DashboardScreen: React.FC = () => {
   const nav = useNavigation();
   const [isTyping, setIsTyping] = useState(false);
@@ -40,7 +42,7 @@ const DashboardScreen: React.FC = () => {
   };
   const handleDone = () => {
     if (dreamText.trim()) {
-      console.log("Dream text:", dreamText);
+      if (DEBUG) console.log("Dream text:", dreamText);
       // TODO: persist / navigate
     }
     setIsTyping(false);
