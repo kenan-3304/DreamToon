@@ -24,3 +24,7 @@ Set the `DEBUG` environment variable to `true` to see verbose logs from both the
 - `DEBUG` – Set to `true` for verbose logging.
 - `CF_ACCOUNT` and `CF_IMAGES_TOKEN` – Optional Cloudflare Images credentials.
 
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
