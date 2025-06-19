@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { PROCESS_DREAM_URL } from "../../config";
+import { useSupabaseUserId } from "../../SupabaseContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
@@ -29,6 +30,7 @@ export default function ProcessingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { dreamText } = route.params || {};
+  const userId = useSupabaseUserId();
 
   // progress & stage text
   const [pct, setPct] = useState(0); // 0‑100
@@ -77,6 +79,9 @@ export default function ProcessingScreen() {
       try {
         const form = new FormData();
         form.append("text", dreamText);
+        if (userId) {
+          form.append("user_id", userId);
+        }
         const res = await fetch(PROCESS_DREAM_URL, {
           method: "POST",
           body: form,
