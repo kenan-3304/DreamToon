@@ -12,6 +12,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { Settings, Heart, Home, Book } from "lucide-react-native";
+import { supabase } from "../../supabaseClient";
+import { useSupabaseUserId } from "../../SupabaseContext";
 
 interface DreamEntry {
   id: string;
@@ -19,33 +21,42 @@ interface DreamEntry {
   title: string;
   comic: string;
   liked: boolean;
-  thumbUris: string[]; // 6 thumbs
+  thumbUris: { uri: string }[];
 }
 
 const MONTHS = ["May", "June", "July", "Aug", "Sept", "Nov"];
 
-const MOCK: DreamEntry[] = [
-  {
-    id: "1",
-    date: "Jun 14",
-    title: "Adventures in Barcelona",
-    comic: "BARCELONA DREAM HEIST",
-    liked: true,
-    thumbUris: Array(6).fill(require("../../assets/image-3.png")),
-  },
-  {
-    id: "2",
-    date: "Jun 15",
-    title: "Flying Through Clouds",
-    comic: "SKY DANCER CHRONICLES",
-    liked: false,
-    thumbUris: Array(6).fill(require("../../assets/image-3.png")),
-  },
-];
-
 export default function TimelineScreen() {
   const nav = useNavigation();
+  const userId = useSupabaseUserId();
   const [month, setMonth] = useState("June");
+  const [entries, setEntries] = useState<DreamEntry[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("dreams")
+      .select("id, created_at, storyboard, panel_urls")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        const mapped = data.map((d) => ({
+          id: d.id,
+          date: new Date(d.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          title: (d.storyboard as any)?.title ?? "Untitled",
+          comic: (d.storyboard as any)?.style ?? "",
+          liked: false,
+          thumbUris: (d.panel_urls || []).map((p: string) => ({
+            uri: supabase.storage.from("comics").getPublicUrl(p).publicUrl,
+          })),
+        }));
+        setEntries(mapped);
+      });
+  }, [userId]);
 
   // Navigation handler
   const goto = (route: string) => {
@@ -114,7 +125,7 @@ export default function TimelineScreen() {
         contentContainerStyle={{ paddingTop: 6, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {MOCK.map((d, idx) => (
+        {entries.map((d, idx) => (
           <Animated.View
             key={d.id}
             style={[
