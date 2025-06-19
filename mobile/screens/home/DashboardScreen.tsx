@@ -15,8 +15,12 @@ import { Home, Book, Settings, X } from "lucide-react-native";
 // reuse gradient button from WelcomeScreen (move to components/ later)
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
+import { PROCESS_DREAM_URL } from "../../config";
+import { useUser } from "../../UserContext";
+
 const DashboardScreen: React.FC = () => {
   const nav = useNavigation();
+  const { profile } = useUser();
   const [isTyping, setIsTyping] = useState(false);
   const [dreamText, setDreamText] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -90,7 +94,7 @@ const DashboardScreen: React.FC = () => {
       {/* greeting */}
       <View style={styles.greetingWrapper}>
         <Text style={styles.greetingText}>{greeting},</Text>
-        <Text style={styles.greetingText}>Kenan</Text>
+        <Text style={styles.greetingText}>{profile?.name}</Text>
       </View>
 
       {/* main area */}
