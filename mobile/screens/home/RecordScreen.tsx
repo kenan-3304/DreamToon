@@ -16,7 +16,7 @@ import { useUser } from "../../UserContext";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { PROCESS_DREAM_URL } from "../../config";
+import { PROCESS_DREAM_URL, SUPABASE_URL } from "../../config";
 import { useSupabaseUserId } from "../../SupabaseContext";
 
 const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
@@ -212,7 +212,12 @@ export default function RecordScreen() {
         body: form,
       });
       if (!res.ok) throw new Error(await res.text());
-      const { urls } = await res.json();
+      const data = await res.json();
+      const urls =
+        data.urls ??
+        (data.panel_paths || []).map(
+          (p: string) => `${SUPABASE_URL}/storage/v1/object/public/comics/${p}`
+        );
       navigation.navigate("ComicResult", { urls });
     } catch (e) {
       if (DEBUG) console.error(e);
