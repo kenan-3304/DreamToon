@@ -12,7 +12,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, ChevronDown } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Picker } from "@react-native-picker/picker";
 
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
@@ -50,6 +49,7 @@ const CreateToonScreen: React.FC = () => {
   const navigation = useNavigation();
   const [tab, setTab] = useState<"upload" | "describe">("upload");
   const [uploadedUri, setUploadedUri] = useState<string | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [form, setForm] = useState({
     age: "",
     gender: "",
@@ -81,31 +81,50 @@ const CreateToonScreen: React.FC = () => {
   const continueNext = () =>
     canContinue && navigation.navigate("Dashboard" as never);
 
-  const renderPicker = (
-    selected: string,
-    onChange: (v: string) => void,
-    items: readonly string[],
-    placeholder: string
-  ) => (
-    <View style={styles.pickerWrapper}>
-      <Picker
-        selectedValue={selected}
-        onValueChange={(v) => onChange(String(v))}
-        style={styles.picker}
-        dropdownIconColor="#FFFFFF"
-        mode="dropdown"
+  const SimpleDropdown = ({
+    selected,
+    onSelect,
+    items,
+    placeholder,
+    field,
+  }: {
+    selected: string;
+    onSelect: (value: string) => void;
+    items: readonly string[];
+    placeholder: string;
+    field: string;
+  }) => (
+    <View>
+      <Pressable
+        style={styles.dropdownButton}
+        onPress={() =>
+          setActiveDropdown(activeDropdown === field ? null : field)
+        }
       >
-        <Picker.Item label={placeholder} value="" color="#a7a7a7" />
-        {items.map((v) => (
-          <Picker.Item key={v} label={v} value={v} />
-        ))}
-      </Picker>
-      <ChevronDown
-        size={18}
-        color="#FFFFFF"
-        style={styles.pickerChevron}
-        pointerEvents="none"
-      />
+        <Text
+          style={[styles.dropdownText, !selected && styles.placeholderText]}
+        >
+          {selected || placeholder}
+        </Text>
+        <ChevronDown size={18} color="#FFFFFF" />
+      </Pressable>
+
+      {activeDropdown === field && (
+        <View style={styles.dropdownList}>
+          {items.map((item) => (
+            <Pressable
+              key={item}
+              style={styles.dropdownItem}
+              onPress={() => {
+                onSelect(item);
+                setActiveDropdown(null);
+              }}
+            >
+              <Text style={styles.dropdownItemText}>{item}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 
@@ -126,7 +145,6 @@ const CreateToonScreen: React.FC = () => {
           />
         ))}
       </View>
-      <Text style={styles.progressLabel}>Step 3 of 3</Text>
 
       <ScrollView
         contentContainerStyle={styles.scrollBody}
@@ -182,39 +200,43 @@ const CreateToonScreen: React.FC = () => {
           <View style={{ width: "100%", marginTop: 20, gap: 24 }}>
             <View>
               <Text style={styles.label}>Age</Text>
-              {renderPicker(
-                form.age,
-                (v) => updateForm("age", v),
-                ages,
-                "Select age"
-              )}
+              <SimpleDropdown
+                selected={form.age}
+                onSelect={(v) => updateForm("age", v)}
+                items={ages}
+                placeholder="Select age"
+                field="age"
+              />
             </View>
             <View>
               <Text style={styles.label}>Gender</Text>
-              {renderPicker(
-                form.gender,
-                (v) => updateForm("gender", v),
-                genders,
-                "Select gender"
-              )}
+              <SimpleDropdown
+                selected={form.gender}
+                onSelect={(v) => updateForm("gender", v)}
+                items={genders}
+                placeholder="Select gender"
+                field="gender"
+              />
             </View>
             <View>
               <Text style={styles.label}>Hair Type</Text>
-              {renderPicker(
-                form.hairType,
-                (v) => updateForm("hairType", v),
-                hairTypes,
-                "Select type"
-              )}
+              <SimpleDropdown
+                selected={form.hairType}
+                onSelect={(v) => updateForm("hairType", v)}
+                items={hairTypes}
+                placeholder="Select type"
+                field="hairType"
+              />
             </View>
             <View>
               <Text style={styles.label}>Hair Color</Text>
-              {renderPicker(
-                form.hairColor,
-                (v) => updateForm("hairColor", v),
-                hairColors,
-                "Select color"
-              )}
+              <SimpleDropdown
+                selected={form.hairColor}
+                onSelect={(v) => updateForm("hairColor", v)}
+                items={hairColors}
+                placeholder="Select color"
+                field="hairColor"
+              />
             </View>
             <View>
               <Text style={styles.label}>Skin Tone</Text>
@@ -236,8 +258,8 @@ const CreateToonScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      <View style={{ width: "90%", marginBottom: 24 }}>
-        <ShinyGradientButton onPress={continueNext} disabled={!canContinue}>
+      <View style={styles.bottomContainer}>
+        <ShinyGradientButton onPress={continueNext}>
           Continue
         </ShinyGradientButton>
         <Pressable
@@ -263,11 +285,14 @@ const styles = StyleSheet.create({
     gap: 8,
     width: "80%",
     alignSelf: "center",
-    marginTop: 40,
+    marginTop: 80,
   },
   progressBar: { flex: 1, height: 6, borderRadius: 3 },
-  progressLabel: { textAlign: "center", color: "#8B8B8B", marginTop: 8 },
-  scrollBody: { alignItems: "center", paddingHorizontal: 32 },
+  scrollBody: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingBottom: 200,
+  },
   heading: {
     fontSize: 32,
     color: "#FFFFFF",
@@ -308,6 +333,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,234,255,0.05)",
+    marginTop: 32,
   },
   uploadedImg: { width: "100%", height: "100%", borderRadius: 14 },
   outlineBtn: {
@@ -322,27 +348,54 @@ const styles = StyleSheet.create({
   outlineText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   // Pickers
   label: { color: "#FFFFFF", fontSize: 14, marginBottom: 6 },
-  pickerWrapper: {
+  dropdownButton: {
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.1)",
-    position: "relative",
-    height: Platform.OS === "ios" ? 200 : 48,
-    ...Platform.select({ android: { overflow: "hidden" } }),
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
   },
-  picker: {
+  dropdownText: {
     color: "#FFFFFF",
-    height: Platform.OS === "ios" ? 200 : 48,
-    width: "100%",
+    fontSize: 16,
+    flex: 1,
   },
-  pickerChevron: {
+  placeholderText: { color: "#a7a7a7" },
+  dropdownList: {
     position: "absolute",
-    right: 12,
-    top: Platform.OS === "ios" ? 90 : 14,
+    top: 48,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.2)",
+    maxHeight: 150,
+    zIndex: 1000,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  dropdownItemText: { color: "#000000", fontSize: 16 },
   // Skin tones
-  toneRow: { flexDirection: "row", gap: 12, marginTop: 8 },
+  toneRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 8,
+  },
   toneSwatch: {
     width: 32,
     height: 32,
@@ -353,4 +406,12 @@ const styles = StyleSheet.create({
   toneSwatchActive: { transform: [{ scale: 1.1 }], borderColor: "#FFFFFF" },
   // Misc
   skipText: { color: "#a7a7a7", fontSize: 16, textAlign: "center" },
+  bottomContainer: {
+    position: "absolute",
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
 });

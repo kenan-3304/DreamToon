@@ -13,6 +13,8 @@ import CreateToonScreen from "./screens/onboarding/CreateToonScreen";
 import DashboardScreen from "./screens/home/DashboardScreen";
 import ProcessingScreen from "./screens/home/ProcessingScreen";
 import ComicResultScreen from "./screens/home/ComicResultScreen";
+import TimelineScreen from "./screens/timeline/TimelineScreen";
+import SettingsScreen from "./screens/home/SettingsScreen";
 import theme from "./theme";
 
 // --- Optional stub until you build it
@@ -32,6 +34,8 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Processing: undefined;
   ComicResult: { urls: string[] };
+  Timeline: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,7 +49,7 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Welcome"
-          screenOptions={{ headerShown: false }}
+          screenOptions={{ headerShown: false, animation: "none" }}
         >
           {/* On-boarding */}
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
@@ -60,6 +64,8 @@ export default function App() {
           <Stack.Screen name="Record" component={RecordScreen} />
           <Stack.Screen name="Processing" component={ProcessingScreen} />
           <Stack.Screen name="ComicResult" component={ComicResultScreen} />
+          <Stack.Screen name="Timeline" component={TimelineScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </NativeBaseProvider>

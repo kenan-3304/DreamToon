@@ -7,6 +7,7 @@
     "native-base": "^3.4.28"
   },
   "dependencies": {
-    "expo-audio": "^0.4.6"
+    "expo-audio": "^0.4.6",
+    "@react-native-picker/picker": "2.11.0"
   }
 }

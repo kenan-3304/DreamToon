@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../App"; // adjust the relative path if App.tsx lives elsewhere
+import { ChevronLeft } from "lucide-react-native";
 
 // Re‑use the shiny button we already built
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
@@ -67,6 +68,10 @@ const VerifyCodeScreen: React.FC = () => {
     }
   };
 
+  const goBack = () => {
+    navigation.goBack();
+  };
+
   const isComplete = code.every((d) => d);
 
   // helper to render each box
@@ -94,6 +99,11 @@ const VerifyCodeScreen: React.FC = () => {
         style={StyleSheet.absoluteFill}
       />
 
+      {/* Back button */}
+      <Pressable onPress={goBack} style={styles.backBtn}>
+        <ChevronLeft size={20} color="#FFFFFF" />
+      </Pressable>
+
       {/* progress */}
       <View style={styles.progressWrapper}>
         <LinearGradient
@@ -110,7 +120,6 @@ const VerifyCodeScreen: React.FC = () => {
         />
         <View style={styles.progressInactive} />
       </View>
-      <Text style={styles.progressLabel}>Step 2 of 3</Text>
 
       {/* body */}
       <View style={styles.content}>
@@ -126,7 +135,7 @@ const VerifyCodeScreen: React.FC = () => {
         </Pressable>
 
         <View style={{ width: "100%", marginTop: 50 }}>
-          <ShinyGradientButton onPress={continueNext} disabled={!isComplete}>
+          <ShinyGradientButton onPress={continueNext}>
             Continue
           </ShinyGradientButton>
         </View>
@@ -150,7 +159,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     width: "80%",
     alignSelf: "center",
-    marginTop: 40,
+    marginTop: 80,
     gap: 8,
   },
   progressActive: {
@@ -163,12 +172,6 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  progressLabel: {
-    textAlign: "center",
-    color: "#8B8B8B",
-    fontSize: 14,
-    marginTop: 8,
   },
   content: {
     flex: 1,
@@ -211,5 +214,11 @@ const styles = StyleSheet.create({
     color: "#00EAFF",
     fontSize: 18,
     fontWeight: "500",
+  },
+  backBtn: {
+    position: "absolute",
+    top: 120,
+    left: 20,
+    padding: 10,
   },
 });

@@ -16,7 +16,7 @@ import { Home, Book, Settings } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 const DashboardScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const nav = useNavigation();
   const [isTyping, setIsTyping] = useState(false);
   const [dreamText, setDreamText] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -32,7 +32,7 @@ const DashboardScreen: React.FC = () => {
   // ───────────────────────────────────────────────────────────────────
   // Handlers
   // ───────────────────────────────────────────────────────────────────
-  const goRecord = () => navigation.navigate("Record" as never);
+  const goRecord = () => nav.navigate("Record" as never);
   const openTyping = () => {
     setIsTyping(true);
     setTimeout(() => inputRef.current?.focus(), 350);
@@ -48,8 +48,8 @@ const DashboardScreen: React.FC = () => {
   };
 
   const goto = (route: string) => {
-    if (route === "library") navigation.navigate("Timeline" as never);
-    else if (route === "settings") navigation.navigate("Settings" as never);
+    if (route === "library") nav.navigate("Timeline" as never);
+    else if (route === "settings") nav.navigate("Settings" as never);
   };
 
   // ───────────────────────────────────────────────────────────────────
@@ -72,16 +72,23 @@ const DashboardScreen: React.FC = () => {
       {/* main area */}
       <View style={styles.middleWrapper}>
         {!isTyping ? (
-          <Pressable onPress={goRecord} style={styles.cloudWrapper}>
-            <LinearGradient
-              colors={["#00EAFF", "#6633EE", "#FF4EE0"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cloudGradient}
-            >
-              <Text style={styles.cloudText}>Tap to Record</Text>
-            </LinearGradient>
-          </Pressable>
+          <>
+            <Pressable onPress={goRecord} style={styles.cloudWrapper}>
+              <LinearGradient
+                colors={["#00EAFF", "#6633EE", "#FF4EE0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cloudGradient}
+              >
+                <Text style={styles.cloudText}>Tap to Record</Text>
+              </LinearGradient>
+            </Pressable>
+
+            {/* type instead */}
+            <Pressable onPress={openTyping} style={styles.typeInsteadWrapper}>
+              <Text style={styles.typeInstead}>Want to type instead?</Text>
+            </Pressable>
+          </>
         ) : (
           <View style={styles.inputWrapper}>
             <TextInput
@@ -97,13 +104,6 @@ const DashboardScreen: React.FC = () => {
           </View>
         )}
       </View>
-
-      {/* type instead */}
-      {!isTyping && (
-        <Pressable onPress={openTyping} style={{ marginBottom: 32 }}>
-          <Text style={styles.typeInstead}>Want to type instead?</Text>
-        </Pressable>
-      )}
 
       {/* nav bar */}
       <View style={styles.navBar}>
@@ -124,10 +124,10 @@ export default DashboardScreen;
 // Styles
 // ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 40, alignItems: "center" },
+  container: { flex: 1, paddingTop: 60, alignItems: "center" },
   settingsBtn: {
     position: "absolute",
-    top: 30,
+    top: 50,
     left: 20,
     width: 40,
     height: 40,
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
-  greetingWrapper: { marginTop: 40, alignItems: "center" },
+  greetingWrapper: { marginTop: 60, alignItems: "center" },
   greetingText: {
     fontSize: 40,
     color: "#FFFFFF",
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 30,
     shadowOffset: { width: 0, height: 0 },
+    marginBottom: 20,
   },
   cloudGradient: {
     width: 320,
@@ -167,6 +168,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cloudText: { color: "#FFFFFF", fontSize: 22, fontWeight: "600" },
+  // type instead
+  typeInsteadWrapper: { marginTop: 10 },
+  typeInstead: {
+    color: "#a7a7a7",
+    fontSize: 16,
+    textAlign: "center",
+    textDecorationLine: "underline",
+  },
   // typing input
   inputWrapper: { width: "90%", maxWidth: 350 },
   input: {
@@ -179,13 +188,6 @@ const styles = StyleSheet.create({
     padding: 16,
     textAlignVertical: "top",
     marginBottom: 16,
-  },
-  // type instead
-  typeInstead: {
-    color: "#a7a7a7",
-    fontSize: 16,
-    textAlign: "center",
-    textDecorationLine: "underline",
   },
   // nav
   navBar: {

@@ -13,27 +13,6 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
-const projectRef = (() => {
-  const fromEnv = env.SUPABASE_PROJECT_REF?.trim();
-  const fromURL = env.EXPO_PUBLIC_SUPABASE_URL?.match(
-    /^https:\/\/([a-z0-9-]+)\.supabase\.co/i
-  )?.[1];
-  if (fromEnv && fromURL && fromEnv !== fromURL) {
-    console.warn(
-      `[process_dream] ⚠️  SUPABASE_PROJECT_REF (“${fromEnv}”) ≠ URL project (“${fromURL}”). Using the env var.`
-    );
-  }
-  return (
-    fromEnv ??
-    fromURL ??
-    (() => {
-      throw new Error(
-        "Neither SUPABASE_PROJECT_REF nor EXPO_PUBLIC_SUPABASE_URL present – can’t build stitch_panels URL."
-      );
-    })()
-  );
-})();
-
 serve(async (req) => {
   try {
     // Health-check

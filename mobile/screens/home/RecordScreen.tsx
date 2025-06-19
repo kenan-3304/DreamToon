@@ -6,6 +6,7 @@ import {
   Pressable,
   Platform,
   Alert,
+  Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
@@ -85,9 +86,7 @@ const ReviewActions: React.FC<{
 }> = ({ onUpload, onRetry }) => (
   <View style={styles.reviewRow}>
     <ShinyGradientButton onPress={onUpload}>Upload Dream</ShinyGradientButton>
-    <ShinyGradientButton variant="outline" onPress={onRetry}>
-      Record Again
-    </ShinyGradientButton>
+    <ShinyGradientButton onPress={onRetry}>Record Again</ShinyGradientButton>
   </View>
 );
 
@@ -106,13 +105,18 @@ export default function RecordScreen() {
   const t0 = useRef<number>(0);
   const tick = useRef<NodeJS.Timeout | null>(null);
 
+  // Pulsing animation for recording
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
   // mic perms
   useEffect(() => {
     (async () => {
       const { granted } = await AudioModule.requestRecordingPermissionsAsync();
       if (!granted) Alert.alert("Microphone permission denied");
     })();
-    return () => tick.current && clearInterval(tick.current);
+    return () => {
+      if (tick.current) clearInterval(tick.current);
+    };
   }, []);
 
   /* helpers */
@@ -129,6 +133,22 @@ export default function RecordScreen() {
           `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
         );
       }, 500);
+
+      // Start pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     } catch (e) {
       console.error(e);
       setStatus(`Start error: ${(e as Error).message}`);
@@ -142,6 +162,10 @@ export default function RecordScreen() {
       setUri(audioRecorder.uri);
       setMode("review");
       setStatus("✅ Saved locally. Ready to upload!");
+
+      // Stop pulsing animation
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(0);
     } catch (e) {
       console.error(e);
       setStatus(`Stop error: ${(e as Error).message}`);
@@ -150,11 +174,14 @@ export default function RecordScreen() {
 
   const reset = () => {
     tick.current && clearInterval(tick.current);
-    audioRecorder.stopAsync?.();
     setUri(null);
     setTimer("0:00");
     setStatus("Ready to record your dream!");
     setMode("idle");
+
+    // Stop pulsing animation
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(0);
   };
   const back = () => {
     reset();
@@ -193,6 +220,21 @@ export default function RecordScreen() {
       colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000"]}
       style={styles.container}
     >
+      {/* Red overlay when recording */}
+      {mode === "recording" && (
+        <Animated.View
+          style={[
+            styles.redOverlay,
+            {
+              opacity: pulseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.15, 0.25],
+              }),
+            },
+          ]}
+        />
+      )}
+
       <Header onBack={back} />
       <StatusText txt={status} />
       <RecordButton mode={mode} timer={timer} onStart={start} onStop={stop} />
@@ -207,19 +249,21 @@ export default function RecordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 100,
-    paddingBottom: 60,
+    paddingTop: 60,
+    paddingHorizontal: 24,
   },
   /* header */
   headerRow: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
+    marginBottom: 40,
+    position: "relative",
   },
   backBtn: {
+    position: "absolute",
+    left: 0,
+    top: -10,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -228,22 +272,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
-    marginRight: 12,
+    zIndex: 1,
   },
   headerText: {
-    flex: 1,
+    width: "100%",
     fontSize: 36,
     color: "#FFF",
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 46,
+    marginTop: 10,
   },
   /* status */
   statusText: {
     color: "#a7a7a7",
     fontSize: 16,
-    marginTop: 8,
     textAlign: "center",
+    marginBottom: 60,
   },
   /* button rings */
   circleWrapper: {
@@ -251,21 +296,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.75,
     shadowRadius: 30,
     shadowOffset: { width: 0, height: 0 },
-    marginBottom: 20,
+    alignSelf: "center",
+    marginBottom: 60,
   },
   outerRing: {
-    width: 310,
-    height: 310,
-    borderRadius: 155,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 5,
     borderColor: "#00EAFF",
   },
   innerRing: {
-    width: 195,
-    height: 195,
-    borderRadius: 97.5,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -274,11 +320,24 @@ const styles = StyleSheet.create({
   },
   timer: {
     color: "#FFF",
-    fontSize: 42,
+    fontSize: 38,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontWeight: "700",
   },
   hint: { color: "#a7a7a7", fontSize: 15, marginTop: 4 },
   /* review */
-  reviewRow: { width: "90%", gap: 20 },
+  reviewRow: {
+    width: "100%",
+    gap: 20,
+    marginTop: 40,
+  },
+  redOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,50,50,0.3)",
+    zIndex: 0,
+  },
 });
