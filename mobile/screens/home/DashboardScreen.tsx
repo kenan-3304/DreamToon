@@ -10,10 +10,11 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
-import { Home, Book, Settings } from "lucide-react-native";
+import { Home, Book, Settings, X } from "lucide-react-native";
 
 // reuse gradient button from WelcomeScreen (move to components/ later)
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import { PROCESS_DREAM_URL } from "../../config";
 
 const DashboardScreen: React.FC = () => {
   const nav = useNavigation();
@@ -47,9 +48,27 @@ const DashboardScreen: React.FC = () => {
     Keyboard.dismiss();
   };
 
+  const handleBack = () => {
+    setIsTyping(false);
+    setDreamText("");
+    Keyboard.dismiss();
+  };
+
   const goto = (route: string) => {
     if (route === "library") nav.navigate("Timeline" as never);
     else if (route === "settings") nav.navigate("Settings" as never);
+  };
+
+  const handleUpload = async () => {
+    if (!dreamText.trim()) return; // Prevent empty uploads
+
+    // Navigate to ProcessingScreen and pass the dreamText as a param
+    nav.navigate("Processing" as never, { dreamText } as never);
+
+    // Optionally, clear the input and exit typing mode
+    setIsTyping(false);
+    setDreamText("");
+    Keyboard.dismiss();
   };
 
   // ───────────────────────────────────────────────────────────────────
@@ -58,10 +77,16 @@ const DashboardScreen: React.FC = () => {
       colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
       style={styles.container}
     >
-      {/* settings */}
-      <Pressable style={styles.settingsBtn} onPress={() => goto("settings")}>
-        <Settings size={20} color="#FFFFFF" />
-      </Pressable>
+      {/* settings/back button */}
+      {!isTyping ? (
+        <Pressable style={styles.settingsBtn} onPress={() => goto("settings")}>
+          <Settings size={20} color="#FFFFFF" />
+        </Pressable>
+      ) : (
+        <Pressable style={styles.settingsBtn} onPress={handleBack}>
+          <X size={20} color="#FFFFFF" />
+        </Pressable>
+      )}
 
       {/* greeting */}
       <View style={styles.greetingWrapper}>
@@ -98,22 +123,31 @@ const DashboardScreen: React.FC = () => {
               placeholder="Describe your dream…"
               placeholderTextColor="#a7a7a7"
               multiline
+              maxLength={2000}
               style={styles.input}
             />
-            <ShinyGradientButton onPress={handleDone}>Done</ShinyGradientButton>
+            <Text style={styles.charCount}>{dreamText.length}/2000</Text>
+            <ShinyGradientButton
+              onPress={handleUpload}
+              disabled={!dreamText.trim()}
+            >
+              Upload
+            </ShinyGradientButton>
           </View>
         )}
       </View>
 
       {/* nav bar */}
-      <View style={styles.navBar}>
-        <Pressable style={styles.navBtn} onPress={() => goto("home")}>
-          <Home size={24} color="#00EAFF" />
-        </Pressable>
-        <Pressable style={styles.navBtn} onPress={() => goto("library")}>
-          <Book size={24} color="#a7a7a7" />
-        </Pressable>
-      </View>
+      {!isTyping && (
+        <View style={styles.navBar}>
+          <Pressable style={styles.navBtn} onPress={() => goto("home")}>
+            <Home size={24} color="#00EAFF" />
+          </Pressable>
+          <Pressable style={styles.navBtn} onPress={() => goto("library")}>
+            <Book size={24} color="#a7a7a7" />
+          </Pressable>
+        </View>
+      )}
     </LinearGradient>
   );
 };
@@ -203,4 +237,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   navBtn: { padding: 8, borderRadius: 12 },
+  charCount: {
+    color: "#a7a7a7",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 16,
+  },
 });

@@ -6,6 +6,7 @@ create table dreams (
   transcript text,
   panel_count smallint,
   storyboard jsonb,
+  panel_urls text[],
   composite_url text,
   cost_cents numeric(6,2)
 );

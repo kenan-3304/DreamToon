@@ -8,7 +8,8 @@ import {
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { PROCESS_DREAM_URL } from "../../config";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
@@ -26,10 +27,14 @@ const STAGES = [
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ProcessingScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { dreamText } = route.params || {};
 
   // progress & stage text
   const [pct, setPct] = useState(0); // 0‑100
   const [stage, setStage] = useState(0);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [urls, setUrls] = useState<string[] | null>(null);
 
   // spinning outer ring
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -58,13 +63,34 @@ export default function ProcessingScreen() {
           STAGES.length - 1
         )
       );
-      if (elapsed >= TOTAL_MS) {
+      if (uploadDone && urls) {
         clearInterval(int);
-        navigation.navigate("ComicResult" as never, { urls: [] } as never);
+        navigation.navigate("ComicResult" as never, { urls } as never);
       }
     }, tick);
     return () => clearInterval(int);
-  }, []);
+  }, [uploadDone, urls]);
+
+  useEffect(() => {
+    // Start upload
+    const upload = async () => {
+      try {
+        const form = new FormData();
+        form.append("text", dreamText);
+        const res = await fetch(PROCESS_DREAM_URL, {
+          method: "POST",
+          body: form,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { urls } = await res.json();
+        setUrls(urls);
+        setUploadDone(true);
+      } catch (e) {
+        // Handle error
+      }
+    };
+    upload();
+  }, [dreamText]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],

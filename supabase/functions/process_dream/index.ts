@@ -127,16 +127,24 @@ serve(async (req) => {
     const form = await req.formData();
     const file = form.get("audio") as File | null;
     const userId = form.get("user_id") as string | null;
-    if (!file) throw new Error("audio file missing");
+    const text = form.get("text") as string | null;
 
-    /* 2 — whisper */
-    const transcript = await new OpenAI({
-      apiKey: env.OPENAI_API_KEY!,
-    }).audio.transcriptions.create({
-      model: "whisper-1",
-      file,
-      response_format: "text",
-    });
+    let transcript: string | null = null;
+
+    if (file) {
+      // 2 — whisper
+      transcript = await new OpenAI({
+        apiKey: env.OPENAI_API_KEY!,
+      }).audio.transcriptions.create({
+        model: "whisper-1",
+        file,
+        response_format: "text",
+      });
+    } else if (text && text.trim().length > 0) {
+      transcript = text.trim();
+    } else {
+      throw new Error("audio file or text missing");
+    }
 
     /* 3 — storyboard */
     const sb: Storyboard = await new OpenAI({
@@ -144,7 +152,7 @@ serve(async (req) => {
     }).chat.completions
       .create({
         model: "gpt-4o",
-        messages: storyboardPrompt(transcript),
+        messages: storyboardPrompt(transcript!),
         response_format: { type: "json_object" },
       })
       .then((r) => JSON.parse(r.choices[0].message.content!));
@@ -198,6 +206,7 @@ serve(async (req) => {
       transcript,
       panel_count: sb.panels.length,
       storyboard: sb,
+      panel_urls: urls,
       composite_url: null,
       cost_cents: 5 * sb.panels.length,
     });
