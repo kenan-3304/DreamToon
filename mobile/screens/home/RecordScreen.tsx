@@ -12,15 +12,18 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import { useNavigation } from "@react-navigation/native";
 import { ChevronLeft } from "lucide-react-native";
+import { useUser } from "../../UserContext";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PROCESS_DREAM_URL } from "../../config";
+import { useSupabaseUserId } from "../../SupabaseContext";
 
 /*───────────────────────────────────────────────
   HEADER
 ───────────────────────────────────────────────*/
 const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const { profile } = useUser();
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return "Good Morning";
@@ -32,7 +35,7 @@ const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       <Pressable onPress={onBack} style={styles.backBtn} hitSlop={10}>
         <ChevronLeft size={20} color="#FFFFFF" />
       </Pressable>
-      <Text style={styles.headerText}>{`${greeting},\nKenan`}</Text>
+      <Text style={styles.headerText}>{`${greeting},\n${profile?.name ?? ''}`}</Text>
     </View>
   );
 };
@@ -97,6 +100,7 @@ export default function RecordScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const userId = useSupabaseUserId();
 
   const [mode, setMode] = useState<"idle" | "recording" | "review">("idle");
   const [status, setStatus] = useState("Ready to record your dream!");
@@ -197,7 +201,9 @@ export default function RecordScreen() {
         name: "dream.m4a",
         type: "audio/m4a",
       } as any);
-      form.append("user_id", "00000000-0000-0000-0000-000000000000");
+      if (userId) {
+        form.append("user_id", userId);
+      }
 
       const res = await fetch(PROCESS_DREAM_URL, {
         method: "POST",
