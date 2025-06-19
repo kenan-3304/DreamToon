@@ -127,6 +127,7 @@ serve(async (req) => {
     const form = await req.formData();
     const file = form.get("audio") as File | null;
     const userId = form.get("user_id") as string | null;
+    const dreamId = crypto.randomUUID();
     const text = form.get("text") as string | null;
 
     let transcript: string | null = null;
@@ -166,7 +167,8 @@ serve(async (req) => {
     const SHARED = sharedBlock(sb);
 
     /* 4 — generate each panel (no retry) */
-    const urls: string[] = [];
+    const paths: string[] = [];
+    const pubUrls: string[] = [];
     for (let i = 0; i < sb.panels.length; i++) {
       const prompt = panelPrompt(sb.panels[i], i, SHARED);
 
@@ -191,30 +193,75 @@ serve(async (req) => {
             i + 1
           } generation failed\nPrompt:\n${prompt}\nRaw error:\n${errTxt}`
         );
-        urls.push(
-          "https://lzrhocmfiulykdxjzaku.supabase.co/storage/v1/object/public/comics/00000000-0000-0000-0000-000000000000/18a6b2c4-b370-435a-b7bb-44d693ce63fb.png"
+        const fallbackPath =
+          "00000000-0000-0000-0000-000000000000/18a6b2c4-b370-435a-b7bb-44d693ce63fb.png";
+        paths.push(fallbackPath);
+        pubUrls.push(
+          "https://lzrhocmfiulykdxjzaku.supabase.co/storage/v1/object/public/comics/" +
+            fallbackPath
         );
         continue;
       }
-      urls.push((await res.json()).data[0].url as string);
+      const openUrl = (await res.json()).data[0].url as string;
+      const img = await fetch(openUrl);
+      if (!img.ok) {
+        throw new Error(`Failed to fetch generated image: ${await img.text()}`);
+      }
+      const array = new Uint8Array(await img.arrayBuffer());
+      const panelPath = `${userId}/${dreamId}/${i + 1}.png`;
+      const { error } = await supabase.storage
+        .from("comics")
+        .upload(panelPath, array, {
+          upsert: true,
+          contentType: "image/png",
+        });
+      if (error) {
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+      const { data: pub } = supabase.storage
+        .from("comics")
+        .getPublicUrl(panelPath);
+      paths.push(panelPath);
+      pubUrls.push(pub.publicUrl);
       console.log(`🖼️  Panel ${i + 1} generated`);
     }
 
-    /* 5 — record + respond (no stitching) */
+    /* 5 — stitch panels */
+    const stitch = await fetch(
+      `https://${projectRef}.functions.supabase.co/stitch_panels`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ urls: pubUrls, userId, dreamId }),
+      }
+    );
+    if (!stitch.ok) {
+      throw new Error(await stitch.text());
+    }
+    const { path: compositePath } = await stitch.json();
+
+    /* 6 — record + respond */
     await admin.from("dreams").insert({
+      id: dreamId,
       user_id: userId,
       transcript,
       panel_count: sb.panels.length,
       storyboard: sb,
-      panel_urls: urls,
-      composite_url: null,
+      panel_urls: paths,
+      composite_url: compositePath,
       cost_cents: 5 * sb.panels.length,
     });
 
-    return new Response(JSON.stringify({ urls }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ dreamId, panel_paths: paths, composite_path: compositePath }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (e) {
     console.error(e);
     return new Response(String(e), { status: 500 });
