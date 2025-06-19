@@ -17,13 +17,16 @@ import { ChevronLeft } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 
 // Type‑safe route params
-type VerifyCodeSignupRouteProp = RouteProp<RootStackParamList, "VerifyCode">;
+type VerifyCodeLoginRouteProp = RouteProp<
+  RootStackParamList,
+  "VerifyCodeLogin"
+>;
 
 const BOXES = 6;
 
-const VerifyCodeSignupScreen: React.FC = () => {
+const VerifyCodeLoginScreen: React.FC = () => {
   const navigation = useNavigation();
-  const route = useRoute<VerifyCodeSignupRouteProp>();
+  const route = useRoute<VerifyCodeLoginRouteProp>();
   const phone = route.params?.phone ?? "+1 703‑123‑4567";
 
   const [code, setCode] = useState<string[]>(Array(BOXES).fill(""));
@@ -63,8 +66,8 @@ const VerifyCodeSignupScreen: React.FC = () => {
   const continueNext = () => {
     const full = code.join("");
     if (full.length === BOXES) {
-      // TODO: call verification API then navigate to CreateToon for signup
-      navigation.navigate("CreateToon" as never);
+      // TODO: call verification API then navigate to Dashboard for login
+      navigation.navigate("Dashboard" as never);
     }
   };
 
@@ -104,23 +107,6 @@ const VerifyCodeSignupScreen: React.FC = () => {
         <ChevronLeft size={20} color="#FFFFFF" />
       </Pressable>
 
-      {/* progress */}
-      <View style={styles.progressWrapper}>
-        <LinearGradient
-          colors={["#00EAFF", "#FF4EE0"]}
-          style={styles.progressActive}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        />
-        <LinearGradient
-          colors={["#00EAFF", "#FF4EE0"]}
-          style={styles.progressActive}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        />
-        <View style={styles.progressInactive} />
-      </View>
-
       {/* body */}
       <View style={styles.content}>
         <Text style={styles.heading}>Verify Code</Text>
@@ -144,7 +130,7 @@ const VerifyCodeSignupScreen: React.FC = () => {
   );
 };
 
-export default VerifyCodeSignupScreen;
+export default VerifyCodeLoginScreen;
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Styles
@@ -154,24 +140,6 @@ const BOX_SIZE = 56;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  progressWrapper: {
-    flexDirection: "row",
-    width: "80%",
-    alignSelf: "center",
-    marginTop: 80,
-    gap: 8,
-  },
-  progressActive: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-  },
-  progressInactive: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
   content: {
     flex: 1,

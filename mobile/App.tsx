@@ -9,17 +9,17 @@ import WelcomeScreen from "./screens/onboarding/WelcomeScreen";
 import CreateAccountScreen from "./screens/onboarding/CreateAccountScreen"; // ✅ new file
 import RecordScreen from "./screens/home/RecordScreen";
 import VerifyCodeScreen from "./screens/onboarding/VerifyCodeScreen";
+import VerifyCodeLoginScreen from "./screens/onboarding/VerifyCodeLoginScreen";
 import CreateToonScreen from "./screens/onboarding/CreateToonScreen";
 import DashboardScreen from "./screens/home/DashboardScreen";
 import ProcessingScreen from "./screens/home/ProcessingScreen";
 import ComicResultScreen from "./screens/home/ComicResultScreen";
 import TimelineScreen from "./screens/timeline/TimelineScreen";
 import SettingsScreen from "./screens/home/SettingsScreen";
+import LoginScreen from "./screens/onboarding/LoginScreen";
 import theme from "./theme";
 
 // --- Optional stub until you build it
-const LoginScreen = () => null;
-//const VerifyCodeScreen = () => null; // will receive { phone } param
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Navigation types
@@ -30,6 +30,7 @@ export type RootStackParamList = {
   Login: undefined;
   Record: undefined;
   VerifyCode: { phone: string };
+  VerifyCodeLogin: { phone: string };
   CreateToon: undefined;
   Dashboard: undefined;
   Processing: undefined;
@@ -55,6 +56,10 @@ export default function App() {
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
           <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+          <Stack.Screen
+            name="VerifyCodeLogin"
+            component={VerifyCodeLoginScreen}
+          />
           <Stack.Screen name="CreateToon" component={CreateToonScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
 
