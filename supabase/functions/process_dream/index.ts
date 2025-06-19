@@ -262,7 +262,12 @@ for (let i = 0; i < sb.panels.length; i++) {
     });
 
     return new Response(
-      JSON.stringify({ dreamId, panel_paths: paths, composite_path: compositePath }),
+      JSON.stringify({
+        dreamId,
+        panel_paths: paths,
+        urls: pubUrls,
+        composite_path: compositePath,
+      }),
       {
         status: 200,
         headers: { "Content-Type": "application/json" },

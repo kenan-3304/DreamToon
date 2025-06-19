@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { PROCESS_DREAM_URL } from "../../config";
+import { PROCESS_DREAM_URL, SUPABASE_URL } from "../../config";
 import { useSupabaseUserId } from "../../SupabaseContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,7 +87,12 @@ export default function ProcessingScreen() {
           body: form,
         });
         if (!res.ok) throw new Error(await res.text());
-        const { urls } = await res.json();
+        const data = await res.json();
+        const urls =
+          data.urls ??
+          (data.panel_paths || []).map(
+            (p: string) => `${SUPABASE_URL}/storage/v1/object/public/comics/${p}`
+          );
         setUrls(urls);
         setUploadDone(true);
       } catch (e) {
