@@ -4,6 +4,7 @@ import "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NativeBaseProvider } from "native-base";
+import { SupabaseProvider } from "./SupabaseContext";
 
 import WelcomeScreen from "./screens/onboarding/WelcomeScreen";
 import CreateAccountScreen from "./screens/onboarding/CreateAccountScreen"; // ✅ new file
@@ -47,7 +48,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <NativeBaseProvider theme={theme}>
-      <NavigationContainer>
+      <SupabaseProvider>
+        <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Welcome"
           screenOptions={{ headerShown: false, animation: "none" }}
@@ -72,7 +74,8 @@ export default function App() {
           <Stack.Screen name="Timeline" component={TimelineScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
-      </NavigationContainer>
+        </NavigationContainer>
+      </SupabaseProvider>
     </NativeBaseProvider>
   );
 }
