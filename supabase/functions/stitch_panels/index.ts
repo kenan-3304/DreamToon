@@ -38,12 +38,19 @@ serve(async (req) => {
       return new Response("Invalid JSON", { status: 400 });
     }
 
-    const urls = (body as { urls?: unknown }).urls;
+    const { urls, userId, dreamId } = body as {
+      urls?: unknown;
+      userId?: unknown;
+      dreamId?: unknown;
+    };
     if (!Array.isArray(urls) || urls.length < 4 || urls.length > 6) {
       return new Response(
         "Expected JSON body with 'urls' array of 4 to 6 image URLs",
         { status: 400 }
       );
+    }
+    if (typeof userId !== "string" || typeof dreamId !== "string") {
+      return new Response("Missing userId or dreamId", { status: 400 });
     }
 
     // Load and decode each image via canvas
@@ -87,7 +94,7 @@ serve(async (req) => {
     const finalBuffer = canvas.toBuffer();
 
     // Upload to Supabase Storage
-    const path = `stitched/${crypto.randomUUID()}.png`;
+    const path = `${userId}/${dreamId}/composite.png`;
     const { error } = await supabase.storage
       .from("comics")
       .upload(path, finalBuffer, { upsert: true, contentType: "image/png" });
@@ -98,7 +105,7 @@ serve(async (req) => {
 
     // Return public URL
     const { data: pub } = supabase.storage.from("comics").getPublicUrl(path);
-    return new Response(JSON.stringify({ url: pub.publicUrl }), {
+    return new Response(JSON.stringify({ path, url: pub.publicUrl }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

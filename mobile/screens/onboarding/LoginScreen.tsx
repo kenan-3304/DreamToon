@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 // Move this component into a dedicated `components/Button.tsx` later for cleaner paths.
 // import { ShinyGradientButton } from '../components/ShinyGradientButton';
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import { supabase } from "../../supabaseClient";
 // ────────────────────────────────────────────────────────────────────────────────
 
 const LoginScreen: React.FC = () => {
@@ -56,12 +57,17 @@ const LoginScreen: React.FC = () => {
     setPhone(formatted);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!phone.trim()) return;
-    // Remove formatting for API call
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) return; // Ensure it's a complete US number
-    navigation.navigate("VerifyCodeLogin" as never, { phone: phone } as never);
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length !== 10) return;
+    const e164 = `+1${digits}`;
+    const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
+    if (!error) {
+      navigation.navigate("VerifyCodeLogin" as never, { phone: e164 } as never);
+    } else {
+      console.error(error);
+    }
   };
 
   return (

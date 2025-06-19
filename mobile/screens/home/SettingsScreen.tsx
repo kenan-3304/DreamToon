@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { useUser } from "../../UserContext";
 import {
   Settings as Gear,
   User,
@@ -54,10 +55,10 @@ const ShinyButton: React.FC<{
 ─────────────────────────────────────────────*/
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { profile, updateProfile } = useUser();
 
-  /* fake user data */
-  const [userName, setUserName] = useState("Kenan");
-  const [userPhone] = useState("+1 703-123-456");
+  const [userName, setUserName] = useState(profile?.name ?? "");
+  const [userPhone, setUserPhone] = useState(profile?.phone ?? "");
 
   /* modal states */
   const [editModal, setEditModal] = useState(false);
@@ -68,12 +69,19 @@ export default function SettingsScreen() {
 
   const [editedName, setEditedName] = useState(userName);
 
+  useEffect(() => {
+    setUserName(profile?.name ?? "");
+    setUserPhone(profile?.phone ?? "");
+    setEditedName(profile?.name ?? "");
+  }, [profile]);
+
   /* navigation shortcuts */
   const goHome = () => navigation.navigate("Dashboard" as never);
   const goLibrary = () => navigation.navigate("Timeline" as never);
 
   /* helpers */
-  const saveProfile = () => {
+  const saveProfile = async () => {
+    await updateProfile({ name: editedName, phone: userPhone });
     setUserName(editedName);
     setEditModal(false);
   };
@@ -161,6 +169,8 @@ export default function SettingsScreen() {
         onClose={() => setEditModal(false)}
         name={editedName}
         setName={setEditedName}
+        phone={userPhone}
+        setPhone={setUserPhone}
         onSave={saveProfile}
       />
       <PrivacyModal
@@ -235,8 +245,10 @@ const EditProfileModal: React.FC<{
   onClose: () => void;
   name: string;
   setName: (s: string) => void;
+  phone: string;
+  setPhone: (p: string) => void;
   onSave: () => void;
-}> = ({ visible, onClose, name, setName, onSave }) => (
+}> = ({ visible, onClose, name, setName, phone, setPhone, onSave }) => (
   <ModalWrap visible={visible} onClose={onClose} title="Edit Profile">
     <Text style={styles.fieldLbl}>Name</Text>
     <TextInput
@@ -245,6 +257,15 @@ const EditProfileModal: React.FC<{
       placeholder="Enter name"
       placeholderTextColor="#a7a7a7"
       style={styles.input}
+    />
+    <Text style={styles.fieldLbl}>Phone</Text>
+    <TextInput
+      value={phone}
+      onChangeText={setPhone}
+      placeholder="Enter phone"
+      placeholderTextColor="#a7a7a7"
+      style={styles.input}
+      keyboardType="phone-pad"
     />
     <View style={styles.btnRow}>
       <ShinyButton outline style={{ flex: 1 }} onPress={onClose}>

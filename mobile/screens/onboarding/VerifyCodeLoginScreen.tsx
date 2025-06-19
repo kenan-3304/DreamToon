@@ -15,6 +15,7 @@ import { ChevronLeft } from "lucide-react-native";
 
 // Re‑use the shiny button we already built
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import { supabase } from "../../supabaseClient";
 
 // Type‑safe route params
 type VerifyCodeLoginRouteProp = RouteProp<
@@ -57,17 +58,25 @@ const VerifyCodeLoginScreen: React.FC = () => {
     }
   };
 
-  const resend = () => {
-    // TODO: trigger resend API
+  const resend = async () => {
     setCode(Array(BOXES).fill(""));
     inputs.current[0]?.focus();
+    await supabase.auth.signInWithOtp({ phone });
   };
 
-  const continueNext = () => {
+  const continueNext = async () => {
     const full = code.join("");
     if (full.length === BOXES) {
-      // TODO: call verification API then navigate to Dashboard for login
-      navigation.navigate("Dashboard" as never);
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token: full,
+        type: "sms",
+      });
+      if (!error) {
+        navigation.navigate("Dashboard" as never);
+      } else {
+        console.error(error);
+      }
     }
   };
 
