@@ -7,11 +7,16 @@ import {
   Pressable,
   Animated,
   Easing,
+  Share,
+  Alert,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Heart, Share2, Download, X } from "lucide-react-native";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 
 interface RouteParams {
   urls: string[];
@@ -58,8 +63,59 @@ export default function ComicResultScreen() {
   });
 
   /* handlers */
-  const saveToLib = () => navigation.navigate("Library" as never);
   const discard = () => navigation.navigate("Dashboard" as never);
+
+  const handleShare = async () => {
+    try {
+      if (params.urls.length === 0) {
+        Alert.alert("No comic to share");
+        return;
+      }
+
+      const result = await Share.share({
+        message: "Check out my dream comic!",
+        url: params.urls[0], // Share the first panel
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log("Shared successfully");
+      }
+    } catch (error) {
+      Alert.alert("Error sharing comic", "Failed to share the comic");
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      if (params.urls.length === 0) {
+        Alert.alert("No comic to download");
+        return;
+      }
+
+      // Request permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please allow access to save images");
+        return;
+      }
+
+      // Download the first panel as an example
+      const url = params.urls[0];
+      const filename = `dream_comic_${Date.now()}.jpg`;
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+      const downloadResult = await FileSystem.downloadAsync(url, fileUri);
+
+      if (downloadResult.status === 200) {
+        await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+        Alert.alert("Success", "Comic panel saved to your photos!");
+      } else {
+        throw new Error("Download failed");
+      }
+    } catch (error) {
+      Alert.alert("Error downloading", "Failed to save the comic panel");
+    }
+  };
 
   return (
     <LinearGradient
@@ -83,11 +139,6 @@ export default function ComicResultScreen() {
         ))}
       </Animated.View>
 
-      {/* save */}
-      <ShinyGradientButton style={{ width: 280 }} onPress={saveToLib}>
-        Save to Library
-      </ShinyGradientButton>
-
       {/* actions row */}
       <View style={styles.actionsRow}>
         <Pressable style={styles.circleBtn} onPress={() => setLiked(!liked)}>
@@ -97,10 +148,10 @@ export default function ComicResultScreen() {
             fill={liked ? "#FF4EE0" : "none"}
           />
         </Pressable>
-        <Pressable style={styles.circleBtn} onPress={() => {}}>
+        <Pressable style={styles.circleBtn} onPress={handleShare}>
           <Share2 size={22} color="#00EAFF" />
         </Pressable>
-        <Pressable style={styles.circleBtn} onPress={() => {}}>
+        <Pressable style={styles.circleBtn} onPress={handleDownload}>
           <Download size={22} color="#00EAFF" />
         </Pressable>
         <Pressable style={styles.circleBtn} onPress={discard}>
