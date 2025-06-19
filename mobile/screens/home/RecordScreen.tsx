@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import { useNavigation } from "@react-navigation/native";
 import { ChevronLeft } from "lucide-react-native";
+import { useUser } from "../../UserContext";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -21,6 +22,7 @@ import { PROCESS_DREAM_URL } from "../../config";
   HEADER
 ───────────────────────────────────────────────*/
 const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const { profile } = useUser();
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return "Good Morning";
@@ -32,7 +34,7 @@ const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       <Pressable onPress={onBack} style={styles.backBtn} hitSlop={10}>
         <ChevronLeft size={20} color="#FFFFFF" />
       </Pressable>
-      <Text style={styles.headerText}>{`${greeting},\nKenan`}</Text>
+      <Text style={styles.headerText}>{`${greeting},\n${profile?.name ?? ''}`}</Text>
     </View>
   );
 };

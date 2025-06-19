@@ -18,6 +18,7 @@ import TimelineScreen from "./screens/timeline/TimelineScreen";
 import SettingsScreen from "./screens/home/SettingsScreen";
 import LoginScreen from "./screens/onboarding/LoginScreen";
 import theme from "./theme";
+import { UserProvider } from "./UserContext";
 
 // --- Optional stub until you build it
 
@@ -47,11 +48,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <NativeBaseProvider theme={theme}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Welcome"
-          screenOptions={{ headerShown: false, animation: "none" }}
-        >
+      <UserProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Welcome"
+            screenOptions={{ headerShown: false, animation: "none" }}
+          >
           {/* On-boarding */}
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
@@ -72,7 +74,8 @@ export default function App() {
           <Stack.Screen name="Timeline" component={TimelineScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
-      </NavigationContainer>
+        </NavigationContainer>
+      </UserProvider>
     </NativeBaseProvider>
   );
 }
