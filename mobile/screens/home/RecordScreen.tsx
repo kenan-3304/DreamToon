@@ -17,6 +17,7 @@ import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { RootStackParamList } from "../../App";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PROCESS_DREAM_URL } from "../../config";
+import { useSupabaseUserId } from "../../SupabaseContext";
 
 /*───────────────────────────────────────────────
   HEADER
@@ -99,6 +100,7 @@ export default function RecordScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const userId = useSupabaseUserId();
 
   const [mode, setMode] = useState<"idle" | "recording" | "review">("idle");
   const [status, setStatus] = useState("Ready to record your dream!");
@@ -199,7 +201,9 @@ export default function RecordScreen() {
         name: "dream.m4a",
         type: "audio/m4a",
       } as any);
-      form.append("user_id", "00000000-0000-0000-0000-000000000000");
+      if (userId) {
+        form.append("user_id", userId);
+      }
 
       const res = await fetch(PROCESS_DREAM_URL, {
         method: "POST",

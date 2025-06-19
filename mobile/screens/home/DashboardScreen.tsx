@@ -14,6 +14,7 @@ import { Home, Book, Settings, X } from "lucide-react-native";
 
 // reuse gradient button from WelcomeScreen (move to components/ later)
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+
 import { PROCESS_DREAM_URL } from "../../config";
 import { useUser } from "../../UserContext";
 
