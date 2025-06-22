@@ -21,3 +21,4 @@ export const syncSupabaseSession = async () => {
     await supabase.auth.signOut();
   }
 };
+
