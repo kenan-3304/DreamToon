@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { supabase } from './supabaseClient';
+import { firebaseAuth, syncSupabaseSession } from './firebase';
 
 type ContextValue = {
   userId: string | null;
@@ -11,13 +13,16 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setUserId(session?.user?.id ?? null);
+    // Initial load
+    setUserId(firebaseAuth.currentUser?.uid ?? null);
+    syncSupabaseSession();
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, () => {
+      setUserId(firebaseAuth.currentUser?.uid ?? null);
+      syncSupabaseSession();
     });
-    return () => {
-      listener.subscription?.unsubscribe();
-    };
+
+    return unsubscribe;
   }, []);
 
   return (
