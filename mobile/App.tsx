@@ -28,8 +28,8 @@ export type RootStackParamList = {
   Welcome:          undefined;
   CreateAccount:    undefined;
   Login:            undefined;
-  VerifyCode:       { phone: string };
-  VerifyCodeLogin:  { phone: string };
+  VerifyCode:       { phone: string; verificationId: string };
+  VerifyCodeLogin:  { phone: string; verificationId: string };
   CreateToon:       undefined;
 
   Dashboard:   undefined;

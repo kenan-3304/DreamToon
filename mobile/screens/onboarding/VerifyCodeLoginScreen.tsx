@@ -15,7 +15,13 @@ import { ChevronLeft } from "lucide-react-native";
 
 // Re‑use the shiny button we already built
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
-import { supabase } from "../../supabaseClient";
+import {
+  signInWithPhoneNumber,
+  signInWithCredential,
+  PhoneAuthProvider,
+} from "firebase/auth";
+import { auth } from "../../firebase";
+import { syncSupabaseSession } from "../../syncSupabaseSession";
 
 // Type‑safe route params
 type VerifyCodeLoginRouteProp = RouteProp<
@@ -28,7 +34,8 @@ const BOXES = 6;
 const VerifyCodeLoginScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<VerifyCodeLoginRouteProp>();
-  const phone = route.params?.phone ?? "+1 703‑123‑4567";
+  const phone = route.params.phone;
+  const [verificationId, setVerificationId] = useState(route.params.verificationId);
 
   const [code, setCode] = useState<string[]>(Array(BOXES).fill(""));
   const inputs = useRef<Array<TextInput | null>>([]);
@@ -61,21 +68,24 @@ const VerifyCodeLoginScreen: React.FC = () => {
   const resend = async () => {
     setCode(Array(BOXES).fill(""));
     inputs.current[0]?.focus();
-    await supabase.auth.signInWithOtp({ phone });
+    try {
+      const result = await signInWithPhoneNumber(auth, phone);
+      setVerificationId(result.verificationId);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const continueNext = async () => {
     const full = code.join("");
     if (full.length === BOXES) {
-      const { error } = await supabase.auth.verifyOtp({
-        phone,
-        token: full,
-        type: "sms",
-      });
-      if (!error) {
+      try {
+        const credential = PhoneAuthProvider.credential(verificationId, full);
+        await signInWithCredential(auth, credential);
+        await syncSupabaseSession();
         navigation.navigate("Dashboard" as never);
-      } else {
-        console.error(error);
+      } catch (err) {
+        console.error(err);
       }
     }
   };

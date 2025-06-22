@@ -6,7 +6,6 @@ import {
   TextInput,
   Animated,
   Easing,
-  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -16,7 +15,8 @@ import { useNavigation } from "@react-navigation/native";
 // Move this component into a dedicated `components/Button.tsx` later for cleaner paths.
 // import { ShinyGradientButton } from '../components/ShinyGradientButton';
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
-import { supabase } from "../../supabaseClient";
+import { signInWithPhoneNumber } from "firebase/auth";
+import { auth } from "../../firebase";
 // ────────────────────────────────────────────────────────────────────────────────
 
 const CreateAccountScreen: React.FC = () => {
@@ -62,14 +62,14 @@ const CreateAccountScreen: React.FC = () => {
     const digits = phone.replace(/\D/g, "");
     if (digits.length !== 10) return;
     const e164 = `+1${digits}`;
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: e164,
-      options: { shouldCreateUser: true },
-    });
-    if (!error) {
-      navigation.navigate("VerifyCode" as never, { phone: e164 } as never);
-    } else {
-      console.error(error);
+    try {
+      const result = await signInWithPhoneNumber(auth, e164);
+      navigation.navigate(
+        "VerifyCode" as never,
+        { phone: e164, verificationId: result.verificationId } as never
+      );
+    } catch (err) {
+      console.error(err);
     }
   };
 
