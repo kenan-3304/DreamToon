@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "../../UserContext";
+import { firebaseAuth } from "../../firebaseClient";
 import {
   Settings as Gear,
   User,
@@ -81,7 +82,9 @@ export default function SettingsScreen() {
 
   /* helpers */
   const saveProfile = async () => {
-    await updateProfile({ name: editedName, phone: userPhone });
+    const uid = firebaseAuth.currentUser?.uid;
+    if (!uid) return;
+    await updateProfile(uid, { name: editedName, phone: userPhone });
     setUserName(editedName);
     setEditModal(false);
   };

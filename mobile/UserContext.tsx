@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
+import { firebaseAuth } from './firebaseClient';
 
 export interface Profile {
   id: string;
@@ -10,7 +11,7 @@ export interface Profile {
 interface UserContextState {
   profile: Profile | null;
   refreshProfile: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  updateProfile: (uid: string, updates: Partial<Profile>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextState>({
@@ -25,8 +26,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const refreshProfile = async () => {
-    const user = supabase.auth.getUser();
-    const userId = (await user).data.user?.id;
+    const userId = firebaseAuth.currentUser?.uid;
     if (!userId) return;
     const { data } = await supabase
       .from('profiles')
@@ -36,11 +36,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data) setProfile(data);
   };
 
-  const updateProfile = async (updates: Partial<Profile>) => {
-    if (!profile) return;
-    const updated = { ...profile, ...updates };
-    await supabase.from('profiles').update(updates).eq('id', profile.id);
-    setProfile(updated);
+  const updateProfile = async (uid: string, updates: Partial<Profile>) => {
+    if (!uid) return;
+    await supabase.from('profiles').update(updates).eq('id', uid);
+    setProfile((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
   useEffect(() => {
