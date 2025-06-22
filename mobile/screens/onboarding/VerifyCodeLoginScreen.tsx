@@ -16,6 +16,7 @@ import { ChevronLeft } from "lucide-react-native";
 // Re‑use the shiny button we already built
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { supabase } from "../../supabaseClient";
+import { syncSupabaseSession } from "../../syncSupabaseSession";
 
 // Type‑safe route params
 type VerifyCodeLoginRouteProp = RouteProp<
@@ -73,6 +74,7 @@ const VerifyCodeLoginScreen: React.FC = () => {
         type: "sms",
       });
       if (!error) {
+        await syncSupabaseSession();
         navigation.navigate("Dashboard" as never);
       } else {
         console.error(error);
