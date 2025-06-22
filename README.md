@@ -28,6 +28,11 @@ Set the `DEBUG` environment variable to `true` to see verbose logs from both the
   and `FIREBASE_MEASUREMENT_ID` – Firebase configuration values used by the
   mobile app.
 
+## Firebase Authentication
+
+1. Create a project in the [Firebase console](https://console.firebase.google.com/) and configure an app.
+2. Enable **Phone** sign-in from the Authentication section.
+3. After setting up Firebase and the Supabase environment variables above, start the Expo app from `mobile/` with `npm run start`.
 
 ## License
 

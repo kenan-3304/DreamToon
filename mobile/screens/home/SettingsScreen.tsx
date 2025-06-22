@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { logout } from "../../logout";
 import { useUser } from "../../UserContext";
+import { firebaseAuth } from "../../firebaseClient";
 import {
   Settings as Gear,
   User,
@@ -81,7 +83,9 @@ export default function SettingsScreen() {
 
   /* helpers */
   const saveProfile = async () => {
-    await updateProfile({ name: editedName, phone: userPhone });
+    const uid = firebaseAuth.currentUser?.uid;
+    if (!uid) return;
+    await updateProfile(uid, { name: editedName, phone: userPhone });
     setUserName(editedName);
     setEditModal(false);
   };
@@ -90,7 +94,8 @@ export default function SettingsScreen() {
     setRateModal(false);
   };
   const sendMail = () => Linking.openURL("mailto:support@dreamtoon.com");
-  const confirmLog = () => {
+  const confirmLog = async () => {
+    await logout();
     navigation.reset({ index: 0, routes: [{ name: "Welcome" as never }] });
   };
 
