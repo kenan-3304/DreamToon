@@ -24,6 +24,11 @@ Set the `DEBUG` environment variable to `true` to see verbose logs from both the
 - `DEBUG` – Set to `true` for verbose logging.
 - `CF_ACCOUNT` and `CF_IMAGES_TOKEN` – Optional Cloudflare Images credentials.
 
+## Firebase Authentication
+
+1. Create a project in the [Firebase console](https://console.firebase.google.com/) and configure an app.
+2. Enable **Phone** sign-in from the Authentication section.
+3. After setting up Firebase and the Supabase environment variables above, start the Expo app from `mobile/` with `npm run start`.
 
 ## License
 
