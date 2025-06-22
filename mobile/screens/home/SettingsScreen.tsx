@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { logout } from "../../logout";
 import { useUser } from "../../UserContext";
 import { firebaseAuth } from "../../firebaseClient";
 import {
@@ -93,7 +94,8 @@ export default function SettingsScreen() {
     setRateModal(false);
   };
   const sendMail = () => Linking.openURL("mailto:support@dreamtoon.com");
-  const confirmLog = () => {
+  const confirmLog = async () => {
+    await logout();
     navigation.reset({ index: 0, routes: [{ name: "Welcome" as never }] });
   };
 
