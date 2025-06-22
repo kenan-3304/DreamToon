@@ -21,6 +21,7 @@ import {
   PhoneAuthProvider,
 } from "firebase/auth";
 import { auth } from "../../firebase";
+import { supabase } from "../../supabaseClient";
 import { syncSupabaseSession } from "../../syncSupabaseSession";
 
 // Type‑safe route params
@@ -82,6 +83,7 @@ const VerifyCodeLoginScreen: React.FC = () => {
       try {
         const credential = PhoneAuthProvider.credential(verificationId, full);
         await signInWithCredential(auth, credential);
+      if (!error) {
         await syncSupabaseSession();
         navigation.navigate("Dashboard" as never);
       } catch (err) {

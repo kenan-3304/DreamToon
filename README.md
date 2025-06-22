@@ -23,6 +23,10 @@ Set the `DEBUG` environment variable to `true` to see verbose logs from both the
 - `SUPABASE_SERVICE_ROLE_KEY` – Service role key for server-side operations.
 - `DEBUG` – Set to `true` for verbose logging.
 - `CF_ACCOUNT` and `CF_IMAGES_TOKEN` – Optional Cloudflare Images credentials.
+- `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`,
+  `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`,
+  and `FIREBASE_MEASUREMENT_ID` – Firebase configuration values used by the
+  mobile app.
 
 
 ## License
