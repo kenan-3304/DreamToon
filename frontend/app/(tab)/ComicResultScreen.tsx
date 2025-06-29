@@ -10,6 +10,9 @@ import {
   Share,
   Alert,
   Platform,
+  Modal,
+  Dimensions,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -49,6 +52,8 @@ export default function ComicResultScreen() {
     ? comicUrls.map((u: string, i: number) => ({ id: i + 1, uri: { uri: u } }))
     : FALLBACK;
   const [liked, setLiked] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedPanelIndex, setSelectedPanelIndex] = useState(0);
 
   /* floating comic board animation */
   const floatAnim = useRef(new Animated.Value(0)).current;
@@ -77,6 +82,27 @@ export default function ComicResultScreen() {
 
   /* handlers */
   const discard = () => router.push("/(tab)/DashboardScreen");
+
+  const openPanelViewer = (index: number) => {
+    setSelectedPanelIndex(index);
+    setIsModalVisible(true);
+  };
+
+  const closePanelViewer = () => {
+    setIsModalVisible(false);
+  };
+
+  const nextPanel = () => {
+    if (selectedPanelIndex < PANELS.length - 1) {
+      setSelectedPanelIndex(selectedPanelIndex + 1);
+    }
+  };
+
+  const prevPanel = () => {
+    if (selectedPanelIndex > 0) {
+      setSelectedPanelIndex(selectedPanelIndex - 1);
+    }
+  };
 
   const handleBack = () => {
     // If we have comic URLs, we likely came from viewing an existing comic
@@ -162,12 +188,16 @@ export default function ComicResultScreen() {
         style={[styles.boardWrapper, { transform: [{ translateY }] }]}
       >
         {PANELS.map((p: any, idx: number) => (
-          <View key={p.id} style={styles.panel}>
+          <Pressable
+            key={p.id}
+            style={styles.panel}
+            onPress={() => openPanelViewer(idx)}
+          >
             <Image source={p.uri} style={styles.panelImg} resizeMode="cover" />
             <View style={styles.numberBadge}>
               <Text style={styles.badgeText}>{p.id}</Text>
             </View>
-          </View>
+          </Pressable>
         ))}
       </Animated.View>
 
@@ -190,6 +220,55 @@ export default function ComicResultScreen() {
           <Ionicons name="close" size={22} color="#FF4EE0" />
         </Pressable>
       </View>
+
+      {/* Full-screen Panel Viewer Modal */}
+      <Modal
+        visible={isModalVisible}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={closePanelViewer}
+      >
+        <View style={styles.modalOverlay}>
+          <LinearGradient
+            colors={["#0D0A3C", "rgba(13,10,60,0.95)", "#000"]}
+            style={styles.modalContainer}
+          >
+            {/* Close Button */}
+            <Pressable style={styles.modalCloseBtn} onPress={closePanelViewer}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </Pressable>
+
+            {/* Swipeable Panel Image */}
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const newIndex = Math.round(
+                  event.nativeEvent.contentOffset.x /
+                    Dimensions.get("window").width
+                );
+                setSelectedPanelIndex(newIndex);
+              }}
+              contentOffset={{
+                x: selectedPanelIndex * Dimensions.get("window").width,
+                y: 0,
+              }}
+              style={styles.swipeContainer}
+            >
+              {PANELS.map((panel, index) => (
+                <View key={index} style={styles.swipePanel}>
+                  <Image
+                    source={panel.uri}
+                    style={styles.swipeImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </LinearGradient>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -284,5 +363,39 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,234,255,0.45)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  modalCloseBtn: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  swipeContainer: {
+    flex: 1,
+  },
+  swipePanel: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  swipeImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
   },
 });

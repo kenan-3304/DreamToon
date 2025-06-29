@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import { Pressable, Text, StyleSheet, Animated, Easing } from "react-native";
+import React from "react";
+import { Pressable, Text, StyleSheet, Animated, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 
 interface ButtonProps {
   onPress: () => void;
@@ -10,7 +11,7 @@ interface ButtonProps {
 }
 
 /**
- * ShinyGradientButton — CTA with a subtle, slow shimmer + press feedback.
+ * ShinyGradientButton — Modern CTA with subtle press feedback and elegant gradients.
  */
 export const ShinyGradientButton: React.FC<ButtonProps> = ({
   onPress,
@@ -18,110 +19,146 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
   disabled = false,
   size = "large",
 }) => {
-  // Animated value that sweeps from 0 ➔ 1 continuously
-  const shimmer = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(shimmer, {
-        toValue: 1,
-        duration: 4000, // slower sweep
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-      { resetBeforeIteration: true }
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [shimmer]);
-
-  // Translate the shimmer bar across ~150% of the button width so the reset is off-screen
-  const translateX = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-350, 350],
-  });
-
-  // Wrap string children in Text component
-  const wrappedChildren =
-    typeof children === "string" ? (
-      <Text style={styles.buttonText}>{children}</Text>
-    ) : (
-      children
-    );
+  const getTextSize = () => {
+    switch (size) {
+      case "small":
+        return 16;
+      case "medium":
+        return 18;
+      case "large":
+        return 20;
+      default:
+        return 20;
+    }
+  };
 
   const getButtonHeight = () => {
     switch (size) {
       case "small":
-        return 50;
+        return 48;
       case "medium":
-        return 60;
+        return 56;
       case "large":
-        return 70;
+        return 64;
       default:
-        return 70;
+        return 64;
     }
   };
 
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.buttonWrapper,
-        pressed && !disabled && { transform: [{ scale: 0.97 }] },
-        disabled && styles.buttonDisabled,
-      ]}
-      android_ripple={{ color: "#ffffff20" }}
-    >
-      <LinearGradient
-        colors={disabled ? ["#666666", "#888888"] : ["#00EAFF", "#FF4EE0"]}
-        style={[styles.buttonInner, { height: getButtonHeight() }]}
-      >
-        {wrappedChildren}
+  // Wrap string children in Text component
+  const wrappedChildren =
+    typeof children === "string" ? (
+      <Text style={[styles.buttonText, { fontSize: getTextSize() }]}>
+        {children}
+      </Text>
+    ) : (
+      children
+    );
 
-        {/* Shimmer overlay – dimmer white and wider bar */}
-        {!disabled && (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.shimmerBar, { transform: [{ translateX }] }]}
-          >
-            <LinearGradient
-              // dimmed highlight
-              colors={["transparent", "rgba(255,255,255,0.25)", "transparent"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        )}
-      </LinearGradient>
-    </Pressable>
+  return (
+    <View style={styles.buttonContainer}>
+      {/* Clean blur background layer */}
+      <BlurView intensity={30} tint="dark" style={styles.blurBackground} />
+
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.buttonWrapper,
+          { height: getButtonHeight() },
+          pressed && !disabled && styles.buttonPressed,
+          disabled && styles.buttonDisabled,
+        ]}
+        android_ripple={{ color: "rgba(255,255,255,0.1)" }}
+      >
+        <LinearGradient
+          colors={
+            disabled
+              ? ["#4A4A4A", "#666666"]
+              : ["#00EAFF", "#6633EE", "#FF4EE0"]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.buttonInner}
+        >
+          {/* Subtle inner glow */}
+          <LinearGradient
+            colors={["rgba(255,255,255,0.15)", "transparent"]}
+            style={styles.innerGlow}
+          />
+
+          {wrappedChildren}
+        </LinearGradient>
+      </Pressable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  buttonContainer: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#00EAFF",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   buttonWrapper: {
     width: "100%",
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: "hidden",
-    elevation: 4,
+    shadowColor: "#00EAFF",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonInner: {
-    height: 70,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
   buttonText: {
-    fontSize: 22,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#FFFFFF",
+    textAlign: "center",
+    letterSpacing: 0.5,
   },
-  shimmerBar: {
-    ...StyleSheet.absoluteFillObject,
-    width: "200%", // make the bar wider than the button for smoother reset
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.2,
   },
   buttonDisabled: {
-    backgroundColor: "#666666",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  innerGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  blurBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 16,
+  },
+  blurOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
 });
