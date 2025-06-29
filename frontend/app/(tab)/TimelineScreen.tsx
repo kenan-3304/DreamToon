@@ -281,12 +281,12 @@ export const TimelineScreen: React.FC = () => {
             <FloatingCard key={c.id} delay={idx * 200}>
               <Pressable
                 style={styles.card}
-                onPress={() =>
+                onPress={() => {
                   router.push({
                     pathname: "/(tab)/ComicResultScreen",
                     params: { urls: JSON.stringify(c.image_urls) },
-                  })
-                }
+                  });
+                }}
               >
                 {/* header */}
                 <View style={styles.cardHeader}>

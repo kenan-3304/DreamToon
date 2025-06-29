@@ -9,7 +9,6 @@ import {
   Easing,
   Share,
   Alert,
-  Platform,
   Modal,
   Dimensions,
   ScrollView,
@@ -22,9 +21,11 @@ import * as MediaLibrary from "expo-media-library";
 
 const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
 
-// fallback dummy when no urls passed
-const FALLBACK = [1, 2, 3, 4, 5, 6].map((n) => ({
-  id: n,
+/*───────────────────────────────────*/
+/*  FALLBACK IMAGES                  */
+/*───────────────────────────────────*/
+const FALLBACK = Array.from({ length: 6 }, (_, i) => ({
+  id: i + 1,
   uri: require("../../assets/image-3.png"),
 }));
 
@@ -32,30 +33,30 @@ export default function ComicResultScreen() {
   const router = useRouter();
   const { urls } = useLocalSearchParams<{ urls: string }>();
 
-  // Safe JSON parsing with error handling
+  /*──────── Parse Query Param ────────*/
   let comicUrls: string[] = [];
   try {
-    if (urls) {
-      comicUrls = JSON.parse(urls);
-    }
-  } catch (error) {
-    console.error("Failed to parse URLs:", error);
-    // If parsing fails, try to handle it as a single URL or empty array
-    if (typeof urls === "string" && urls.startsWith("http")) {
-      comicUrls = [urls];
-    } else {
-      comicUrls = [];
-    }
+    if (urls) comicUrls = JSON.parse(urls);
+  } catch {
+    if (typeof urls === "string" && urls.startsWith("http")) comicUrls = [urls];
   }
-
   const PANELS = comicUrls.length
-    ? comicUrls.map((u: string, i: number) => ({ id: i + 1, uri: { uri: u } }))
+    ? comicUrls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
     : FALLBACK;
+
+  /*──────── Dynamic tile width ────────*/
+  const calcPanelSize = (count: number) => {
+    if (count <= 2) return "48%"; // single row, nice & big
+    if (count <= 4) return "45%"; // 2‑col grid, leave breathing room
+    return "40%"; // 3‑col grid for 5‑6
+  };
+  const panelSize = calcPanelSize(PANELS.length);
+
   const [liked, setLiked] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedPanelIndex, setSelectedPanelIndex] = useState(0);
 
-  /* floating comic board animation */
+  /*──────── Floating animation ────────*/
   const floatAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.loop(
@@ -80,194 +81,133 @@ export default function ComicResultScreen() {
     outputRange: [0, -10],
   });
 
-  /* handlers */
+  /*──────── Navigation helpers ────────*/
   const discard = () => router.push("/(tab)/DashboardScreen");
+  const handleBack = () => (comicUrls.length ? router.back() : discard());
 
-  const openPanelViewer = (index: number) => {
-    setSelectedPanelIndex(index);
-    setIsModalVisible(true);
-  };
-
-  const closePanelViewer = () => {
-    setIsModalVisible(false);
-  };
-
-  const nextPanel = () => {
-    if (selectedPanelIndex < PANELS.length - 1) {
-      setSelectedPanelIndex(selectedPanelIndex + 1);
-    }
-  };
-
-  const prevPanel = () => {
-    if (selectedPanelIndex > 0) {
-      setSelectedPanelIndex(selectedPanelIndex - 1);
-    }
-  };
-
-  const handleBack = () => {
-    // If we have comic URLs, we likely came from viewing an existing comic
-    // If we don't have URLs, we likely came from creating a new comic
-    if (comicUrls.length > 0) {
-      router.back(); // Go back to previous screen (likely Timeline)
-    } else {
-      router.push("/(tab)/DashboardScreen"); // Go to Dashboard for new comics
-    }
-  };
-
+  /*──────── Share / Download ────────*/
   const handleShare = async () => {
+    if (!comicUrls.length) return Alert.alert("No comic to share");
     try {
-      if (comicUrls.length === 0) {
-        Alert.alert("No comic to share");
-        return;
-      }
-
-      const result = await Share.share({
+      await Share.share({
         message: "Check out my dream comic!",
-        url: comicUrls[0], // Share the first panel
+        url: comicUrls[0],
       });
-
-      if (result.action === Share.sharedAction) {
-        if (DEBUG) console.log("Shared successfully");
-      }
-    } catch (error) {
-      Alert.alert("Error sharing comic", "Failed to share the comic");
+    } catch {
+      Alert.alert("Error", "Failed to share the comic");
     }
   };
 
   const handleDownload = async () => {
-    try {
-      if (comicUrls.length === 0) {
-        Alert.alert("No comic to download");
-        return;
-      }
-
-      // Request permissions
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Please allow access to save images");
-        return;
-      }
-
-      // Download the first panel as an example
-      const url = comicUrls[0];
-      const filename = `dream_comic_${Date.now()}.jpg`;
-      const fileUri = `${FileSystem.documentDirectory}${filename}`;
-
-      const downloadResult = await FileSystem.downloadAsync(url, fileUri);
-
-      if (downloadResult.status === 200) {
-        await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
-        Alert.alert("Success", "Comic panel saved to your photos!");
-      } else {
-        throw new Error("Download failed");
-      }
-    } catch (error) {
-      Alert.alert("Error downloading", "Failed to save the comic panel");
+    if (!comicUrls.length) return Alert.alert("No comic to download");
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== "granted")
+      return Alert.alert("Permission", "Please allow access to save images");
+    const fileUri = `${FileSystem.documentDirectory}dream_${Date.now()}.jpg`;
+    const dl = await FileSystem.downloadAsync(comicUrls[0], fileUri);
+    if (dl.status === 200) {
+      await MediaLibrary.saveToLibraryAsync(dl.uri);
+      Alert.alert("Saved", "Comic panel saved to Photos");
     }
   };
 
+  /*──────── Render ────────*/
   return (
     <LinearGradient
       colors={["#0D0A3C", "rgba(13,10,60,0.85)", "#000"]}
       style={styles.container}
     >
-      {/* Header with back button */}
+      {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
         <Text style={styles.headerTitle}>Your Comic</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* title */}
       <Text style={styles.title}>YOUR DREAM IS NOW A COMIC!</Text>
 
-      {/* comic 6‑grid */}
-      <Animated.View
-        style={[styles.boardWrapper, { transform: [{ translateY }] }]}
-      >
-        {PANELS.map((p: any, idx: number) => (
-          <Pressable
-            key={p.id}
-            style={styles.panel}
-            onPress={() => openPanelViewer(idx)}
-          >
-            <Image source={p.uri} style={styles.panelImg} resizeMode="cover" />
-            <View style={styles.numberBadge}>
-              <Text style={styles.badgeText}>{p.id}</Text>
-            </View>
-          </Pressable>
-        ))}
-      </Animated.View>
-
-      {/* actions row */}
-      <View style={styles.actionsRow}>
-        <Pressable style={styles.circleBtn} onPress={() => setLiked(!liked)}>
-          <Ionicons
-            name={liked ? "heart" : "heart-outline"}
-            size={22}
-            color={liked ? "#FF4EE0" : "#FF4EE0"}
-          />
-        </Pressable>
-        <Pressable style={styles.circleBtn} onPress={handleShare}>
-          <Ionicons name="share" size={22} color="#00EAFF" />
-        </Pressable>
-        <Pressable style={styles.circleBtn} onPress={handleDownload}>
-          <Ionicons name="download" size={22} color="#00EAFF" />
-        </Pressable>
-        <Pressable style={styles.circleBtn} onPress={discard}>
-          <Ionicons name="close" size={22} color="#FF4EE0" />
-        </Pressable>
+      {/* Comic grid */}
+      <View style={styles.comicContainer}>
+        <Animated.View style={{ transform: [{ translateY }] }}>
+          <View style={styles.boardWrapper}>
+            {PANELS.map((p, idx) => (
+              <Pressable
+                key={p.id}
+                style={[styles.panel, { width: panelSize }]}
+                onPress={() => {
+                  setSelectedPanelIndex(idx);
+                  setIsModalVisible(true);
+                }}
+              >
+                <Image source={p.uri} style={styles.panelImg} />
+                <View style={styles.numberBadge}>
+                  <Text style={styles.badgeText}>{p.id}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </Animated.View>
       </View>
 
-      {/* Full-screen Panel Viewer Modal */}
+      {/* Actions */}
+      <View style={styles.actionsRow}>
+        {[
+          {
+            icon: liked ? "heart" : "heart-outline",
+            onPress: () => setLiked(!liked),
+            color: "#FF4EE0",
+          },
+          { icon: "share", onPress: handleShare, color: "#00EAFF" },
+          { icon: "download", onPress: handleDownload, color: "#00EAFF" },
+          { icon: "close", onPress: discard, color: "#FF4EE0" },
+        ].map((b, i) => (
+          <Pressable key={i} style={styles.circleBtn} onPress={b.onPress}>
+            <Ionicons name={b.icon} size={22} color={b.color} />
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Modal viewer */}
       <Modal
         visible={isModalVisible}
-        transparent={false}
         animationType="fade"
-        onRequestClose={closePanelViewer}
+        onRequestClose={() => setIsModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <LinearGradient
-            colors={["#0D0A3C", "rgba(13,10,60,0.95)", "#000"]}
-            style={styles.modalContainer}
+        <LinearGradient
+          colors={["#0D0A3C", "rgba(13,10,60,0.95)", "#000"]}
+          style={styles.modalContainer}
+        >
+          <Pressable
+            style={styles.modalCloseBtn}
+            onPress={() => setIsModalVisible(false)}
           >
-            {/* Close Button */}
-            <Pressable style={styles.modalCloseBtn} onPress={closePanelViewer}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
-            </Pressable>
-
-            {/* Swipeable Panel Image */}
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(event) => {
-                const newIndex = Math.round(
-                  event.nativeEvent.contentOffset.x /
-                    Dimensions.get("window").width
-                );
-                setSelectedPanelIndex(newIndex);
-              }}
-              contentOffset={{
-                x: selectedPanelIndex * Dimensions.get("window").width,
-                y: 0,
-              }}
-              style={styles.swipeContainer}
-            >
-              {PANELS.map((panel, index) => (
-                <View key={index} style={styles.swipePanel}>
-                  <Image
-                    source={panel.uri}
-                    style={styles.swipeImage}
-                    resizeMode="contain"
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          </LinearGradient>
-        </View>
+            <Ionicons name="close" size={28} color="#fff" />
+          </Pressable>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) =>
+              setSelectedPanelIndex(
+                Math.round(
+                  e.nativeEvent.contentOffset.x / Dimensions.get("window").width
+                )
+              )
+            }
+            contentOffset={{
+              x: selectedPanelIndex * Dimensions.get("window").width,
+              y: 0,
+            }}
+          >
+            {PANELS.map((p, i) => (
+              <View key={i} style={styles.swipePanel}>
+                <Image source={p.uri} style={styles.swipeImage} />
+              </View>
+            ))}
+          </ScrollView>
+        </LinearGradient>
       </Modal>
     </LinearGradient>
   );
@@ -305,27 +245,35 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
   },
-  headerSpacer: {
-    width: 40,
-  },
+  headerSpacer: { width: 40 },
   title: {
     textAlign: "center",
     color: "#00EAFF",
     fontSize: 28,
     fontWeight: "800",
-    lineHeight: 34,
-    marginBottom: 24,
+    marginBottom: 32,
+  },
+  /* Grid container */
+  comicContainer: {
+    flex: 1,
+    width: "100%",
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginBottom: 120,
   },
   boardWrapper: {
-    width: 300,
-    padding: 8,
+    width: "100%",
+    maxWidth: 380,
+    padding: 16,
+    paddingBottom: 20, // bottom gap so border doesn’t hug images
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    rowGap: 14,
+    columnGap: 14,
+    justifyContent: "center", // ✱ center tiles horizontally
     borderWidth: 2,
     borderColor: "rgba(0,234,255,0.3)",
     borderRadius: 24,
-    marginBottom: 32,
     backgroundColor: "rgba(0,0,0,0.15)",
     shadowColor: "#00EAFF",
     shadowOpacity: 0.4,
@@ -333,45 +281,46 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   panel: {
-    width: "48%",
     aspectRatio: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: "hidden",
-    marginBottom: 8,
     backgroundColor: "#222",
   },
   panelImg: { flex: 1, width: "100%", height: "100%" },
   numberBadge: {
     position: "absolute",
-    top: 6,
-    left: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#FFF",
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { fontSize: 10, fontWeight: "700", color: "#666" },
-  /* actions */
-  actionsRow: { flexDirection: "row", gap: 24, marginTop: 24 },
+  badgeText: { fontSize: 12, fontWeight: "700", color: "#666" },
+  /* Action row */
+  actionsRow: {
+    position: "absolute",
+    bottom: 40,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
   circleBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 2,
     borderColor: "rgba(0,234,255,0.45)",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
+  /* Modal */
+  modalContainer: { flex: 1 },
   modalCloseBtn: {
     position: "absolute",
     top: 50,
@@ -384,18 +333,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
-  swipeContainer: {
-    flex: 1,
-  },
   swipePanel: {
     width: Dimensions.get("window").width,
     height: Dimensions.get("window").height,
     justifyContent: "center",
     alignItems: "center",
   },
-  swipeImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
+  swipeImage: { width: "100%", height: "100%", resizeMode: "contain" },
 });
