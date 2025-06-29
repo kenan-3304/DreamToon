@@ -37,3 +37,18 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+
+node_modules/
+.supabase/
+.env*
+.env
+
+!.env.example
+
+
+# Ignore audio files
+*.aiff
+*.mp3
+*.m4a
+.DS_Store
