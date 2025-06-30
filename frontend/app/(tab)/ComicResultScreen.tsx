@@ -48,7 +48,7 @@ export default function ComicResultScreen() {
   const calcPanelSize = (count: number) => {
     if (count <= 2) return "48%"; // single row, nice & big
     if (count <= 4) return "45%"; // 2‑col grid, leave breathing room
-    return "40%"; // 3‑col grid for 5‑6
+    return "42%"; // 3‑col grid for 5‑6
   };
   const panelSize = calcPanelSize(PANELS.length);
 
@@ -142,9 +142,6 @@ export default function ComicResultScreen() {
                 }}
               >
                 <Image source={p.uri} style={styles.panelImg} />
-                <View style={styles.numberBadge}>
-                  <Text style={styles.badgeText}>{p.id}</Text>
-                </View>
               </Pressable>
             ))}
           </View>
@@ -153,16 +150,18 @@ export default function ComicResultScreen() {
 
       {/* Actions */}
       <View style={styles.actionsRow}>
-        {[
-          {
-            icon: liked ? "heart" : "heart-outline",
-            onPress: () => setLiked(!liked),
-            color: "#FF4EE0",
-          },
-          { icon: "share", onPress: handleShare, color: "#00EAFF" },
-          { icon: "download", onPress: handleDownload, color: "#00EAFF" },
-          { icon: "close", onPress: discard, color: "#FF4EE0" },
-        ].map((b, i) => (
+        {(
+          [
+            {
+              icon: liked ? "heart" : "heart-outline",
+              onPress: () => setLiked(!liked),
+              color: "#FF4EE0",
+            },
+            { icon: "share", onPress: handleShare, color: "#00EAFF" },
+            { icon: "download", onPress: handleDownload, color: "#00EAFF" },
+            { icon: "close", onPress: discard, color: "#FF4EE0" },
+          ] as const
+        ).map((b, i) => (
           <Pressable key={i} style={styles.circleBtn} onPress={b.onPress}>
             <Ionicons name={b.icon} size={22} color={b.color} />
           </Pressable>
@@ -265,7 +264,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 380,
     padding: 16,
-    paddingBottom: 20, // bottom gap so border doesn’t hug images
+    paddingBottom: 35, // Increased bottom gap so border doesn't hug images
     flexDirection: "row",
     flexWrap: "wrap",
     rowGap: 14,
@@ -279,6 +278,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 0 },
+    marginTop: -15, // Shift card up slightly
   },
   panel: {
     aspectRatio: 1,
@@ -287,18 +287,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#222",
   },
   panelImg: { flex: 1, width: "100%", height: "100%" },
-  numberBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { fontSize: 12, fontWeight: "700", color: "#666" },
   /* Action row */
   actionsRow: {
     position: "absolute",

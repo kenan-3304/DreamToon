@@ -9,7 +9,7 @@
     "scheme": "dreamtoon",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dreamtoon",
+      "bundleIdentifier": "com.minks.dreamtoon",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to microphone to record your dreams.",
         "NSCameraUsageDescription": "This app may need camera access for future features.",
@@ -58,6 +58,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f90a1f67-a1d1-4942-ab7e-f984e2bf717e"
+      }
     }
   }
 }
