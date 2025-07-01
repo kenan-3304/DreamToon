@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		05C170F8C68C58175943915D /* Pods_DreamToon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7A564F5E98FF44669EF7154 /* Pods_DreamToon.framework */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2E7CB29F67C24F2FC3EEA65D /* Pods_DreamToon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6B68B5C881A5CF8257F4FEF /* Pods_DreamToon.framework */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		7710DC995BB604E0F873A10B /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44476C3BCABC246AFB0DC44D /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -21,11 +21,11 @@
 		13B07F961A680F5B00A75B9A /* DreamToon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DreamToon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = DreamToon/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = DreamToon/Info.plist; sourceTree = "<group>"; };
-		3B7D5D2BF63CA2FC30707A0B /* Pods-DreamToon.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DreamToon.debug.xcconfig"; path = "Target Support Files/Pods-DreamToon/Pods-DreamToon.debug.xcconfig"; sourceTree = "<group>"; };
 		44476C3BCABC246AFB0DC44D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-DreamToon/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		A7A564F5E98FF44669EF7154 /* Pods_DreamToon.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_DreamToon.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A025FAA2CA44BA6EB4E87A2 /* Pods-DreamToon.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DreamToon.debug.xcconfig"; path = "Target Support Files/Pods-DreamToon/Pods-DreamToon.debug.xcconfig"; sourceTree = "<group>"; };
+		8AE7FBD9BED04EB62828B9AD /* Pods-DreamToon.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DreamToon.release.xcconfig"; path = "Target Support Files/Pods-DreamToon/Pods-DreamToon.release.xcconfig"; sourceTree = "<group>"; };
+		A6B68B5C881A5CF8257F4FEF /* Pods_DreamToon.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_DreamToon.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = DreamToon/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B3203DCE7EAEF16E03584D76 /* Pods-DreamToon.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DreamToon.release.xcconfig"; path = "Target Support Files/Pods-DreamToon/Pods-DreamToon.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = DreamToon/AppDelegate.swift; sourceTree = "<group>"; };
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				05C170F8C68C58175943915D /* Pods_DreamToon.framework in Frameworks */,
+				2E7CB29F67C24F2FC3EEA65D /* Pods_DreamToon.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,8 +47,8 @@
 		0BC671F436F0AC5A420ECEC8 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				3B7D5D2BF63CA2FC30707A0B /* Pods-DreamToon.debug.xcconfig */,
-				B3203DCE7EAEF16E03584D76 /* Pods-DreamToon.release.xcconfig */,
+				4A025FAA2CA44BA6EB4E87A2 /* Pods-DreamToon.debug.xcconfig */,
+				8AE7FBD9BED04EB62828B9AD /* Pods-DreamToon.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -79,7 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				A7A564F5E98FF44669EF7154 /* Pods_DreamToon.framework */,
+				A6B68B5C881A5CF8257F4FEF /* Pods_DreamToon.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -138,14 +138,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "DreamToon" */;
 			buildPhases = (
-				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				D13179F532D5F37021616D59 /* [CP] Check Pods Manifest.lock */,
 				01C83B4BADFCBF29F7FA6B88 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				7F8802BAB724DF4E11D800F6 /* [CP] Embed Pods Frameworks */,
+				76084375265ECB35DFDC40DB /* [CP] Embed Pods Frameworks */,
+				F03300FD147050C631310C78 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -236,7 +236,25 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-DreamToon/expo-configure-project.sh\"\n";
 		};
-		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
+		76084375265ECB35DFDC40DB /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-DreamToon/Pods-DreamToon-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-DreamToon/Pods-DreamToon-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D13179F532D5F37021616D59 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -258,25 +276,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		7F8802BAB724DF4E11D800F6 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-DreamToon/Pods-DreamToon-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-DreamToon/Pods-DreamToon-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
+		F03300FD147050C631310C78 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -333,12 +333,13 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3B7D5D2BF63CA2FC30707A0B /* Pods-DreamToon.debug.xcconfig */;
+			baseConfigurationReference = 4A025FAA2CA44BA6EB4E87A2 /* Pods-DreamToon.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = DreamToon/DreamToon.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 67AJ8B7RAP;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -369,12 +370,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B3203DCE7EAEF16E03584D76 /* Pods-DreamToon.release.xcconfig */;
+			baseConfigurationReference = 8AE7FBD9BED04EB62828B9AD /* Pods-DreamToon.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = DreamToon/DreamToon.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 67AJ8B7RAP;
 				INFOPLIST_FILE = DreamToon/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -463,7 +465,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -529,7 +534,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

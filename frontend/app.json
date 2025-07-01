@@ -4,17 +4,20 @@
     "slug": "DreamToon",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/ToonIcon.png",
     "userInterfaceStyle": "light",
     "scheme": "dreamtoon",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.minks.dreamtoon",
+      "buildNumber": "3",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to microphone to record your dreams.",
         "NSCameraUsageDescription": "This app may need camera access for future features.",
         "NSPhotoLibraryUsageDescription": "This app needs access to photo library to save comic panels."
-      }
+      },
+      "appStoreUrl": "https://apps.apple.com/app/dreamtoon/id6747994787",
+      "privacyPolicyUrl": "https://your-privacy-policy-url.com"
     },
     "android": {
       "adaptiveIcon": {
@@ -64,6 +67,8 @@
       "eas": {
         "projectId": "f90a1f67-a1d1-4942-ab7e-f984e2bf717e"
       }
-    }
+    },
+    "description": "Transform your dreams into stunning comic panels with AI-powered storytelling",
+    "keywords": ["dream", "comic", "ai", "storytelling", "art", "creative"]
   }
 }
