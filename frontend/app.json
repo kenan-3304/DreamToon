@@ -17,7 +17,7 @@
         "NSPhotoLibraryUsageDescription": "This app needs access to photo library to save comic panels."
       },
       "appStoreUrl": "https://apps.apple.com/app/dreamtoon/id6747994787",
-      "privacyPolicyUrl": "https://your-privacy-policy-url.com"
+      "privacyPolicyUrl": "https://github.com/kenan-3304/dreamtoon-privacy-policy/blob/main/README.md"
     },
     "android": {
       "adaptiveIcon": {
