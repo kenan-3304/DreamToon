@@ -6,6 +6,7 @@ import {
   DefaultTheme,
 } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "react-native";
 
 import LoginScreen from "./(auth)/AuthScreen";
 import WelcomeScreen from "./(auth)/WelcomeScreen";
@@ -30,6 +31,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
+      <StatusBar barStyle="light-content" backgroundColor="#0D0A3C" translucent />
       <NavigationIndependentTree>
         <NavigationContainer theme={MyTheme}>
           <Stack.Navigator
