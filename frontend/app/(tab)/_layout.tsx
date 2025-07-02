@@ -15,6 +15,10 @@ export default function TabLayout() {
             backgroundColor: "rgba(13,10,60,0.8)",
             borderTopColor: "rgba(0,234,255,0.2)",
           },
+
+          /* NEW ↓ : tell the navigator *not* to reserve extra safe-area space */
+          sceneContainerStyle: { backgroundColor: "#0D0A3C" },
+          safeAreaInsets: { top: 0, bottom: 0 },
         }}
       >
         <Tabs.Screen
