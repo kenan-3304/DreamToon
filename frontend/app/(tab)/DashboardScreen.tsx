@@ -9,6 +9,7 @@ import {
   Platform,
   Alert, // NEW: Import Alert for error feedback
   ActivityIndicator, // NEW: Import for loading state
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -17,6 +18,16 @@ import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase"; // NEW: Import the Supabase client
 import { useRouter } from "expo-router";
+
+// iPad detection
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isTablet = () => {
+  const aspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH;
+  return SCREEN_WIDTH >= 768 && aspectRatio <= 1.6;
+};
+const isIPad = Platform.OS === "ios" && isTablet();
+const getResponsiveValue = (phone: number, tablet: number) =>
+  isIPad ? tablet : phone;
 
 // DELETED: Firebase-related imports are no longer needed.
 
@@ -64,12 +75,9 @@ const DashboardScreen: React.FC = () => {
     router.push("/(tab)/ProcessingScreen");
 
     try {
-      const formData = new FormData();
-      formData.append("text", dreamText.trim());
-
-      // Use the secure invoke method. It automatically handles auth headers.
+      // Send as JSON object instead of FormData
       const { data, error } = await supabase.functions.invoke("process_dream", {
-        body: formData,
+        body: { text: dreamText.trim() },
       });
 
       if (error) throw error;
@@ -98,19 +106,41 @@ const DashboardScreen: React.FC = () => {
     >
       {/* settings/back button logic is unchanged */}
       {!isTyping ? (
-        <Pressable style={styles.settingsBtn} onPress={() => goto("settings")}>
-          <Ionicons name="settings" size={20} color="#FFFFFF" />
+        <Pressable
+          style={[styles.settingsBtn, isIPad && styles.settingsBtnTablet]}
+          onPress={() => goto("settings")}
+        >
+          <Ionicons
+            name="settings"
+            size={getResponsiveValue(20, 28)}
+            color="#FFFFFF"
+          />
         </Pressable>
       ) : (
-        <Pressable style={styles.settingsBtn} onPress={handleBack}>
-          <Ionicons name="close" size={20} color="#FFFFFF" />
+        <Pressable
+          style={[styles.settingsBtn, isIPad && styles.settingsBtnTablet]}
+          onPress={handleBack}
+        >
+          <Ionicons
+            name="close"
+            size={getResponsiveValue(20, 28)}
+            color="#FFFFFF"
+          />
         </Pressable>
       )}
 
       {/* greeting is unchanged */}
-      <View style={styles.greetingWrapper}>
-        <Text style={styles.greetingText}>{greeting},</Text>
-        <Text style={styles.greetingText}>
+      <View
+        style={[styles.greetingWrapper, isIPad && styles.greetingWrapperTablet]}
+      >
+        <Text
+          style={[styles.greetingText, isIPad && styles.greetingTextTablet]}
+        >
+          {greeting},
+        </Text>
+        <Text
+          style={[styles.greetingText, isIPad && styles.greetingTextTablet]}
+        >
           {profile?.name ?? "Dreamer"}
         </Text>{" "}
       </View>
@@ -118,22 +148,38 @@ const DashboardScreen: React.FC = () => {
       <View style={styles.middleWrapper}>
         {!isTyping ? (
           <>
-            <Pressable onPress={goRecord} style={styles.cloudWrapper}>
+            <Pressable
+              onPress={goRecord}
+              style={[styles.cloudWrapper, isIPad && styles.cloudWrapperTablet]}
+            >
               <LinearGradient
                 colors={["#00EAFF", "#6633EE", "#FF4EE0"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.cloudGradient}
+                style={[
+                  styles.cloudGradient,
+                  isIPad && styles.cloudGradientTablet,
+                ]}
               >
-                <Text style={styles.cloudText}>Tap to Record</Text>
+                <Text
+                  style={[styles.cloudText, isIPad && styles.cloudTextTablet]}
+                >
+                  Tap to Record
+                </Text>
               </LinearGradient>
             </Pressable>
             <Pressable onPress={openTyping} style={styles.typeInsteadWrapper}>
-              <Text style={styles.typeInstead}>Want to type instead?</Text>
+              <Text
+                style={[styles.typeInstead, isIPad && styles.typeInsteadTablet]}
+              >
+                Want to type instead?
+              </Text>
             </Pressable>
           </>
         ) : (
-          <View style={styles.inputWrapper}>
+          <View
+            style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
+          >
             <TextInput
               ref={inputRef}
               value={dreamText}
@@ -142,9 +188,11 @@ const DashboardScreen: React.FC = () => {
               placeholderTextColor="#a7a7a7"
               multiline
               maxLength={2000}
-              style={styles.input}
+              style={[styles.input, isIPad && styles.inputTablet]}
             />
-            <Text style={styles.charCount}>{dreamText.length}/2000</Text>
+            <Text style={[styles.charCount, isIPad && styles.charCountTablet]}>
+              {dreamText.length}/2000
+            </Text>
             <ShinyGradientButton onPress={handleUpload}>
               {/* MODIFIED: Show loading state */}
               {isLoading ? (
@@ -159,12 +207,20 @@ const DashboardScreen: React.FC = () => {
 
       {/* nav bar is unchanged */}
       {!isTyping && (
-        <View style={styles.navBar}>
+        <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
           <Pressable style={styles.navBtn} onPress={() => goto("home")}>
-            <Ionicons name="home" size={24} color="#00EAFF" />
+            <Ionicons
+              name="home"
+              size={getResponsiveValue(24, 32)}
+              color="#00EAFF"
+            />
           </Pressable>
           <Pressable style={styles.navBtn} onPress={() => goto("library")}>
-            <Ionicons name="book" size={24} color="#a7a7a7" />
+            <Ionicons
+              name="book"
+              size={getResponsiveValue(24, 32)}
+              color="#a7a7a7"
+            />
           </Pressable>
         </View>
       )}
@@ -190,13 +246,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  settingsBtnTablet: {
+    top: 80,
+    left: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
   greetingWrapper: { marginTop: 60, alignItems: "center" },
+  greetingWrapperTablet: { marginTop: 80 },
   greetingText: {
     fontSize: 40,
     color: "#FFFFFF",
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 46,
+  },
+  greetingTextTablet: {
+    fontSize: 56,
+    lineHeight: 64,
   },
   middleWrapper: {
     flex: 1,
@@ -211,6 +279,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     marginBottom: 20,
   },
+  cloudWrapperTablet: {
+    shadowRadius: 40,
+    marginBottom: 30,
+  },
   cloudGradient: {
     width: 320,
     height: 160,
@@ -218,7 +290,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  cloudGradientTablet: {
+    width: 480,
+    height: 240,
+    borderRadius: 120,
+  },
   cloudText: { color: "#FFFFFF", fontSize: 22, fontWeight: "600" },
+  cloudTextTablet: { fontSize: 32 },
   typeInsteadWrapper: { marginTop: 10 },
   typeInstead: {
     color: "#a7a7a7",
@@ -226,7 +304,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     textDecorationLine: "underline",
   },
+  typeInsteadTablet: {
+    fontSize: 20,
+  },
   inputWrapper: { width: "90%", maxWidth: 350 },
+  inputWrapperTablet: { maxWidth: 500 },
   input: {
     height: 200,
     borderRadius: 20,
@@ -237,6 +319,13 @@ const styles = StyleSheet.create({
     padding: 16,
     textAlignVertical: "top",
     marginBottom: 16,
+  },
+  inputTablet: {
+    height: 300,
+    borderRadius: 24,
+    padding: 20,
+    fontSize: 18,
+    marginBottom: 20,
   },
   navBar: {
     width: "90%",
@@ -250,11 +339,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     marginBottom: 20,
   },
+  navBarTablet: {
+    width: "80%",
+    height: 90,
+    borderRadius: 45,
+    marginBottom: 40,
+  },
   navBtn: { padding: 8, borderRadius: 12 },
   charCount: {
     color: "#a7a7a7",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 16,
+  },
+  charCountTablet: {
+    fontSize: 16,
+    marginBottom: 20,
   },
 });

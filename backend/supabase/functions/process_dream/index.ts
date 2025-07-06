@@ -104,6 +104,7 @@ const buildHeaders = () => ({
 });
 
 serve(async (req) => {
+  console.log("--- Function process_dream Started ---");
   try {
     // Get authenticated user
     const authHeader = req.headers.get("Authorization");
@@ -123,6 +124,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
+    console.log(`Authenticated user: ${userId}`);
 
     // Get user profile
     const { data: profile, error: profileError } = await admin
@@ -136,12 +138,23 @@ serve(async (req) => {
       profile?.character_design ||
       "A friendly character with expressive features, drawn in a modern cartoon style.";
 
-    /* GET FORM DATA */
-    const form = await req.formData();
-    const text = form.get("text") as string | null;
-    const audioFile = form.get("audio") as File | null;
+    /* GET REQUEST DATA */
+    const contentType = req.headers.get("content-type") || "";
+    let text: string | null = null;
+    let audioFile: File | null = null;
     const comicId = crypto.randomUUID();
     let transcript: string | null = null;
+
+    if (contentType.includes("application/json")) {
+      // Handle JSON data (from DashboardScreen)
+      const body = await req.json();
+      text = body.text as string | null;
+    } else if (contentType.includes("multipart/form-data")) {
+      // Handle FormData (from RecordScreen)
+      const form = await req.formData();
+      text = form.get("text") as string | null;
+      audioFile = form.get("audio") as File | null;
+    }
 
     if (text && text.trim().length > 0) {
       transcript = text.trim();
@@ -204,6 +217,14 @@ serve(async (req) => {
       throw new Error("Either text or audio must be provided");
     }
 
+    // NEW LOG: Confirm we have a transcript and a valid API key before calling OpenAI
+    console.log(
+      `Transcript ready. Calling OpenAI with API key starting with: ${env.OPENAI_API_KEY?.substring(
+        0,
+        8
+      )}`
+    );
+
     /* GENERATE STORYBOARD WITH GPT */
     const sb: Storyboard = await new OpenAI({
       apiKey: env.OPENAI_API_KEY!,
@@ -215,6 +236,8 @@ serve(async (req) => {
       })
       .then((r) => JSON.parse(r.choices[0].message.content!));
 
+    // NEW LOG: Confirm storyboard was generated
+    console.log("✅ Storyboard received from OpenAI.");
     if (DEBUG) {
       console.log("📜 Storyboard from OpenAI:", JSON.stringify(sb, null, 2));
     }
@@ -227,11 +250,13 @@ serve(async (req) => {
 
     // Set the art style and character design for DALL-E
     const SHARED = sharedBlock(sb.style, characterDesign);
+    console.log("🎨 Shared style block created. Starting panel generation...");
 
     /* GENERATE & UPLOAD PANELS WITH DALL-E */
     const imageUrls: string[] = [];
     for (let i = 0; i < sb.panels.length; i++) {
-      const prompt = panelPrompt(sb.panels[i], i, SHARED);
+      const prompt = panelPrompt(sb.panels[i], i, SHARED, sb.panels.length);
+
       const res = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: buildHeaders(),
@@ -245,8 +270,9 @@ serve(async (req) => {
       });
 
       if (!res.ok) {
-        console.error(`❌ Panel ${i + 1} generation failed`);
-        continue;
+        const errorText = await res.text();
+        console.error(`❌ Panel ${i + 1} generation failed:`, errorText);
+        continue; // Continue to the next panel even if one fails
       }
 
       const openUrl = (await res.json()).data[0].url as string;
@@ -266,6 +292,8 @@ serve(async (req) => {
       imageUrls.push(pub.publicUrl);
     }
 
+    console.log(`✅ ${imageUrls.length} panels generated and uploaded.`);
+
     /* RECORD TO DATABASE */
     await admin.from("comics").insert({
       id: comicId,
@@ -277,19 +305,27 @@ serve(async (req) => {
       cost_cents: 5 * sb.panels.length,
     });
 
+    console.log("✅ Database record created.");
+
     /* RESPOND TO CLIENT */
     return new Response(JSON.stringify({ comicId, urls: imageUrls }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    if (DEBUG) console.error(e);
+    // MODIFIED: Log the specific error message for better debugging
+    console.error("🔥 An error occurred in the main try-catch block:");
+    console.error(`Error Message: ${e.message}`);
+    if (DEBUG) {
+      console.error(`Stack Trace: ${e.stack}`);
+    }
+
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
+      JSON.stringify({ error: `An unexpected error occurred: ${e.message}` }), // Send a more informative error to the client
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
 });

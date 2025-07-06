@@ -7,6 +7,7 @@ import {
   Platform,
   Alert,
   Animated,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Audio } from "expo-av";
@@ -15,6 +16,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../context/UserContext";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { supabase } from "../../utils/supabase";
+
+// iPad detection
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isTablet = () => {
+  const aspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH;
+  return SCREEN_WIDTH >= 768 && aspectRatio <= 1.6;
+};
+const isIPad = Platform.OS === "ios" && isTablet();
+const getResponsiveValue = (phone: number, tablet: number) =>
+  isIPad ? tablet : phone;
 
 const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
 
@@ -31,18 +42,28 @@ const Header: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   })();
   return (
     <View style={styles.headerRow}>
-      <Pressable onPress={onBack} style={styles.backBtn} hitSlop={10}>
-        <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+      <Pressable
+        onPress={onBack}
+        style={[styles.backBtn, isIPad && styles.backBtnTablet]}
+        hitSlop={10}
+      >
+        <Ionicons
+          name="chevron-back"
+          size={getResponsiveValue(20, 28)}
+          color="#FFFFFF"
+        />
       </Pressable>
-      <Text style={styles.headerText}>{`${greeting},\n${
-        profile?.name ?? ""
-      }`}</Text>
+      <Text
+        style={[styles.headerText, isIPad && styles.headerTextTablet]}
+      >{`${greeting},\n${profile?.name ?? ""}`}</Text>
     </View>
   );
 };
 
 const StatusText: React.FC<{ txt: string }> = ({ txt }) => (
-  <Text style={styles.statusText}>{txt}</Text>
+  <Text style={[styles.statusText, isIPad && styles.statusTextTablet]}>
+    {txt}
+  </Text>
 );
 
 /*───────────────────────────────────────────────
@@ -58,7 +79,7 @@ const RecordButton: React.FC<{
   const isRec = mode === "recording";
 
   return (
-    <View style={styles.circleWrapper}>
+    <View style={[styles.circleWrapper, isIPad && styles.circleWrapperTablet]}>
       <Pressable
         disabled={mode === "review"}
         onPress={isIdle ? onStart : isRec ? onStop : undefined}
@@ -70,13 +91,23 @@ const RecordButton: React.FC<{
               ? ["rgba(255,78,224,0.18)", "rgba(255,100,100,0.18)"]
               : ["rgba(0,234,255,0.12)", "rgba(102,51,238,0.12)"]
           }
-          style={styles.outerRing}
+          style={[styles.outerRing, isIPad && styles.outerRingTablet]}
         >
           {/* INNER ring */}
-          <View style={styles.innerRing}>
-            <Text style={styles.timer}>{timer}</Text>
-            {isIdle && <Text style={styles.hint}>Tap to Record</Text>}
-            {isRec && <Text style={styles.hint}>Tap to Stop</Text>}
+          <View style={[styles.innerRing, isIPad && styles.innerRingTablet]}>
+            <Text style={[styles.timer, isIPad && styles.timerTablet]}>
+              {timer}
+            </Text>
+            {isIdle && (
+              <Text style={[styles.hint, isIPad && styles.hintTablet]}>
+                Tap to Record
+              </Text>
+            )}
+            {isRec && (
+              <Text style={[styles.hint, isIPad && styles.hintTablet]}>
+                Tap to Stop
+              </Text>
+            )}
           </View>
         </LinearGradient>
       </Pressable>
@@ -323,6 +354,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.18)",
     zIndex: 1,
   },
+  backBtnTablet: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    top: -15,
+  },
   headerText: {
     width: "100%",
     fontSize: 36,
@@ -332,12 +369,20 @@ const styles = StyleSheet.create({
     lineHeight: 46,
     marginTop: 10,
   },
+  headerTextTablet: {
+    fontSize: 48,
+    lineHeight: 58,
+  },
   /* status */
   statusText: {
     color: "#a7a7a7",
     fontSize: 16,
     textAlign: "center",
     marginBottom: 60,
+  },
+  statusTextTablet: {
+    fontSize: 20,
+    marginBottom: 80,
   },
   /* button rings */
   circleWrapper: {
@@ -348,6 +393,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 20,
   },
+  circleWrapperTablet: {
+    shadowRadius: 40,
+    marginBottom: 30,
+  },
   outerRing: {
     width: 280,
     height: 280,
@@ -356,6 +405,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 5,
     borderColor: "#00EAFF",
+  },
+  outerRingTablet: {
+    width: 420,
+    height: 420,
+    borderRadius: 210,
+    borderWidth: 6,
   },
   innerRing: {
     width: 180,
@@ -367,13 +422,23 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#00EAFF",
   },
+  innerRingTablet: {
+    width: 270,
+    height: 270,
+    borderRadius: 135,
+    borderWidth: 4,
+  },
   timer: {
     color: "#FFF",
     fontSize: 38,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontWeight: "700",
   },
+  timerTablet: {
+    fontSize: 56,
+  },
   hint: { color: "#a7a7a7", fontSize: 15, marginTop: 4 },
+  hintTablet: { fontSize: 20, marginTop: 6 },
   /* review */
   reviewRow: {
     width: "100%",

@@ -11,17 +11,40 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import { useUser } from "../../context/UserContext";
+import Background from "../../components/ui/Background";
 
 /*********************
  * Types & constants
  *********************/
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Device detection
+const isTablet = () => {
+  const { width, height } = Dimensions.get("window");
+  const aspectRatio = height / width;
+  return aspectRatio <= 1.6;
+};
+
+const isIPad = Platform.OS === "ios" && isTablet();
+
+// Responsive breakpoints
+const BREAKPOINTS = {
+  small: 375,
+  medium: 768,
+  large: 1024,
+};
+
+const getResponsiveValue = (phone: number, tablet: number) => {
+  return isIPad ? tablet : phone;
+};
+
 const MONTHS = [
   "Jan",
   "Feb",
@@ -45,72 +68,6 @@ interface ComicEntry {
   liked: boolean;
   image_urls: string[];
 }
-
-/*********************
- * Sparkle helper
- *********************/
-const Sparkle: React.FC<{
-  delay?: number;
-  size?: number;
-  x: number;
-  y: number;
-}> = ({ delay = 0, size = 8, x, y }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-  const scale = useRef(new Animated.Value(0.8)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 1500,
-            delay,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 1.2,
-            duration: 1500,
-            delay,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0.3,
-            duration: 1500,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 0.8,
-            duration: 1500,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    ).start();
-  }, [opacity, scale, delay]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.sparkle,
-        {
-          width: size,
-          height: size,
-          top: y,
-          left: x,
-          opacity,
-          transform: [{ scale }],
-        },
-      ]}
-    />
-  );
-};
 
 /*********************
  * Floating wrapper
@@ -175,7 +132,7 @@ export const TimelineScreen: React.FC = () => {
         id: c.id,
         created_at: c.created_at,
         title: c.storyboard?.title ?? "Untitled Dream",
-        style: c.storyboard?.style ?? "Dream Comic",
+        style: "",
         liked: c.liked ?? false,
         image_urls: c.image_urls ?? [],
       }));
@@ -210,162 +167,198 @@ export const TimelineScreen: React.FC = () => {
 
   /*──────── Render ────────*/
   return (
-    <View style={styles.root}>
-      {/* Gradient background */}
-      <LinearGradient
-        colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-        style={StyleSheet.absoluteFillObject}
-      />
+    <Background source={require("../../assets/images/timeline.jpeg")}>
+      <View style={styles.root}>
+        {/* Gradient background */}
+        <LinearGradient
+          colors={[
+            "rgba(13,10,60,0.3)",
+            "rgba(13,10,60,0.1)",
+            "rgba(0,0,0,0.1)",
+          ]}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-      {/* Sparkles */}
-      <Sparkle x={32} y={80} size={6} />
-      <Sparkle x={SCREEN_WIDTH - 60} y={100} size={4} delay={600} />
-      <Sparkle x={96} y={180} size={5} delay={1200} />
-      <Sparkle x={SCREEN_WIDTH - 90} y={260} size={6} delay={300} />
-
-      {/* Settings */}
-      <Pressable
-        style={styles.settingsBtn}
-        onPress={() => router.push("/(tab)/SettingScreen")}
-      >
-        <Ionicons name="settings" size={20} color="#fff" />
-      </Pressable>
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <Text style={styles.title}>Timeline</Text>
-
-        {/* Month selector */}
-        <View style={styles.monthBarContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.monthBar}
-          >
-            {MONTHS.map((m, idx) => (
-              <Pressable
-                key={m}
-                style={[
-                  styles.monthChip,
-                  idx === monthIdx && styles.monthChipActive,
-                ]}
-                onPress={() => setMonthIdx(idx)}
-              >
-                <Text
-                  style={[
-                    styles.monthChipText,
-                    idx === monthIdx && styles.monthChipTextActive,
-                  ]}
-                >
-                  {m}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Content */}
-        {loading ? (
-          <ActivityIndicator
-            color="#00eaff"
-            size="large"
-            style={{ marginTop: 40 }}
+        {/* Settings */}
+        <Pressable
+          style={[styles.settingsBtn, isIPad && styles.settingsBtnTablet]}
+          onPress={() => router.push("/(tab)/SettingScreen")}
+        >
+          <Ionicons
+            name="settings"
+            size={getResponsiveValue(20, 28)}
+            color="#fff"
           />
-        ) : filtered.length === 0 ? (
-          <Text style={styles.empty}>No dreams this month.</Text>
-        ) : (
-          filtered.map((c, idx) => (
-            <FloatingCard key={c.id} delay={idx * 200}>
-              <Pressable
-                style={styles.card}
-                onPress={() => {
-                  router.push({
-                    pathname: "/(tab)/ComicResultScreen",
-                    params: { urls: JSON.stringify(c.image_urls) },
-                  });
-                }}
-              >
-                {/* header */}
-                <View style={styles.cardHeader}>
-                  <View style={styles.dateBadge}>
-                    <Text style={styles.dateText}>
-                      {new Date(c.created_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
+        </Pressable>
+
+        <ScrollView
+          contentContainerStyle={[styles.scroll, isIPad && styles.scrollTablet]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <Text style={[styles.title, isIPad && styles.titleTablet]}>
+            Timeline
+          </Text>
+
+          {/* Month selector */}
+          <View
+            style={[
+              styles.monthBarContainer,
+              isIPad && styles.monthBarContainerTablet,
+            ]}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.monthBar,
+                isIPad && styles.monthBarTablet,
+              ]}
+            >
+              {MONTHS.map((m, idx) => (
+                <Pressable
+                  key={m}
+                  style={[
+                    styles.monthChip,
+                    isIPad && styles.monthChipTablet,
+                    idx === monthIdx && styles.monthChipActive,
+                  ]}
+                  onPress={() => setMonthIdx(idx)}
+                >
+                  <Text
+                    style={[
+                      styles.monthChipText,
+                      isIPad && styles.monthChipTextTablet,
+                      idx === monthIdx && styles.monthChipTextActive,
+                    ]}
+                  >
+                    {m}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Content */}
+          {loading ? (
+            <ActivityIndicator
+              color="#00eaff"
+              size="large"
+              style={{ marginTop: 40 }}
+            />
+          ) : filtered.length === 0 ? (
+            <Text style={[styles.empty, isIPad && styles.emptyTablet]}>
+              No dreams this month.
+            </Text>
+          ) : (
+            filtered.map((c, idx) => (
+              <FloatingCard key={c.id} delay={idx * 200}>
+                <Pressable
+                  style={styles.card}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/(tab)/ComicResultScreen",
+                      params: {
+                        urls: JSON.stringify(c.image_urls),
+                        title: c.title,
+                        id: c.id,
+                      },
+                    });
+                  }}
+                >
+                  {/* header */}
+                  <View style={styles.cardHeader}>
+                    <View
+                      style={[
+                        styles.dateBadge,
+                        isIPad && styles.dateBadgeTablet,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dateText,
+                          isIPad && styles.dateTextTablet,
+                        ]}
+                      >
+                        {new Date(c.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.cardTitle,
+                        isIPad && styles.cardTitleTablet,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {c.title}
                     </Text>
                   </View>
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {c.title}
-                  </Text>
-                  <Pressable
-                    onPress={() => toggleLike(c.id)}
-                    style={[styles.likeBtn, c.liked && styles.likeBtnActive]}
-                  >
-                    <Ionicons
-                      name="heart"
-                      size={16}
-                      color={c.liked ? "#fff" : "#ff4ee0"}
-                    />
-                  </Pressable>
-                </View>
 
-                {/* comic preview */}
-                <LinearGradient
-                  colors={["rgba(0,234,255,0.15)", "rgba(255,78,224,0.12)"]}
-                  style={styles.preview}
-                >
-                  <View style={styles.grid}>
-                    {c.image_urls &&
-                      c.image_urls.slice(0, 6).map((url, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            styles.panel,
-                            {
-                              backgroundColor: "#222",
-                            },
-                          ]}
-                        >
+                  {/* comic preview */}
+                  <LinearGradient
+                    colors={[
+                      "rgba(166, 19, 117, 0.15)",
+                      "rgba(255,78,224,0.12)",
+                    ]}
+                    style={styles.preview}
+                  >
+                    <View style={styles.gridCentered}>
+                      {c.image_urls && c.image_urls.length > 0 && (
+                        <View style={styles.panel}>
                           <Image
-                            source={{ uri: url }}
+                            source={{ uri: c.image_urls[0] }} // Only load the first image
                             style={styles.panelImage}
                             resizeMode="cover"
                           />
                         </View>
-                      ))}
-                  </View>
-                  <Text style={styles.previewLabel} numberOfLines={1}>
-                    {c.style.toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              </Pressable>
-            </FloatingCard>
-          ))
-        )}
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.previewLabel,
+                        isIPad && styles.previewLabelTablet,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {c.style.toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </FloatingCard>
+            ))
+          )}
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+          <View style={{ height: getResponsiveValue(120, 160) }} />
+        </ScrollView>
 
-      {/* Navigation Bar */}
-      <View style={styles.navBar}>
-        <Pressable
-          style={styles.navBtn}
-          onPress={() => router.push("/(tab)/DashboardScreen")}
-        >
-          <Ionicons name="home" size={24} color="#a7a7a7" />
-        </Pressable>
-        <Pressable
-          style={styles.navBtn}
-          onPress={() => router.push("/(tab)/TimelineScreen")}
-        >
-          <Ionicons name="book" size={24} color="#00EAFF" />
-        </Pressable>
+        {/* Navigation Bar */}
+        <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
+          <Pressable
+            style={styles.navBtn}
+            onPress={() => router.push("/(tab)/DashboardScreen")}
+          >
+            <Ionicons
+              name="home"
+              size={getResponsiveValue(24, 32)}
+              color="#a7a7a7"
+            />
+          </Pressable>
+          <Pressable
+            style={styles.navBtn}
+            onPress={() => router.push("/(tab)/TimelineScreen")}
+          >
+            <Ionicons
+              name="book"
+              size={getResponsiveValue(24, 32)}
+              color="#9B5DE5"
+            />
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </Background>
   );
 };
 
@@ -393,10 +386,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
+  settingsBtnTablet: {
+    top: 40,
+    left: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
   scroll: {
     paddingTop: 100,
     paddingHorizontal: 20,
     paddingBottom: 40,
+  },
+  scrollTablet: {
+    paddingTop: 120,
+    paddingHorizontal: 40,
+    paddingBottom: 60,
   },
   title: {
     fontSize: 32,
@@ -404,6 +409,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     alignSelf: "center",
     marginBottom: 24,
+  },
+  titleTablet: {
+    fontSize: 48,
+    marginBottom: 32,
   },
   monthBarContainer: {
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -414,11 +423,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  monthBarContainerTablet: {
+    borderRadius: 28,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
   monthBar: {
     flexDirection: "row",
     minWidth: "100%",
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+  monthBarTablet: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
   monthChip: {
     paddingVertical: 6,
@@ -426,51 +445,64 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginRight: 8,
   },
-  monthChipActive: { backgroundColor: "rgba(0,234,255,0.8)" },
+  monthChipTablet: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  monthChipActive: { backgroundColor: "rgba(177, 63, 179, 0.8)" },
   monthChipText: { fontSize: 12, color: "#a7a7a7" },
+  monthChipTextTablet: { fontSize: 16 },
   monthChipTextActive: { color: "#fff" },
   empty: { color: "#d4d4d8", textAlign: "center", marginTop: 60 },
-  /* Card */
+  emptyTablet: { fontSize: 18, marginTop: 80 },
   card: {
     backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: 28,
-    padding: 20,
+    padding: 23,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   dateBadge: {
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  dateBadgeTablet: {
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   dateText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  dateTextTablet: { fontSize: 14 },
   cardTitle: { flex: 1, color: "#fff", marginLeft: 12, fontWeight: "600" },
-  likeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "#ff4ee0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  likeBtnActive: {
-    backgroundColor: "#ff4ee0",
-    borderColor: "#ff4ee0",
-  },
+  cardTitleTablet: { fontSize: 16, marginLeft: 16 },
   /* preview */
   preview: {
     borderRadius: 20,
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
-    borderColor: "rgba(0,234,255,0.2)",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  previewTablet: {
+    borderRadius: 24,
+    padding: 16,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 },
+  gridCentered: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: -6,
+    marginTop: 2,
+    justifyContent: "center",
+  },
   panel: { flexBasis: "30%", aspectRatio: 1, borderRadius: 8 },
   previewLabel: {
     color: "#00eaff",
@@ -478,9 +510,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
+  previewLabelTablet: {
+    fontSize: 12,
+  },
   panelImage: {
-    width: "100%",
-    height: "100%",
+    width: "102%",
+    height: "102%",
     borderRadius: 8,
   },
   navBar: {
@@ -492,10 +527,17 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: "rgba(13,10,60,0.8)",
     borderWidth: 1,
-    borderColor: "rgba(0,234,255,0.2)",
+    borderColor: "rgba(251, 251, 251, 0.2)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
+  },
+  navBarTablet: {
+    bottom: 40,
+    left: "10%",
+    right: "10%",
+    height: 90,
+    borderRadius: 45,
   },
   navBtn: { padding: 8, borderRadius: 12 },
 });

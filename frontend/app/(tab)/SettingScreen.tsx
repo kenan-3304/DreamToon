@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../context/UserContext";
+import { supabase } from "../../utils/supabase";
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
@@ -33,6 +34,57 @@ const SettingsScreen: React.FC = () => {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (!user?.id) {
+                Alert.alert(
+                  "Error",
+                  "User not found. Please try logging in again."
+                );
+                return;
+              }
+
+              // Call your backend function here
+              const { data, error } = await supabase.functions.invoke(
+                "delete_user",
+                {
+                  body: { user_id: user.id },
+                }
+              );
+
+              if (error) {
+                console.error("Delete account error:", error);
+                Alert.alert(
+                  "Error",
+                  error.message || "Failed to delete account."
+                );
+              } else {
+                // Success - logout and redirect
+                await logout();
+                router.replace("/(auth)/AuthScreen");
+              }
+            } catch (error) {
+              console.error("Delete account error:", error);
+              Alert.alert(
+                "Error",
+                "Failed to delete account. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const settingsOptions = [
@@ -67,6 +119,12 @@ const SettingsScreen: React.FC = () => {
           "Version 1.0.0\n\nTurn your dreams into comics!"
         );
       },
+    },
+    {
+      icon: <Ionicons name="trash" size={24} color="#FF4444" />,
+      title: "Delete Account",
+      subtitle: "Permanently remove your account",
+      onPress: handleDeleteAccount,
     },
   ];
 
