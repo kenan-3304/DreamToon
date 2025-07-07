@@ -18,7 +18,7 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="DashboardScreen"
+          name="EnhancedDashboardScreen"
           options={{
             title: "Home",
             tabBarStyle: { display: "none" },
@@ -38,15 +38,7 @@ export default function TabLayout() {
             tabBarStyle: { display: "none" },
           }}
         />
-        {/* Hide these screens from tab bar but keep them accessible */}
-        <Tabs.Screen
-          name="RecordScreen"
-          options={{
-            href: null,
-            headerShown: false,
-            tabBarStyle: { display: "none" },
-          }}
-        />
+
         <Tabs.Screen
           name="ProcessingScreen"
           options={{

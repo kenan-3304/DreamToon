@@ -20,6 +20,7 @@ import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
 import { useRouter } from "expo-router";
+import Background from "@/components/ui/Background";
 
 // iPad detection
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -368,7 +369,7 @@ const EnhancedDashboardScreen: React.FC = () => {
                 isIPad && styles.glowEffectTablet,
                 {
                   opacity: isRecording ? glowAnim : 0,
-                  shadowColor: isRecording ? "#FF4E4E" : "#00EAFF",
+                  shadowColor: isRecording ? "#FF4E4E" : "#F021B2",
                 },
               ]}
             />
@@ -378,7 +379,7 @@ const EnhancedDashboardScreen: React.FC = () => {
               colors={
                 isRecording
                   ? ["rgba(255,78,78,0.3)", "rgba(255,100,100,0.3)"]
-                  : ["rgba(0,234,255,0.15)", "rgba(102,51,238,0.15)"]
+                  : ["rgba(200, 121, 255, 0.01)", "rgba(240, 33, 178, 0.01)"]
               }
               style={[styles.outerRing, isIPad && styles.outerRingTablet]}
             >
@@ -387,7 +388,7 @@ const EnhancedDashboardScreen: React.FC = () => {
                 colors={
                   isRecording
                     ? ["rgba(255,78,78,0.8)", "rgba(255,100,100,0.8)"]
-                    : ["rgba(0,234,255,0.8)", "rgba(102,51,238,0.8)"]
+                    : ["rgba(240, 33, 178, 0.03)", "rgba(240, 33, 178, 0.01)"]
                 }
                 style={[styles.innerRing, isIPad && styles.innerRingTablet]}
               >
@@ -413,143 +414,153 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   return (
-    <LinearGradient
-      colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-      style={styles.container}
-    >
-      {/* Recording overlay */}
-      {mode === "recording" && (
-        <Animated.View
+    <Background source={require("../../assets/images/stars.png")}>
+      <LinearGradient colors={["#230B3D", "#12081C"]} style={styles.container}>
+        {/* Recording overlay */}
+        {mode === "recording" && (
+          <Animated.View
+            style={[
+              styles.recordingOverlay,
+              {
+                opacity: pulseAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.1, 0.2],
+                }),
+              },
+            ]}
+          />
+        )}
+
+        {/* Header button */}
+        <Pressable
+          style={[styles.headerBtn, isIPad && styles.headerBtnTablet]}
+          onPress={mode === "idle" ? () => goto("settings") : handleBack}
+        >
+          <Ionicons
+            name={mode === "idle" ? "settings" : "close"}
+            size={getResponsiveValue(20, 28)}
+            color="#FFFFFF"
+          />
+        </Pressable>
+
+        {/* Greeting */}
+        <View
           style={[
-            styles.recordingOverlay,
-            {
-              opacity: pulseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.1, 0.2],
-              }),
-            },
+            styles.greetingWrapper,
+            isIPad && styles.greetingWrapperTablet,
           ]}
-        />
-      )}
-
-      {/* Header button */}
-      <Pressable
-        style={[styles.headerBtn, isIPad && styles.headerBtnTablet]}
-        onPress={mode === "idle" ? () => goto("settings") : handleBack}
-      >
-        <Ionicons
-          name={mode === "idle" ? "settings" : "close"}
-          size={getResponsiveValue(20, 28)}
-          color="#FFFFFF"
-        />
-      </Pressable>
-
-      {/* Greeting */}
-      <View
-        style={[styles.greetingWrapper, isIPad && styles.greetingWrapperTablet]}
-      >
-        <Text
-          style={[styles.greetingText, isIPad && styles.greetingTextTablet]}
         >
-          {greeting},
-        </Text>
-        <Text
-          style={[styles.greetingText, isIPad && styles.greetingTextTablet]}
-        >
-          {profile?.name ?? "Dreamer"}
-        </Text>
-      </View>
-
-      {/* Status text for recording states */}
-      {(mode === "recording" || mode === "review") && (
-        <Text style={[styles.statusText, isIPad && styles.statusTextTablet]}>
-          {recordingStatus}
-        </Text>
-      )}
-
-      {/* Main content area */}
-      <View style={styles.middleWrapper}>
-        {mode === "idle" && (
-          <>
-            {renderRecordButton()}
-            <Pressable onPress={openTyping} style={styles.typeInsteadWrapper}>
-              <Text
-                style={[styles.typeInstead, isIPad && styles.typeInsteadTablet]}
-              >
-                Want to type instead?
-              </Text>
-            </Pressable>
-          </>
-        )}
-
-        {mode === "typing" && (
-          <View
-            style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
+          <Text
+            style={[styles.greetingText, isIPad && styles.greetingTextTablet]}
           >
-            <TextInput
-              ref={inputRef}
-              value={dreamText}
-              onChangeText={setDreamText}
-              placeholder="Describe your dream…"
-              placeholderTextColor="#a7a7a7"
-              multiline
-              maxLength={2000}
-              style={[styles.input, isIPad && styles.inputTablet]}
-            />
-            <Text style={[styles.charCount, isIPad && styles.charCountTablet]}>
-              {dreamText.length}/2000
-            </Text>
-            <ShinyGradientButton onPress={handleUploadText}>
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                "Create Comic"
-              )}
-            </ShinyGradientButton>
-          </View>
+            {greeting},
+          </Text>
+          <Text
+            style={[
+              styles.greetingNameText,
+              isIPad && styles.greetingNameTextTablet,
+            ]}
+          >
+            {profile?.name ?? "Dreamer"}
+          </Text>
+        </View>
+
+        {/* Status text for recording states */}
+        {(mode === "recording" || mode === "review") && (
+          <Text style={[styles.statusText, isIPad && styles.statusTextTablet]}>
+            {recordingStatus}
+          </Text>
         )}
 
-        {mode === "recording" && renderRecordButton()}
+        {/* Main content area */}
+        <View style={styles.middleWrapper}>
+          {mode === "idle" && (
+            <>
+              {renderRecordButton()}
+              <Pressable onPress={openTyping} style={styles.typeInsteadWrapper}>
+                <Text
+                  style={[
+                    styles.typeInstead,
+                    isIPad && styles.typeInsteadTablet,
+                  ]}
+                >
+                  Want to type instead?
+                </Text>
+              </Pressable>
+            </>
+          )}
 
-        {mode === "review" && (
-          <View style={styles.reviewWrapper}>
-            {renderRecordButton()}
-            <View style={styles.reviewActions}>
-              <ShinyGradientButton onPress={handleUploadRecording}>
+          {mode === "typing" && (
+            <View
+              style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
+            >
+              <TextInput
+                ref={inputRef}
+                value={dreamText}
+                onChangeText={setDreamText}
+                placeholder="Describe your dream…"
+                placeholderTextColor="#D1A8C5"
+                multiline
+                maxLength={2000}
+                style={[styles.input, isIPad && styles.inputTablet]}
+              />
+              <Text
+                style={[styles.charCount, isIPad && styles.charCountTablet]}
+              >
+                {dreamText.length}/2000
+              </Text>
+              <ShinyGradientButton onPress={handleUploadText}>
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   "Create Comic"
                 )}
               </ShinyGradientButton>
-              <ShinyGradientButton onPress={() => resetToIdle()}>
-                Record Again
-              </ShinyGradientButton>
             </View>
+          )}
+
+          {mode === "recording" && renderRecordButton()}
+
+          {mode === "review" && (
+            <View style={styles.reviewWrapper}>
+              {renderRecordButton()}
+              <View style={styles.reviewActions}>
+                <ShinyGradientButton onPress={handleUploadRecording}>
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    "Create Comic"
+                  )}
+                </ShinyGradientButton>
+                <ShinyGradientButton onPress={() => resetToIdle()}>
+                  Record Again
+                </ShinyGradientButton>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Navigation bar - only show in idle mode */}
+        {mode === "idle" && (
+          <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
+            <Pressable style={styles.navBtn} onPress={() => goto("home")}>
+              <Ionicons
+                name="home"
+                size={getResponsiveValue(24, 32)}
+                color="#FFFFFF"
+              />
+            </Pressable>
+            <Pressable style={styles.navBtn} onPress={() => goto("library")}>
+              <Ionicons
+                name="book"
+                size={getResponsiveValue(24, 32)}
+                color="#C879FF"
+              />
+            </Pressable>
           </View>
         )}
-      </View>
-
-      {/* Navigation bar - only show in idle mode */}
-      {mode === "idle" && (
-        <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
-          <Pressable style={styles.navBtn} onPress={() => goto("home")}>
-            <Ionicons
-              name="home"
-              size={getResponsiveValue(24, 32)}
-              color="#00EAFF"
-            />
-          </Pressable>
-          <Pressable style={styles.navBtn} onPress={() => goto("library")}>
-            <Ionicons
-              name="book"
-              size={getResponsiveValue(24, 32)}
-              color="#a7a7a7"
-            />
-          </Pressable>
-        </View>
-      )}
-    </LinearGradient>
+      </LinearGradient>
+    </Background>
   );
 };
 
@@ -607,9 +618,21 @@ const styles = StyleSheet.create({
     lineHeight: 64,
   },
 
+  greetingNameText: {
+    fontSize: 40,
+    color: "#C879FF", // Bright Lavender
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 46,
+  },
+  greetingNameTextTablet: {
+    fontSize: 56,
+    lineHeight: 64,
+  },
+
   // Status text
   statusText: {
-    color: "#a7a7a7",
+    color: "#D1A8C5",
     fontSize: 16,
     textAlign: "center",
     marginTop: 20,
@@ -639,7 +662,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   recordButtonWrapper: {
-    shadowColor: "#00EAFF",
+    shadowColor: "#F021B2",
     shadowOpacity: 0.6,
     shadowRadius: 30,
     shadowOffset: { width: 0, height: 0 },
@@ -673,7 +696,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#00EAFF",
+    borderColor: "rgba(240, 33, 178, 0.4)",
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
   outerRingTablet: {
     width: 480,
@@ -688,7 +715,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#00EAFF",
+    borderColor: "#F021B2",
   },
   innerRingTablet: {
     width: 330,
@@ -712,7 +739,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   recordHint: {
-    color: "#a7a7a7",
+    color: "#D1A8C5",
     fontSize: 16,
     textAlign: "center",
   },
@@ -723,7 +750,7 @@ const styles = StyleSheet.create({
   // Typing mode
   typeInsteadWrapper: { marginTop: 10 },
   typeInstead: {
-    color: "#a7a7a7",
+    color: "#D1A8C5",
     fontSize: 16,
     textAlign: "center",
     textDecorationLine: "underline",
@@ -737,8 +764,8 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,234,255,0.3)",
-    backgroundColor: "rgba(13,10,60,0.9)",
+    borderColor: "rgba(200, 121, 255, 0.5)",
+    backgroundColor: "rgba(35, 11, 61, 0.7)",
     color: "#FFFFFF",
     padding: 16,
     textAlignVertical: "top",
@@ -752,7 +779,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   charCount: {
-    color: "#a7a7a7",
+    color: "#D1A8C5",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 16,
@@ -781,7 +808,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: "rgba(13,10,60,0.8)",
     borderWidth: 1,
-    borderColor: "rgba(0,234,255,0.2)",
+    borderColor: "rgba(251, 251, 251, 0.2)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",

@@ -83,7 +83,7 @@ const CreateToonScreen: React.FC = () => {
     (tab === "upload" && uploadedUri) || (tab === "describe" && formValid);
 
   const continueNext = () =>
-    canContinue && router.push("/(tab)/DashboardScreen");
+    canContinue && router.push("/(tab)/EnhancedDashboardScreen");
 
   // Dropdown component from your original file
   const SimpleDropdown = ({
@@ -288,7 +288,7 @@ const CreateToonScreen: React.FC = () => {
             Continue
           </ShinyGradientButton>
           <Pressable
-            onPress={() => router.push("/(tab)/DashboardScreen")}
+            onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
             style={{ marginTop: 12 }}
           >
             <Text style={styles.skipText}>skip</Text>

@@ -56,7 +56,7 @@ const AuthScreen: React.FC = () => {
     try {
       // Use the 'signIn' function from the hook's return value
       await signIn(email, password);
-      router.push("/(tab)/DashboardScreen");
+      router.push("/(tab)/EnhancedDashboardScreen");
     } catch (error) {
       console.error("Login Error:", error);
       Alert.alert("Login Failed", error.message);

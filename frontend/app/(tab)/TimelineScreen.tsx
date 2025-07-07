@@ -338,12 +338,12 @@ export const TimelineScreen: React.FC = () => {
         <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
           <Pressable
             style={styles.navBtn}
-            onPress={() => router.push("/(tab)/DashboardScreen")}
+            onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
           >
             <Ionicons
               name="home"
               size={getResponsiveValue(24, 32)}
-              color="#a7a7a7"
+              color="#C879FF"
             />
           </Pressable>
           <Pressable
@@ -353,7 +353,7 @@ export const TimelineScreen: React.FC = () => {
             <Ionicons
               name="book"
               size={getResponsiveValue(24, 32)}
-              color="#9B5DE5"
+              color="#FFFFFF"
             />
           </Pressable>
         </View>

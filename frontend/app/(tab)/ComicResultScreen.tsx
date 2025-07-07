@@ -99,7 +99,7 @@ export default function ComicResultScreen() {
   });
 
   /*──────── Navigation helpers ────────*/
-  const discard = () => router.push("/(tab)/DashboardScreen");
+  const discard = () => router.push("/(tab)/EnhancedDashboardScreen");
   const handleBack = () => (comicUrls.length ? router.back() : discard());
 
   /*──────── Share / Download ────────*/

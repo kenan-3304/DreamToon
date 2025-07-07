@@ -11,14 +11,14 @@ import { StatusBar } from "react-native";
 import LoginScreen from "./(auth)/AuthScreen";
 import WelcomeScreen from "./(auth)/WelcomeScreen";
 import CreateToonScreen from "./(tab)/CreateToonScreen";
-import DashboardScreen from "./(tab)/DashboardScreen";
+import EnhancedDashboardScreen from "./(tab)/EnhancedDashboardScreen";
 
 // Define the types for your navigation stack
 export type RootStackParamList = {
   Login: undefined;
   WelcomeScreen: undefined;
   CreateToonScreen: undefined;
-  DashboardScreen: undefined;
+  EnhancedDashboardScreen: undefined;
 };
 
 const MyTheme = {
@@ -31,7 +31,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0A3C" translucent />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#0D0A3C"
+        translucent
+      />
       <NavigationIndependentTree>
         <NavigationContainer theme={MyTheme}>
           <Stack.Navigator
@@ -46,7 +50,10 @@ export default function App() {
               name="CreateToonScreen"
               component={CreateToonScreen}
             />
-            <Stack.Screen name="DashboardScreen" component={DashboardScreen} />
+            <Stack.Screen
+              name="EnhancedDashboardScreen"
+              component={EnhancedDashboardScreen}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </NavigationIndependentTree>
