@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,20 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
+import { AvatarGenerator } from "../../components/AvatarGenerator";
+import { Avatar } from "../../components/Avatar";
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
   const { user, profile, logout } = useUser();
+  const [showAvatarGenerator, setShowAvatarGenerator] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -99,14 +103,12 @@ const SettingsScreen: React.FC = () => {
     },
     {
       icon: <Ionicons name="brush" size={24} color="#00EAFF" />,
-      title: "Character Design",
-      subtitle: profile?.character_design || "Customize your character",
+      title: "Comic Avatar",
+      subtitle: profile?.avatar_url
+        ? "Update your comic avatar"
+        : "Create your comic avatar",
       onPress: () => {
-        // Navigate to character design screen
-        Alert.alert(
-          "Coming Soon",
-          "Character customization will be available soon!"
-        );
+        setShowAvatarGenerator(true);
       },
     },
     {
@@ -116,7 +118,7 @@ const SettingsScreen: React.FC = () => {
       onPress: () => {
         Alert.alert(
           "DreamToon",
-          "Version 1.0.0\n\nTurn your dreams into comics!"
+          "Version 1.0.1\n\nTurn your dreams into comics!"
         );
       },
     },
@@ -145,7 +147,11 @@ const SettingsScreen: React.FC = () => {
         {/* User Info Section */}
         <View style={styles.userSection}>
           <View style={styles.userAvatar}>
-            <Ionicons name="person" size={40} color="#00EAFF" />
+            {profile?.avatar_url ? (
+              <Avatar avatarUrl={profile.avatar_url} size={80} />
+            ) : (
+              <Ionicons name="person" size={40} color="#00EAFF" />
+            )}
           </View>
           <Text style={styles.userName}>{profile?.name || "Dreamer"}</Text>
           <Text style={styles.userEmail}>{user?.email || ""}</Text>
@@ -174,6 +180,34 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.logoutText}>Logout</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Avatar Generator Modal */}
+      <Modal
+        visible={showAvatarGenerator}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setShowAvatarGenerator(false)}
+            >
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </Pressable>
+            <Text style={styles.modalTitle}>Generate Comic Avatar</Text>
+          </View>
+          <AvatarGenerator
+            onSuccess={(avatarUrl) => {
+              setShowAvatarGenerator(false);
+              // The profile will be automatically updated via UserContext
+            }}
+            onError={(error) => {
+              setShowAvatarGenerator(false);
+            }}
+          />
+        </View>
+      </Modal>
     </LinearGradient>
   );
 };
@@ -226,6 +260,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 2,
     borderColor: "#00EAFF",
+  },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
   },
   userName: {
     fontSize: 24,
@@ -285,6 +324,35 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FF4444",
     marginLeft: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#0D0A3C",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.1)",
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginLeft: 20,
   },
 });
 
