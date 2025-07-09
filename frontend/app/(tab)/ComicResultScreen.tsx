@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   },
   header: {
     position: "absolute",
-    top: 0,
+    top: 20,
     left: 0,
     right: 0,
     height: 46,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   /* Action row */
   actionsRow: {
     position: "absolute",
-    bottom: 40,
+    bottom: 60,
     left: 20,
     right: 20,
     flexDirection: "row",

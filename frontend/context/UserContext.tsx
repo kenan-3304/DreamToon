@@ -8,6 +8,8 @@ interface Profile {
   id: string;
   name?: string;
   character_design?: string;
+  avatar_url?: string;
+  original_photo_url?: string;
   // Add any other profile fields you have
 }
 
@@ -21,6 +23,8 @@ interface UserContextType {
   updateProfile: (updates: {
     name?: string;
     character_design?: string;
+    avatar_url?: string;
+    original_photo_url?: string;
   }) => Promise<void>;
 }
 
@@ -109,6 +113,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateProfile = async (updates: {
     name?: string;
     character_design?: string;
+    avatar_url?: string;
+    original_photo_url?: string;
   }) => {
     if (!user) throw new Error("No user is logged in to update profile.");
     try {

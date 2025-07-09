@@ -104,7 +104,7 @@ const buildHeaders = () => ({
 });
 
 serve(async (req) => {
-  console.log("--- Function process_dream Started ---");
+  //console.log("--- Function process_dream Started ---");
   try {
     // Get authenticated user
     const authHeader = req.headers.get("Authorization");
@@ -124,7 +124,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    console.log(`Authenticated user: ${userId}`);
+    // console.log(`Authenticated user: ${userId}`);
 
     // Get user profile
     const { data: profile, error: profileError } = await admin
@@ -217,14 +217,6 @@ serve(async (req) => {
       throw new Error("Either text or audio must be provided");
     }
 
-    // NEW LOG: Confirm we have a transcript and a valid API key before calling OpenAI
-    console.log(
-      `Transcript ready. Calling OpenAI with API key starting with: ${env.OPENAI_API_KEY?.substring(
-        0,
-        8
-      )}`
-    );
-
     /* GENERATE STORYBOARD WITH GPT */
     const sb: Storyboard = await new OpenAI({
       apiKey: env.OPENAI_API_KEY!,
@@ -237,7 +229,7 @@ serve(async (req) => {
       .then((r) => JSON.parse(r.choices[0].message.content!));
 
     // NEW LOG: Confirm storyboard was generated
-    console.log("✅ Storyboard received from OpenAI.");
+    //console.log("✅ Storyboard received from OpenAI.");
     if (DEBUG) {
       console.log("📜 Storyboard from OpenAI:", JSON.stringify(sb, null, 2));
     }
@@ -250,7 +242,7 @@ serve(async (req) => {
 
     // Set the art style and character design for DALL-E
     const SHARED = sharedBlock(sb.style, characterDesign);
-    console.log("🎨 Shared style block created. Starting panel generation...");
+    //console.log("🎨 Shared style block created. Starting panel generation...");
 
     /* GENERATE & UPLOAD PANELS WITH DALL-E */
     const imageUrls: string[] = [];
@@ -305,7 +297,7 @@ serve(async (req) => {
       cost_cents: 5 * sb.panels.length,
     });
 
-    console.log("✅ Database record created.");
+    //console.log("✅ Database record created.");
 
     /* RESPOND TO CLIENT */
     return new Response(JSON.stringify({ comicId, urls: imageUrls }), {
