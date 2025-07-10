@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET") # <-- Get secret from .env
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 @app.route('/generate_avatar', methods=['POST'])
 def generate_avatar():
@@ -38,14 +38,12 @@ def generate_avatar():
             return jsonify({'error': 'image_url is required'}), 400
         
         # Download the image content directly into memory
-        print(f"Downloading image from: {image_url}")
         response = requests.get(image_url)
         response.raise_for_status()
         image_bytes = response.content # <-- Get image data as bytes
 
         image_to_send = ("user_image.jpg", image_bytes)
         # Generate the avatar using the in-memory bytes
-        print("Generating avatar with OpenAI...")
         result = client.images.edit(
             model="gpt-image-1",
             image=[image_to_send], # <-- Pass the bytes directly
@@ -55,15 +53,7 @@ def generate_avatar():
         )
         
         image_base64 = result.data[0].b64_json
-        print(result.data[0])
 
-        print("Saving debug image to 'debug_output.png'...")
-        debug_image_bytes = base64.b64decode(image_base64)
-        with open("debug_output.png", "wb") as f:
-            f.write(debug_image_bytes)
-
-
-        print("Avatar generation completed successfully")
         return jsonify({
             'b64_json': image_base64,
             'status': 'success'

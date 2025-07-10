@@ -39,28 +39,19 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
       }
 
       // Debug: Log user ID and file path
-      console.log("User ID:", user?.id);
-      console.log("User ID type:", typeof user?.id);
 
       // 3. Upload original photo to storage with proper folder structure
       const fileName = `${user?.id}/original_${Date.now()}.jpg`;
-      console.log("File path:", fileName);
-
-      console.log("imageUri:", imageUri);
 
       // Use arrayBuffer instead of blob for more reliable binary data handling
       const response = await fetch(imageUri);
-      console.log("response.ok:", response.ok);
 
       // Get the image as arrayBuffer
       const arrayBuffer = await response.arrayBuffer();
-      console.log("arrayBuffer length:", arrayBuffer.byteLength);
 
       // Convert to Uint8Array
       const byteArray = new Uint8Array(arrayBuffer);
-      console.log("byteArray length:", byteArray.length);
 
-      console.log("About to upload file to storage...");
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(fileName, byteArray, {
@@ -68,11 +59,8 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
         });
 
       if (uploadError) {
-        console.error("Upload error:", uploadError);
         throw uploadError;
       }
-
-      console.log("Upload successful:", uploadData);
 
       // 4. Get signed URL for the edge function
       const { data: urlData, error: urlError } = await supabase.storage
@@ -81,12 +69,9 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
 
       if (urlError) throw urlError;
 
-      console.log("Signed URL for edge function:", urlData.signedUrl);
-
       // 5. Call Python Backend directly (no Edge Function needed)
       const pythonBackendUrl = "http://localhost:8000/generate_avatar"; // Adjust URL as needed
 
-      console.log("Calling Python backend for image generation...");
       const pythonResponse = await fetch(pythonBackendUrl, {
         method: "POST",
         headers: {
@@ -102,27 +87,16 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
 
       if (!pythonResponse.ok) {
         const errorText = await pythonResponse.text();
-        console.error("Python backend error:", errorText);
         throw new Error(`Python backend failed: ${pythonResponse.status}`);
       }
 
       const data = await pythonResponse.json();
       const base64Image = data.b64_json;
 
-      console.log(
-        "Received base64 data length:",
-        base64Image ? base64Image.length : 0
-      );
-
       if (!base64Image) {
         throw new Error("Python backend did not return image data");
       }
 
-      console.log("Image generated successfully by Python backend");
-
-      // 6. Save comic avatar to storage with proper folder structure
-      // 6. Save comic avatar to storage with proper folder structure
-      // 6. Save comic avatar to storage by replicating the original upload flow
       const comicFileName = `${user?.id}/comic_${Date.now()}.png`;
 
       // Step A: Create a temporary file path in the app's cache
@@ -133,14 +107,10 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      console.log("Saved comic to temporary file:", tempComicPath);
-
       // Step C: Read the new file back as binary data (just like the original)
       const res = await fetch(tempComicPath);
       const arrayBufferComic = await res.arrayBuffer();
       const byteArrayComic = new Uint8Array(arrayBufferComic);
-
-      console.log("Read back comic byte array length:", byteArrayComic.length);
 
       // Step D: Upload the binary data to Supabase
       const { data: comicUploadData, error: comicUploadError } =
@@ -151,7 +121,6 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
           });
 
       if (comicUploadError) {
-        console.error("Comic upload error:", comicUploadError);
         throw comicUploadError;
       }
       // 7. Get signed URL for the comic avatar
@@ -171,7 +140,6 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
       onSuccess?.(comicFileName);
       Alert.alert("Success", "Your comic avatar has been generated!");
     } catch (error: any) {
-      console.error("Image processing error:", error);
       const errorMessage = error.message || "Failed to process image";
       onError?.(errorMessage);
       Alert.alert("Error", errorMessage);
