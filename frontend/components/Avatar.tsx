@@ -11,7 +11,7 @@ interface AvatarProps {
 
 export const Avatar: React.FC<AvatarProps> = ({
   avatarUrl,
-  size = 80,
+  size = 160,
   style,
 }) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);

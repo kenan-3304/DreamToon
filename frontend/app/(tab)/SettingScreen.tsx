@@ -148,7 +148,7 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.userSection}>
           <View style={styles.userAvatar}>
             {profile?.avatar_url ? (
-              <Avatar avatarUrl={profile.avatar_url} size={80} />
+              <Avatar avatarUrl={profile.avatar_url} size={100} />
             ) : (
               <Ionicons name="person" size={40} color="#00EAFF" />
             )}

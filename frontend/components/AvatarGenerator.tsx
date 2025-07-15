@@ -12,11 +12,19 @@ import * as FileSystem from "expo-file-system";
 import { supabase } from "../utils/supabase";
 import { useUser } from "../context/UserContext";
 
+//Set up a interface for avatar gen.
+
 interface AvatarGeneratorProps {
   onSuccess?: (avatarUrl: string) => void;
   onError?: (error: string) => void;
 }
 
+/**
+ * AvatarGenerator component
+ * @param onSuccess - Callback function when avatar generation is successful
+ * @param onError - Callback function when avatar generation fails
+ * @returns AvatarGenerator component
+ */
 export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
   onSuccess,
   onError,
@@ -29,6 +37,11 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
     return true;
   };
 
+  /**
+   * Take the image check its validity upload the image to database
+   * @param imageUri
+   * @returns
+   */
   const processImage = async (imageUri: string) => {
     try {
       // 2. Validate face
@@ -123,7 +136,8 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
       if (comicUploadError) {
         throw comicUploadError;
       }
-      // 7. Get signed URL for the comic avatar
+
+      //create a signed url for whever we need to pull the avatar.
       const { data: comicUrlData, error: comicUrlError } =
         await supabase.storage
           .from("avatars")
@@ -131,7 +145,7 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
 
       if (comicUrlError) throw comicUrlError;
 
-      // 8. Update profile with file paths (not signed URLs)
+      // Update profile with file paths (not signed URLs)
       await updateProfile({
         avatar_url: comicFileName,
         original_photo_url: fileName,
