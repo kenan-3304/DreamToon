@@ -10,8 +10,12 @@ from .helper import encode_image_to_base64
 
 app = FastAPI()
 
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
 STYLE_LIBRARY = {
-    "simpsons": "Simpsons animation — yellow tones, thick black outlines, cartoon exaggeration."
+    "simpsons": "Simpsons animation — yellow tones, thick black outlines, cartoon exaggeration.",
+    "American": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features."
     }
 
 class ComicRequest(BaseModel):
@@ -34,6 +38,18 @@ def main():
     """
     Main function to orchestrate the story-to-comic generation process.
     """
+    print("auth check")
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({'error': 'Authorization header is required'}), 401
+
+    try:
+        token = auth_header.split(" ")[1]
+        jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience='authenticated')
+    except Exception as e:
+        return jsonify({'error': f'Invalid token: {str(e)}'}), 401
+
     print("--- Starting Comic Generation Process ---")
 
     # 1) we have to check ovbious moderation issues

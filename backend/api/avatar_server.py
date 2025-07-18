@@ -7,7 +7,7 @@ import jwt # <-- Import the jwt library
 from dotenv import load_dotenv # <-- Import dotenv
 import base64
 
-load_dotenv() # <-- Load .env variables
+#load_dotenv() # <-- Load .env variables
 
 app = Flask(__name__)
 CORS(app)
