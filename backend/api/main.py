@@ -198,43 +198,37 @@ async def get_comic_status(dream_id: str):
     # Return the signed URLs to the frontend
     return {"status": status, "panel_urls": signed_urls}
 
-
+#get the signed id for all comic thumbnails
 @app.get("/comics/")
 async def get_all_comics(authorization: str = Header(None)):
-    print("--- GET /comics/ smoke test endpoint was hit ---")
-    return {"message": "Endpoint was reached successfully"}
+    print("--- GET /comics/ endpoint was hit ---")
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header is required")
 
-    # if not authorization:
-    #     raise HTTPException(status_code=401, detail="Authorization header is required")
+    try:
+        token = authorization.split(" ")[1]
+        response = supabase.auth.get_user(token)
+        user = response.user
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    # try:
-    #     token = authorization.split(" ")[1]
-    #     response = supabase.auth.get_user(token)
-    #     user = response.user
-    #     if not user:
-    #         raise HTTPException(status_code=401, detail="Invalid token")
-    # except Exception as e:
-    #     raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
-
-    # # Fetch all comics for the user from the database
-    # comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
+    # Fetch comics from the database
+    comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
     
-    # comics_data = comics_response.data
+    comics_data = comics_response.data
     
-    # # For each comic, generate a signed URL for the first image
-    # for comic in comics_data:
-    #     image_paths = comic.get("image_urls")
-    #     if image_paths and len(image_paths) > 0:
-    #         # The path is the first image's stored path
-    #         thumbnail_path = image_paths[0]
-            
-    #         # Generate a temporary signed URL for the thumbnail
-    #         signed_url_response = supabase.storage.from_('comics').create_signed_url(thumbnail_path, expires_in=300) # 5 min expiry
-            
-    #         # Replace the list of paths with a single, usable signed URL for the thumbnail
-    #         comic["image_urls"] = [signed_url_response['signedURL']]
-    #     else:
-    #         # Ensure there's always an array, even if empty
-    #         comic["image_urls"] = []
+    # This check prevents the server from crashing if no comics are found
+    if comics_data:
+        for comic in comics_data:
+            image_paths = comic.get("image_urls")
+            if image_paths and len(image_paths) > 0:
+                thumbnail_path = image_paths[0]
+                signed_url_response = supabase.storage.from_('comics').create_signed_url(thumbnail_path, expires_in=300)
+                comic["image_urls"] = [signed_url_response['signedURL']]
+            else:
+                comic["image_urls"] = []
 
-    # return comics_data
+    # This ensures you always return a list, even if it's empty
+    return comics_data or []
