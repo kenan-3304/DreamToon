@@ -1,8 +1,38 @@
 import React from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 const ProcessingScreen: React.FC = () => {
+  const router = useRouter();
+  const { dream_id } = useLocalSearchParams();
+  const [status, setStatus] = useState("processing");
+  const [panelUrls, setPanelUrls] = useState([]);
+
+  useEffect(() => {
+    if (!dream_id) return;
+    const interval = setInterval(async () => {
+      const res = await fetch(`https://your-backend/comic-status/${dream_id}`);
+      const data = await res.json();
+      setStatus(data.status);
+      if (data.status === "complete") {
+        setPanelUrls(data.panel_urls);
+        clearInterval(interval);
+        // Navigate to result screen
+        router.replace({
+          pathname: "/(tab)/ComicResultScreen",
+          params: { urls: JSON.stringify(data.panel_urls) },
+        });
+      } else if (data.status === "error") {
+        clearInterval(interval);
+        Alert.alert("Error", "Comic generation failed.");
+        router.replace("/(tab)/EnhancedDashboardScreen");
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [dream_id]);
+
   return (
     <LinearGradient
       colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
@@ -46,4 +76,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProcessingScreen;
-

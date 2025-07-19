@@ -1,8 +1,10 @@
+import json
+import os
 from openai import OpenAI
 from .prompt_builder import build_initial_prompt
-import json
+from io import BytesIO
 
-client = OpenAI(api_key="api key")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def get_moderation(story) -> bool:
     response = client.moderations.create(
@@ -48,13 +50,6 @@ def generate_image(prompt_text, avatar):
             "image_url": f"data:image/png;base64,{avatar}"
         }
     ]
-    
-    # if previous_panel_b64:
-    #     print("Including previous panel from memory for consistency.")
-    #     content_list.append({
-    #         "type": "input_image",
-    #         "image_url": f"data:image/png;base64,{previous_panel_b64}"
-    #     })
 
     image_tool = {
         "type": "image_generation",
@@ -72,12 +67,24 @@ def generate_image(prompt_text, avatar):
 
         if image_generation_call and image_generation_call.result:
 #           return the base64 image result
-            return image_generation_call.result
+            return image_generation_call.result.read()
         else:
             print(f"Failed to generate image, Response: {response.output}")
             return None
     except Exception as e:
         print(f"An API error occurred: {e}")
         return None
+
+def transcribe_audio(audio_bytes):
+    audio_file = BytesIO(audio_bytes)
+    audio_file.name = "audio.m4a"  # OpenAI expects a filename
+
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        response_format="text"
+    )
+    return transcription.text
+
 
     

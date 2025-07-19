@@ -183,6 +183,7 @@ const DottedSphere = ({
 const styles = StyleSheet.create({
   canvas: {
     ...StyleSheet.absoluteFillObject,
+    pointerEvents: "none",
   },
 });
 

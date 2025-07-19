@@ -2,27 +2,40 @@
 
 import os
 import base64
-from fastapi import FastAPI, HTTPException
+import jwt
+import requests
+import uuid
+from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from .api_clients import get_moderation, get_panel_descriptions, generate_image
-from .prompt_builder import build_image_prompt
+from .api_clients import get_moderation
 from .helper import encode_image_to_base64
+from .db_client import supabase
+from .worker import run_comic_generation_worker
 
 app = FastAPI()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# CORS setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 STYLE_LIBRARY = {
     "simpsons": "Simpsons animation — yellow tones, thick black outlines, cartoon exaggeration.",
-    "American": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features."
+    "american": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features."
     }
 
 class ComicRequest(BaseModel):
-    story: str
+    story: str | None
+    audio_url: str | None
     num_panels: int = 6
     style_name: str
-    character_reference_path: str
 
 #will come from the front end later
 STORY_INPUT = "A laid-back guy with spiky hair is at an airport McDonald's in Italy, surrounded by bags of edibles. An officer approaches, looking angry. But then i recognize the officer and then the officer bursts out laughing, and everyone is relieved."
@@ -34,87 +47,96 @@ OUTPUT_DIR = "output"
 
 #also handle auth later
 @app.post("/generate-comic/")
-def main():
-    """
-    Main function to orchestrate the story-to-comic generation process.
-    """
-    print("auth check")
-
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return jsonify({'error': 'Authorization header is required'}), 401
+async def generate_comic(
+    comic_request: ComicRequest,
+    background_tasks: BackgroundTasks,
+    authorization: str = Header(None)
+    
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header is required")
 
     try:
-        token = auth_header.split(" ")[1]
-        jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience='authenticated')
+        token = authorization.split(" ")[1] 
+        
+        # Use the Supabase client to verify the token and get the user
+        response = supabase.auth.get_user(token)
+        user = response.user
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
     except Exception as e:
-        return jsonify({'error': f'Invalid token: {str(e)}'}), 401
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+
+    
+    #---------get the avatar image--------------#
+    profile_response = supabase.from_("profiles").select("avatar_url").eq("id", user.id).single().execute()
+    if not profile_response.data or not profile_response.data.get("avatar_url"):
+        raise HTTPException(status_code=404, detail="User profile or avatar not found.")
+    
+    avatar_path = profile_response.data["avatar_url"]
+
+    # 3. Download the private avatar image from the 'avatars' bucket
+    try:
+        image_bytes = supabase.storage.from_("avatars").download(avatar_path)
+    except Exception as e:
+        # Handle cases where the file might not exist in storage
+        raise HTTPException(status_code=404, detail=f"Failed to download avatar from storage: {e}")
+
+    # 4. Encode the downloaded image bytes into a Base64 string
+    avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
     print("--- Starting Comic Generation Process ---")
 
-    # 1) we have to check ovbious moderation issues
+    #----------Create a DB instance-------------#
+    insert_response = supabase.from_("comics").insert({
+        "user_id": user.id,
+        "transcript": comic_request.story,
+        "style": comic_request.style_name
+    }).execute()
+    
+    dream_id = insert_response.data[0]['id']
+
+
+    #----------Send the text or process audio--------------#
+    story_text = ""
+    if comic_request.story:
+        story_text = comic_request.story
+    elif comic_request.audio_url:
+        audio_response = requests.get(comic_request.audio_url)
+        audio_response.raise_for_status()
+        story_text = transcribe_audio(audio_response.content)
+    else:
+        # Update status to error if no input is provided
+        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
+
+    supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
+
+    #---------Check Moderation----------#
+    # we have to check ovbious moderation issues
     print("Step 1: Checking story for content policy compliance...")
-    is_safe, reason = is_content_safe_for_comic(STORY_INPUT)
+    is_safe, reason = is_content_safe_for_comic(story_text)
     if not is_safe:
         print(f"Error: Story is not compliant. Reason: {reason}")
-        return #some policy error so stop execution
+        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        # Return an error response
+        raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
 
-    print("Story passed moderation.")
+    #-------send full prompt for multi-thread approach---------#
 
-    # 2) now we have to generate the image prompt
-    print("Step 2: Generating panel descriptions from the story...")
-    panel_data = get_panel_descriptions(STORY_INPUT, NUM_PANELS, STYLE_NAME)
+    background_tasks.add_task(
+        run_comic_generation_worker,
+        dream_id,
+        user.id,
+        story_text,
+        comic_request.num_panels,
+        comic_request.style_name,
+        avatar_b64
+    )
 
-    # there are some possible erros that need to be accounted for
-    if panel_data.get("status") == "error":
-        print(f"Error from LLM: {panel_data.get('message')}")
-        return
+    return {"dream_id": dream_id}
 
-    panels = panel_data.get("panels")
-    if not panels:
-        print("Error: The LLM did not return any panels.")
-        return
-
-    character_sheet = panel_data.get("character_sheet")
-    if not character_sheet:
-        print("No character sheet loaded")
-        character_sheet = "Follow reference image"
-    
-
-    print(f"Successfully generated descriptions for {len(panels)} panels.")
-
-    # 3) Image Generation Loop
-    print("Step 3: Generating comic panel images...")
-    #previous_panel_b64 = None
-    avatar_b64 = encode_image_to_base64(CHARACTER_REFERENCE_PATH)
-
-    for i, panel in enumerate(panels):
-        panel_num = i
-        print(f"\nGenerating Panel {panel_num}...")
-
-        # 3a) Assemble the final prompt string for the image generator
-        final_prompt_string = build_image_prompt(panel, character_sheet)
-        
-        # 3b) Generate the image - removed previous panel from here
-        image_bytes = generate_image(
-            prompt_text=final_prompt_string,
-            avatar=avatar_b64
-        )
-
-        if image_bytes:
-            # 3c) Save the generated image
-            output_path = os.path.join(OUTPUT_DIR, f"{STYLE_NAME}_panel_{panel_num}.png")
-            with open(output_path, "wb") as f:
-                f.write(base64.b64decode(image_bytes))
-            print(f"Successfully saved Panel {panel_num} to {output_path}")
-            
-            # 3d) Update the reference for the next panel
-            #previous_panel_b64 = image_bytes
-        else:
-            print(f"Failed to generate image for Panel {panel_num}. Stopping.")
-            break
-
-    print("\n--- Comic Generation Process Complete ---")
 
 
 def is_content_safe_for_comic(text: str) -> (bool, str):
@@ -151,9 +173,64 @@ def is_content_safe_for_comic(text: str) -> (bool, str):
 
     return True, "Content is compliant."
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
 
-if __name__ == "__main__":
-    main()
+
+@app.get("/comic-status/{dream_id}")
+async def get_comic_status(dream_id: str):
+    response = supabase.from_("comics").select("status, image_urls").eq("id", dream_id).single().execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Comic not found")
+    
+    data = response.data
+    status = data.get("status")
+    signed_urls = []
+
+    # If complete, generate temporary signed URLs from the stored paths
+    if status == "complete" and data.get("image_urls"):
+        stored_paths = data["image_urls"]
+        expires_in = 300  # 5 minutes
+
+        for path in stored_paths:
+            signed_url_response = supabase.storage.from_('comics').create_signed_url(path, expires_in)
+            signed_urls.append(signed_url_response['signedURL'])
+
+    # Return the signed URLs to the frontend
+    return {"status": status, "panel_urls": signed_urls}
+
+@app.get("/comics/")
+async def get_all_comics(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header is required")
+
+    try:
+        token = authorization.split(" ")[1]
+        response = supabase.auth.get_user(token)
+        user = response.user
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+
+    # Fetch all comics for the user from the database
+    comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
+    
+    comics_data = comics_response.data
+    
+    # For each comic, generate a signed URL for the first image
+    for comic in comics_data:
+        image_paths = comic.get("image_urls")
+        if image_paths and len(image_paths) > 0:
+            # The path is the first image's stored path
+            thumbnail_path = image_paths[0]
+            
+            # Generate a temporary signed URL for the thumbnail
+            signed_url_response = supabase.storage.from_('comics').create_signed_url(thumbnail_path, expires_in=300) # 5 min expiry
+            
+            # Replace the list of paths with a single, usable signed URL for the thumbnail
+            comic["image_urls"] = [signed_url_response['signedURL']]
+        else:
+            # Ensure there's always an array, even if empty
+            comic["image_urls"] = []
+
+    return comics_data

@@ -65,7 +65,6 @@ interface ComicEntry {
   created_at: string; // ISO
   title: string;
   style: string;
-  liked: boolean;
   image_urls: string[];
 }
 
@@ -120,24 +119,33 @@ export const TimelineScreen: React.FC = () => {
     if (!profile) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("comics")
-        .select("*")
-        .eq("user_id", profile.id)
-        .order("created_at", { ascending: false });
+      // 1. Get the user's session to retrieve the access token.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("User not authenticated. Cannot fetch comics.");
+      }
 
-      if (error) throw error;
+      // 2. Call your new backend endpoint with the authorization header.
+      //    Replace "https://your-backend-url" with your actual backend's URL.
+      const response = await fetch("https://your-backend-url/comics/", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      const mapped: ComicEntry[] = (data ?? []).map((c: any) => ({
-        id: c.id,
-        created_at: c.created_at,
-        title: c.storyboard?.title ?? "Untitled Dream",
-        style: "",
-        liked: c.liked ?? false,
-        image_urls: c.image_urls ?? [],
-      }));
+      if (!response.ok) {
+        // Handle potential errors from your backend API
+        const errorData = await response.json();
+        throw new Error(
+          errorData.detail || "Failed to fetch comics from server."
+        );
+      }
 
-      setComics(mapped);
+      // 3. The backend returns the comics with valid, signed URLs ready for display.
+      const comicsFromServer: ComicEntry[] = await response.json();
+      setComics(comicsFromServer);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to load your dreams. Try again.");
@@ -149,16 +157,6 @@ export const TimelineScreen: React.FC = () => {
   useEffect(() => {
     fetchComics();
   }, [profile]);
-
-  /*──────── Helpers ────────*/
-  const toggleLike = async (id: string) => {
-    setComics((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, liked: !c.liked } : c))
-    );
-    const target = comics.find((c) => c.id === id);
-    if (!target) return;
-    await supabase.from("comics").update({ liked: !target.liked }).eq("id", id);
-  };
 
   /*──────── Month filter ────────*/
   const filtered = comics.filter(

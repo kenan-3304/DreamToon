@@ -22,9 +22,11 @@ Based on your validation, you will take one of two paths:
 
 **Instructions for a 'success' response:**
 
-1.  **character_sheet**: Based on the story, create a single, detailed, reusable paragraph describing the main character. Be specific about immutable features like facial structure, eye color, hair style and color, and signature clothing items. For example: "The main character is a laid-back guy with an oval face, brown eyes, and dark brown, spiky hair. He consistently wears a black shirt with jeans and grey sneakers."
+1. **title***: Based on the story, create a one to three word title that describes the overall comic.  
 
-2.  **panels**: Generate the list of panel objects. Each panel object must contain the following keys:
+2. **character_sheet**: Based on the story, create a single, detailed, reusable paragraph describing the main character. Be specific about immutable features like facial structure, eye color, hair style and color, and signature clothing items. For example: "The main character is a laid-back guy with an oval face, brown eyes, and dark brown, spiky hair. He consistently wears a black shirt with jeans and grey sneakers."
+
+3.  **panels**: Generate the list of panel objects. Each panel object must contain the following keys:
     *   **reference_guidance**: This MUST always be: "In the distinct style of the provided main character reference image".
     *   **composition**: Describe the virtual camera shot using specific cinematic terms.
     *   **action_and_emotion**: Describe the specific actions and physical facial expressions, applying the Creative Reframing Principles if necessary.

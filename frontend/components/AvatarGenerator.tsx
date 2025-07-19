@@ -83,7 +83,8 @@ export const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
       if (urlError) throw urlError;
 
       // 5. Call Python Backend directly (no Edge Function needed)
-      const pythonBackendUrl = "http://localhost:8000/generate_avatar"; // Adjust URL as needed
+      const pythonBackendUrl =
+        "https://dreamtoon-avatar.onrender.com/generate_avatar"; // reder url
 
       const pythonResponse = await fetch(pythonBackendUrl, {
         method: "POST",
