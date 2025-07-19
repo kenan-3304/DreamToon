@@ -44,21 +44,53 @@ const getResponsiveValue = (phone: number, tablet: number) =>
 
 export default function ComicResultScreen() {
   const router = useRouter();
-  const {
-    urls,
-    title: initialTitle,
-    id,
-  } = useLocalSearchParams<{ urls: string; title?: string; id?: string }>();
+  const { urls, id } = useLocalSearchParams<{ urls: string; id?: string }>();
+
+  const [panelUrls, setPanelUrls] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchComicData = async () => {
+      if (!id) {
+        // Fallback for old navigation method or direct access
+        console.error("Didnt send the dream id");
+        try {
+          if (urls) setPanelUrls(JSON.parse(urls));
+        } catch {}
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch the full comic data using the ID
+      try {
+        const res = await fetch(
+          `https://dreamtoon.onrender.com/comic-status/${id}`
+        );
+        const data = await res.json();
+        if (data.status === "complete") {
+          setPanelUrls(data.panel_urls);
+        } else {
+          Alert.alert("Error", "Could not load the full comic.");
+        }
+      } catch (e) {
+        Alert.alert("Error", "Failed to connect to the server.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchComicData();
+  }, [id, urls]);
 
   /*──────── Parse Query Param ────────*/
-  let comicUrls: string[] = [];
-  try {
-    if (urls) comicUrls = JSON.parse(urls);
-  } catch {
-    if (typeof urls === "string" && urls.startsWith("http")) comicUrls = [urls];
-  }
-  const PANELS = comicUrls.length
-    ? comicUrls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
+  // let comicUrls: string[] = [];
+  // try {
+  //   if (urls) comicUrls = JSON.parse(urls);
+  // } catch {
+  //   if (typeof urls === "string" && urls.startsWith("http")) comicUrls = [urls];
+  // }
+  const PANELS = panelUrls.length
+    ? panelUrls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
     : FALLBACK;
 
   /*──────── Dynamic tile width ────────*/
@@ -100,15 +132,15 @@ export default function ComicResultScreen() {
 
   /*──────── Navigation helpers ────────*/
   const discard = () => router.push("/(tab)/EnhancedDashboardScreen");
-  const handleBack = () => (comicUrls.length ? router.back() : discard());
+  const handleBack = () => (panelUrls.length ? router.back() : discard());
 
   /*──────── Share / Download ────────*/
   const handleShare = async () => {
-    if (!comicUrls.length) return Alert.alert("No comic to share");
+    if (!panelUrls.length) return Alert.alert("No comic to share");
     try {
       await Share.share({
         message: "Check out my dream comic!",
-        url: comicUrls[0],
+        url: panelUrls[0],
       });
     } catch {
       Alert.alert("Error", "Failed to share the comic");
@@ -116,12 +148,12 @@ export default function ComicResultScreen() {
   };
 
   const handleDownload = async () => {
-    if (!comicUrls.length) return Alert.alert("No comic to download");
+    if (!panelUrls.length) return Alert.alert("No comic to download");
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted")
       return Alert.alert("Permission", "Please allow access to save images");
     const fileUri = `${FileSystem.documentDirectory}dream_${Date.now()}.jpg`;
-    const dl = await FileSystem.downloadAsync(comicUrls[0], fileUri);
+    const dl = await FileSystem.downloadAsync(panelUrls[0], fileUri);
     if (dl.status === 200) {
       await MediaLibrary.saveToLibraryAsync(dl.uri);
       Alert.alert("Saved", "Comic panel saved to Photos");

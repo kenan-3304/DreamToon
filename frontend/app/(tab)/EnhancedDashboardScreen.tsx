@@ -222,15 +222,6 @@ const EnhancedDashboardScreen: React.FC = () => {
 
     try {
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
-      const formData = new FormData();
-      formData.append("audio_file", {
-        uri: recordingUri,
-        type: "audio/wav", // Assuming your audio is in WAV format
-        name: "recording.wav",
-      } as any); // Use 'any' or define a proper type if needed
-      formData.append("story", dreamText.trim());
-      formData.append("num_panels", "6");
-      formData.append("style_name", "american");
 
       const response = await fetch(backendURL, {
         method: "POST",
@@ -238,7 +229,11 @@ const EnhancedDashboardScreen: React.FC = () => {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: formData,
+        body: JSON.stringify({
+          audio_url: recordingUri,
+          num_panels: 6,
+          style_name: "american",
+        }),
       });
 
       const data = await response.json();

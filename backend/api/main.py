@@ -8,7 +8,7 @@ import uuid
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from .api_clients import get_moderation
+from .api_clients import get_moderation, transcribe_audio
 from .helper import encode_image_to_base64
 from .db_client import supabase
 from .worker import run_comic_generation_worker
@@ -198,8 +198,10 @@ async def get_comic_status(dream_id: str):
     # Return the signed URLs to the frontend
     return {"status": status, "panel_urls": signed_urls}
 
+
 @app.get("/comics/")
 async def get_all_comics(authorization: str = Header(None)):
+    print("--- GET /comics/ endpoint was hit ---")
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is required")
 

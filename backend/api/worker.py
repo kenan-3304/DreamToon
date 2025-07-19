@@ -36,11 +36,13 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         # ------handle errors-------#
         if panel_data.get("status") == "error":
             print(f"Error from LLM: {panel_data.get('message')}")
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
             return
 
         panels = panel_data.get("panels")
         if not panels:
             print("Error: The LLM did not return any panels.")
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
             return
 
         character_sheet = panel_data.get("character_sheet", "follow reference image")

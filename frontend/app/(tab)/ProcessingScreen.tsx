@@ -13,7 +13,9 @@ const ProcessingScreen: React.FC = () => {
   useEffect(() => {
     if (!dream_id) return;
     const interval = setInterval(async () => {
-      const res = await fetch(`https://your-backend/comic-status/${dream_id}`);
+      const res = await fetch(
+        `https://dreamtoon.onrender.com/comic-status/${dream_id}`
+      );
       const data = await res.json();
       setStatus(data.status);
       if (data.status === "complete") {

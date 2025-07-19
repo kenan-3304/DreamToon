@@ -127,9 +127,8 @@ export const TimelineScreen: React.FC = () => {
         throw new Error("User not authenticated. Cannot fetch comics.");
       }
 
-      // 2. Call your new backend endpoint with the authorization header.
-      //    Replace "https://your-backend-url" with your actual backend's URL.
-      const response = await fetch("https://your-backend-url/comics/", {
+      // 2. Call new backend endpoint with the authorization header.
+      const response = await fetch("https://dreamtoon.onrender.com/comics/", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -258,7 +257,6 @@ export const TimelineScreen: React.FC = () => {
                       pathname: "/(tab)/ComicResultScreen",
                       params: {
                         urls: JSON.stringify(c.image_urls),
-                        title: c.title,
                         id: c.id,
                       },
                     });
