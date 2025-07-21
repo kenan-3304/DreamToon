@@ -144,6 +144,7 @@ def is_content_safe_for_comic(text: str) -> (bool, str):
     Performs a nuanced moderation check.
     Allows for some 'violence' but blocks other categories strictly.
     """
+    print("---reached mod check-----")
     # these are the thresholds from 0-1 
     MODERATION_THRESHOLDS = {
         "hate": 0.1,
@@ -167,9 +168,9 @@ def is_content_safe_for_comic(text: str) -> (bool, str):
     # The API returns scores for each category. We check if any score exceeds our defined threshold.
     category_scores = moderation_result.results[0].category_scores
 
-    for category, score in category_scores:
-        if category in MODERATION_THRESHOLDS and score > MODERATION_THRESHOLDS[category]:
-            return False, f"Content flagged for '{category}' with score {score:.4f} (threshold: {MODERATION_THRESHOLDS[category]})"
+    for category, score in category_scores.items():
+        if category.name in MODERATION_THRESHOLDS and score > MODERATION_THRESHOLDS[category.name]:
+            return False, f"Content flagged for '{category.name}' with score {score:.4f} (threshold: {MODERATION_THRESHOLDS[category.name]})"
 
     return True, "Content is compliant."
 

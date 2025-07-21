@@ -209,8 +209,8 @@ const EnhancedDashboardScreen: React.FC = () => {
         pathname: "/(tab)/ProcessingScreen",
         params: { dream_id: data.dream_id },
       });
-    } catch (e) {
-      console.error("counldnt upload the text", e);
+    } catch (e: any) {
+      console.error("counldnt upload the text", e.message);
     } finally {
       setIsLoading(false);
       setDreamText("");

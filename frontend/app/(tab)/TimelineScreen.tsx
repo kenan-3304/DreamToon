@@ -64,7 +64,7 @@ interface ComicEntry {
   id: string;
   created_at: string; // ISO
   title: string;
-  style: string;
+  style: string | null;
   image_urls: string[];
 }
 
@@ -319,7 +319,7 @@ export const TimelineScreen: React.FC = () => {
                       ]}
                       numberOfLines={1}
                     >
-                      {c.style.toUpperCase()}
+                      {(c.style ?? "").toUpperCase()}
                     </Text>
                   </LinearGradient>
                 </Pressable>
