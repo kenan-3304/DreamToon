@@ -67,44 +67,44 @@ const AuthScreen: React.FC = () => {
   // You could optionally use the 'loading' and 'authError'
   // variables from the hook to disable buttons or show errors.
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <LinearGradient
-        colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.bodyWrapper}>
-        <Text style={styles.heading}>Welcome</Text>
-        <Text style={styles.tagline}>Get your dream comic in seconds</Text>
-        <View style={styles.inputCard}>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email address"
-            placeholderTextColor="#8B8B8B"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.textInput}
-          />
-          <View style={styles.divider} />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor="#8B8B8B"
-            secureTextEntry
-            style={styles.textInput}
-          />
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+        <View style={styles.bodyWrapper}>
+          <Text style={styles.heading}>Welcome</Text>
+          <Text style={styles.tagline}>Get your dream comic in seconds</Text>
+          <View style={styles.inputCard}>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Email address"
+              placeholderTextColor="#8B8B8B"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.textInput}
+            />
+            <View style={styles.divider} />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor="#8B8B8B"
+              secureTextEntry
+              style={styles.textInput}
+            />
+          </View>
+          <View style={{ width: "100%", marginTop: 40 }}>
+            <ShinyGradientButton onPress={handleSignUp}>
+              Create Account
+            </ShinyGradientButton>
+          </View>
+          <View style={{ width: "100%", marginTop: 16 }}>
+            <ShinyGradientButton onPress={handleLogin}>
+              Login
+            </ShinyGradientButton>
+          </View>
         </View>
-        <View style={{ width: "100%", marginTop: 40 }}>
-          <ShinyGradientButton onPress={handleSignUp}>
-            Create Account
-          </ShinyGradientButton>
-        </View>
-        <View style={{ width: "100%", marginTop: 16 }}>
-          <ShinyGradientButton onPress={handleLogin}>Login</ShinyGradientButton>
-        </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </LinearGradient>
   );
 };
 

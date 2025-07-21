@@ -5,9 +5,11 @@ import base64
 import jwt
 import requests
 import uuid
+import json
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from .api_clients import get_moderation, transcribe_audio
 from .helper import encode_image_to_base64
 from .db_client import supabase
@@ -32,8 +34,8 @@ STYLE_LIBRARY = {
     }
 
 class ComicRequest(BaseModel):
-    story: str | None
-    audio_url: str | None
+    story: Optional[str] = None
+    audio_url: Optional[str] = None
     num_panels: int = 6
     style_name: str
 

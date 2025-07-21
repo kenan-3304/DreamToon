@@ -162,141 +162,129 @@ export default function ComicResultScreen() {
 
   /*──────── Render ────────*/
   return (
-    <Background>
-      <LinearGradient
-        colors={["rgba(13,10,60,0.3)", "rgba(13,10,60,0.1)", "rgba(0,0,0,0.1)"]}
-        style={styles.container}
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, isIPad && styles.headerTablet]}>
+        <Pressable style={styles.backButton} onPress={handleBack}>
+          <Ionicons
+            name="arrow-back"
+            size={getResponsiveValue(24, 36)}
+            color="#fff"
+          />
+        </Pressable>
+      </View>
+
+      {/* Title */}
+      <Text style={[styles.titleText, isIPad && styles.titleTextTablet]}>
+        Your Comic
+      </Text>
+
+      {/* Comic grid */}
+      <View
+        style={[styles.comicContainer, isIPad && styles.comicContainerTablet]}
       >
-        {/* Header */}
-        <View style={[styles.header, isIPad && styles.headerTablet]}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
+        <Animated.View style={{ transform: [{ translateY }] }}>
+          <View
+            style={[styles.boardWrapper, isIPad && styles.boardWrapperTablet]}
+          >
+            {PANELS.map((p, idx) => (
+              <Pressable
+                key={p.id}
+                style={[styles.panel, { width: panelSize }]}
+                onPress={() => {
+                  setSelectedPanelIndex(idx);
+                  setIsModalVisible(true);
+                }}
+              >
+                <Image source={p.uri} style={styles.panelImg} />
+              </Pressable>
+            ))}
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Actions */}
+      <View style={[styles.actionsRow, isIPad && styles.actionsRowTablet]}>
+        {(
+          [
+            { icon: "share", onPress: handleShare, color: "#9B5DE5" },
+            { icon: "download", onPress: handleDownload, color: "#7F9CF5" },
+            { icon: "close", onPress: discard, color: "#FF4EE0" },
+          ] as const
+        ).map((b, i) => (
+          <Pressable
+            key={i}
+            style={[
+              styles.circleBtn,
+              isIPad && styles.circleBtnTablet,
+              b.icon === "close" && {
+                borderColor: "#FF4EE0",
+                backgroundColor: "rgba(255,78,224,0.10)",
+              },
+            ]}
+            onPress={b.onPress}
+          >
             <Ionicons
-              name="arrow-back"
-              size={getResponsiveValue(24, 36)}
+              name={b.icon}
+              size={getResponsiveValue(22, 32)}
+              color={b.color}
+            />
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Modal viewer */}
+      <Modal
+        visible={isModalVisible}
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(13,10,60,0.3)",
+            "rgba(13,10,60,0.1)",
+            "rgba(0,0,0,0.1)",
+          ]}
+          style={styles.modalContainer}
+        >
+          <Pressable
+            style={[styles.modalCloseBtn, isIPad && styles.modalCloseBtnTablet]}
+            onPress={() => setIsModalVisible(false)}
+          >
+            <Ionicons
+              name="close"
+              size={getResponsiveValue(28, 40)}
               color="#fff"
             />
           </Pressable>
-        </View>
-
-        {/* Title */}
-        <Text style={[styles.titleText, isIPad && styles.titleTextTablet]}>
-          Your Comic
-        </Text>
-
-        {/* Comic grid */}
-        <View
-          style={[styles.comicContainer, isIPad && styles.comicContainerTablet]}
-        >
-          <Animated.View style={{ transform: [{ translateY }] }}>
-            <View
-              style={[styles.boardWrapper, isIPad && styles.boardWrapperTablet]}
-            >
-              {PANELS.map((p, idx) => (
-                <Pressable
-                  key={p.id}
-                  style={[styles.panel, { width: panelSize }]}
-                  onPress={() => {
-                    setSelectedPanelIndex(idx);
-                    setIsModalVisible(true);
-                  }}
-                >
-                  <Image source={p.uri} style={styles.panelImg} />
-                </Pressable>
-              ))}
-            </View>
-          </Animated.View>
-        </View>
-
-        {/* Actions */}
-        <View style={[styles.actionsRow, isIPad && styles.actionsRowTablet]}>
-          {(
-            [
-              { icon: "share", onPress: handleShare, color: "#9B5DE5" },
-              { icon: "download", onPress: handleDownload, color: "#7F9CF5" },
-              { icon: "close", onPress: discard, color: "#FF4EE0" },
-            ] as const
-          ).map((b, i) => (
-            <Pressable
-              key={i}
-              style={[
-                styles.circleBtn,
-                isIPad && styles.circleBtnTablet,
-                b.icon === "close" && {
-                  borderColor: "#FF4EE0",
-                  backgroundColor: "rgba(255,78,224,0.10)",
-                },
-              ]}
-              onPress={b.onPress}
-            >
-              <Ionicons
-                name={b.icon}
-                size={getResponsiveValue(22, 32)}
-                color={b.color}
-              />
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Modal viewer */}
-        <Modal
-          visible={isModalVisible}
-          animationType="fade"
-          onRequestClose={() => setIsModalVisible(false)}
-        >
-          <LinearGradient
-            colors={[
-              "rgba(13,10,60,0.3)",
-              "rgba(13,10,60,0.1)",
-              "rgba(0,0,0,0.1)",
-            ]}
-            style={styles.modalContainer}
-          >
-            <Pressable
-              style={[
-                styles.modalCloseBtn,
-                isIPad && styles.modalCloseBtnTablet,
-              ]}
-              onPress={() => setIsModalVisible(false)}
-            >
-              <Ionicons
-                name="close"
-                size={getResponsiveValue(28, 40)}
-                color="#fff"
-              />
-            </Pressable>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) =>
-                setSelectedPanelIndex(
-                  Math.round(
-                    e.nativeEvent.contentOffset.x /
-                      Dimensions.get("window").width
-                  )
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) =>
+              setSelectedPanelIndex(
+                Math.round(
+                  e.nativeEvent.contentOffset.x / Dimensions.get("window").width
                 )
-              }
-              contentOffset={{
-                x: selectedPanelIndex * Dimensions.get("window").width,
-                y: 0,
-              }}
-            >
-              {PANELS.map((p, i) => (
-                <View key={i} style={styles.swipePanel}>
-                  <Image
-                    source={p.uri}
-                    style={[
-                      styles.swipeImage,
-                      isIPad && styles.swipeImageTablet,
-                    ]}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          </LinearGradient>
-        </Modal>
-      </LinearGradient>
-    </Background>
+              )
+            }
+            contentOffset={{
+              x: selectedPanelIndex * Dimensions.get("window").width,
+              y: 0,
+            }}
+          >
+            {PANELS.map((p, i) => (
+              <View key={i} style={styles.swipePanel}>
+                <Image
+                  source={p.uri}
+                  style={[styles.swipeImage, isIPad && styles.swipeImageTablet]}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </LinearGradient>
+      </Modal>
+    </LinearGradient>
   );
 }
 

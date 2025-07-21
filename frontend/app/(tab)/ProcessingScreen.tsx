@@ -36,10 +36,7 @@ const ProcessingScreen: React.FC = () => {
   }, [dream_id]);
 
   return (
-    <LinearGradient
-      colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-      style={styles.container}
-    >
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <View style={styles.content}>
         <ActivityIndicator size="large" color="#00EAFF" />
         <Text style={styles.title}>Creating Your Comic</Text>

@@ -15,6 +15,7 @@ import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
 import { AvatarGenerator } from "../../components/AvatarGenerator";
 import { Avatar } from "../../components/Avatar";
+import { rgbaArrayToRGBAColor } from "react-native-reanimated/lib/typescript/Colors";
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
@@ -131,16 +132,14 @@ const SettingsScreen: React.FC = () => {
   ];
 
   return (
-    <LinearGradient
-      colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-      style={styles.container}
-    >
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
+        <View style={{ width: 40 }} /> {/* Spacer to balance the back button */}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -237,7 +236,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginLeft: 20,
+    flex: 1,
+    textAlign: "center",
+    // marginLeft: 20, // Remove marginLeft for true centering
   },
   content: {
     flex: 1,
@@ -284,11 +285,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     paddingHorizontal: 20,
-    backgroundColor: "rgba(13,10,60,0.9)",
-    borderRadius: 15,
+    borderRadius: 20,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,234,255,0.2)",
+    borderColor: "#8D79F0",
+    backgroundColor: "rgba(90, 44, 150, 0.31)",
+    // Shadow for iOS
+    shadowColor: "rgba(91, 55, 223, 0.31)",
+    shadowOffset: { width: 1, height: -12 },
+    shadowOpacity: 1,
+    shadowRadius: 17.7,
+    // Shadow for Android
+    elevation: 8,
   },
   optionIcon: {
     width: 50,

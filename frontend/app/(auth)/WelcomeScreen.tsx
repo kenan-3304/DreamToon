@@ -8,12 +8,9 @@ const WelcomeScreen: React.FC = () => {
   const router = useRouter();
 
   return (
-    <LinearGradient
-      colors={["#0D0A3C", "rgba(13,10,60,0.8)", "#000000"]}
-      style={styles.container}
-    >
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <View style={styles.innerContent}>
-        <Text style={styles.heading}>Welcome to Dream Toon</Text>
+        <Text style={styles.heading}>Turn your dreams into comics</Text>
         <Card>
           <CardContent>
             {/* The image source comes from your original file */}
@@ -23,7 +20,6 @@ const WelcomeScreen: React.FC = () => {
             />
           </CardContent>
         </Card>
-        <Text style={styles.tagline}>Turn your dreams into comics</Text>
 
         {/* This button will now navigate to the new unified AuthScreen */}
         <ShinyGradientButton onPress={() => router.push("/(auth)/AuthScreen")}>
@@ -72,8 +68,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   heroImage: {
-    width: 310,
-    height: 310,
+    width: 410,
+    height: 410,
     borderRadius: 10,
     resizeMode: "cover",
   },
