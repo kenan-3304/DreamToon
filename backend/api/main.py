@@ -45,98 +45,113 @@ STYLE_NAME = "simpsons"
 CHARACTER_REFERENCE_PATH = "./simpsons.png"
 OUTPUT_DIR = "output"
 
+print("did we even start?")
+
 #also handle auth later
 @app.post("/generate-comic/")
 async def generate_comic(
-    comic_request: ComicRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     authorization: str = Header(None)
     
 ):
-    print("starting authentication")
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header is required")
-
+    
+    print("--- RAW REQUEST RECEIVED ---")
     try:
-        token = authorization.split(" ")[1] 
+        body_bytes = await request.body()
+        print("Received Body:", body_bytes.decode('utf-8'))
+    except Exception as e:
+        print("Error reading request body:", e)
+    # --- End of Debugging Block ---
+    
+    # For now, just return a simple message to see if we get this far
+    return {"status": "request logged"}
+
+
+    # print("starting authentication")
+    # if not authorization:
+    #     raise HTTPException(status_code=401, detail="Authorization header is required")
+
+    # try:
+    #     token = authorization.split(" ")[1] 
         
-        # Use the Supabase client to verify the token and get the user
-        response = supabase.auth.get_user(token)
-        user = response.user
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
+    #     # Use the Supabase client to verify the token and get the user
+    #     response = supabase.auth.get_user(token)
+    #     user = response.user
+    #     if not user:
+    #         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    # except Exception as e:
+    #     raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    print("getting avatar")
-    #---------get the avatar image--------------#
-    profile_response = supabase.from_("profiles").select("avatar_url").eq("id", user.id).single().execute()
-    if not profile_response.data or not profile_response.data.get("avatar_url"):
-        raise HTTPException(status_code=404, detail="User profile or avatar not found.")
+    # print("getting avatar")
+    # #---------get the avatar image--------------#
+    # profile_response = supabase.from_("profiles").select("avatar_url").eq("id", user.id).single().execute()
+    # if not profile_response.data or not profile_response.data.get("avatar_url"):
+    #     raise HTTPException(status_code=404, detail="User profile or avatar not found.")
     
-    avatar_path = profile_response.data["avatar_url"]
+    # avatar_path = profile_response.data["avatar_url"]
 
-    # 3. Download the private avatar image from the 'avatars' bucket
-    try:
-        image_bytes = supabase.storage.from_("avatars").download(avatar_path)
-    except Exception as e:
-        # Handle cases where the file might not exist in storage
-        raise HTTPException(status_code=404, detail=f"Failed to download avatar from storage: {e}")
+    # # 3. Download the private avatar image from the 'avatars' bucket
+    # try:
+    #     image_bytes = supabase.storage.from_("avatars").download(avatar_path)
+    # except Exception as e:
+    #     # Handle cases where the file might not exist in storage
+    #     raise HTTPException(status_code=404, detail=f"Failed to download avatar from storage: {e}")
 
-    # 4. Encode the downloaded image bytes into a Base64 string
-    avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
+    # # 4. Encode the downloaded image bytes into a Base64 string
+    # avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-    print("--- Starting Comic Generation Process ---")
+    # print("--- Starting Comic Generation Process ---")
 
-    #----------Create a DB instance-------------#
-    insert_response = supabase.from_("comics").insert({
-        "user_id": user.id,
-        "transcript": comic_request.story,
-        "style": comic_request.style_name
-    }).execute()
+    # #----------Create a DB instance-------------#
+    # insert_response = supabase.from_("comics").insert({
+    #     "user_id": user.id,
+    #     "transcript": comic_request.story,
+    #     "style": comic_request.style_name
+    # }).execute()
     
-    dream_id = insert_response.data[0]['id']
+    # dream_id = insert_response.data[0]['id']
 
 
-    #----------Send the text or process audio--------------#
-    story_text = ""
-    if comic_request.story:
-        story_text = comic_request.story
-    elif comic_request.audio_url:
-        audio_response = requests.get(comic_request.audio_url)
-        audio_response.raise_for_status()
-        story_text = transcribe_audio(audio_response.content)
-    else:
-        # Update status to error if no input is provided
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
+    # #----------Send the text or process audio--------------#
+    # story_text = ""
+    # if comic_request.story:
+    #     story_text = comic_request.story
+    # elif comic_request.audio_url:
+    #     audio_response = requests.get(comic_request.audio_url)
+    #     audio_response.raise_for_status()
+    #     story_text = transcribe_audio(audio_response.content)
+    # else:
+    #     # Update status to error if no input is provided
+    #     supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+    #     raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
 
-    supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
+    # supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
 
-    #---------Check Moderation----------#
-    # we have to check ovbious moderation issues
-    print("Step 1: Checking story for content policy compliance...")
-    is_safe, reason = is_content_safe_for_comic(story_text)
-    if not is_safe:
-        print(f"Error: Story is not compliant. Reason: {reason}")
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        # Return an error response
-        raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
+    # #---------Check Moderation----------#
+    # # we have to check ovbious moderation issues
+    # print("Step 1: Checking story for content policy compliance...")
+    # is_safe, reason = is_content_safe_for_comic(story_text)
+    # if not is_safe:
+    #     print(f"Error: Story is not compliant. Reason: {reason}")
+    #     supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+    #     # Return an error response
+    #     raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
 
-    #-------send full prompt for multi-thread approach---------#
+    # #-------send full prompt for multi-thread approach---------#
 
-    background_tasks.add_task(
-        run_comic_generation_worker,
-        dream_id,
-        user.id,
-        story_text,
-        comic_request.num_panels,
-        comic_request.style_name,
-        avatar_b64
-    )
+    # background_tasks.add_task(
+    #     run_comic_generation_worker,
+    #     dream_id,
+    #     user.id,
+    #     story_text,
+    #     comic_request.num_panels,
+    #     comic_request.style_name,
+    #     avatar_b64
+    # )
 
-    return {"dream_id": dream_id}
+    # return {"dream_id": dream_id}
 
 
 

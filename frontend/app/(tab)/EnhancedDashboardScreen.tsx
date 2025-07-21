@@ -226,7 +226,7 @@ const EnhancedDashboardScreen: React.FC = () => {
       const response = await fetch(backendURL, {
         method: "POST",
         headers: {
-          "Content-Type": "multipart/form-data",
+          "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
@@ -252,155 +252,151 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   return (
-    <Background source={require("../../assets/images/stars.png")}>
-      <LinearGradient colors={["#230B3D", "#12081C"]} style={styles.container}>
-        <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+      <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
+        <Pressable
+          style={styles.headerBtn}
+          onPress={() => router.push("/(tab)/SettingScreen")}
+        >
+          <Ionicons
+            name="settings"
+            size={getResponsiveValue(20, 28)}
+            color="#FFFFFF"
+          />
+        </Pressable>
+        <View style={styles.greetingWrapper}>
+          <Text style={styles.greetingText}>{greeting},</Text>
+          <Text style={styles.greetingNameText}>
+            {profile?.name ?? "Dreamer"}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => {
+            setMode("typing");
+            dashboardOpacity.value = withTiming(0);
+          }}
+          style={styles.typeInsteadWrapper}
+        >
+          <Text style={styles.typeInstead}>Want to type instead?</Text>
+        </Pressable>
+        <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
           <Pressable
-            style={styles.headerBtn}
-            onPress={() => router.push("/(tab)/SettingScreen")}
+            style={styles.navBtn}
+            onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
           >
             <Ionicons
-              name="settings"
+              name="home"
+              size={getResponsiveValue(24, 32)}
+              color="#FFFFFF"
+            />
+          </Pressable>
+          <Pressable
+            style={styles.navBtn}
+            onPress={() => router.push("/(tab)/TimelineScreen")}
+          >
+            <Ionicons
+              name="book"
+              size={getResponsiveValue(24, 32)}
+              color="#C879FF"
+            />
+          </Pressable>
+        </View>
+      </AnimatedView>
+
+      {/* FIX: The sphere is now positioned absolutely behind the button */}
+      {containerCenter.x > 0 && (
+        <DottedSphere
+          level={audioLevel}
+          centerX={containerCenter.x}
+          centerY={containerCenter.y}
+          morphProgress={morphProgress}
+        />
+      )}
+
+      {/* FIX: The TouchableOpacity now dynamically changes size and contains the visuals */}
+      <TouchableOpacity
+        style={[
+          styles.centralButton,
+          mode === "recording" && styles.fullScreenPressable,
+        ]}
+        activeOpacity={0.9}
+        onPress={handlePressCentralButton}
+        disabled={mode === "review" || mode === "typing"}
+        onLayout={(event) => {
+          if (containerCenter.x === 0) {
+            const { x, y, width, height } = event.nativeEvent.layout;
+            setContainerCenter({ x: x + width / 2, y: y + height / 2 });
+          }
+        }}
+      >
+        <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
+          <Ionicons
+            name="mic"
+            size={getResponsiveValue(60, 80)}
+            color="#8663DF"
+          />
+        </AnimatedView>
+      </TouchableOpacity>
+
+      {mode === "typing" && (
+        <View style={styles.inputModeWrapper}>
+          <Pressable style={styles.headerBtn} onPress={handleFullReset}>
+            <Ionicons
+              name="close"
               size={getResponsiveValue(20, 28)}
               color="#FFFFFF"
             />
           </Pressable>
-          <View style={styles.greetingWrapper}>
-            <Text style={styles.greetingText}>{greeting},</Text>
-            <Text style={styles.greetingNameText}>
-              {profile?.name ?? "Dreamer"}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }} />
-          <Pressable
-            onPress={() => {
-              setMode("typing");
-              dashboardOpacity.value = withTiming(0);
-            }}
-            style={styles.typeInsteadWrapper}
+          <View
+            style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
           >
-            <Text style={styles.typeInstead}>Want to type instead?</Text>
-          </Pressable>
-          <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
-            <Pressable
-              style={styles.navBtn}
-              onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
-            >
-              <Ionicons
-                name="home"
-                size={getResponsiveValue(24, 32)}
-                color="#FFFFFF"
-              />
-            </Pressable>
-            <Pressable
-              style={styles.navBtn}
-              onPress={() => router.push("/(tab)/TimelineScreen")}
-            >
-              <Ionicons
-                name="book"
-                size={getResponsiveValue(24, 32)}
-                color="#C879FF"
-              />
-            </Pressable>
-          </View>
-        </AnimatedView>
-
-        {/* FIX: The sphere is now positioned absolutely behind the button */}
-        {containerCenter.x > 0 && (
-          <DottedSphere
-            level={audioLevel}
-            centerX={containerCenter.x}
-            centerY={containerCenter.y}
-            morphProgress={morphProgress}
-          />
-        )}
-
-        {/* FIX: The TouchableOpacity now dynamically changes size and contains the visuals */}
-        <TouchableOpacity
-          style={[
-            styles.centralButton,
-            mode === "recording" && styles.fullScreenPressable,
-          ]}
-          activeOpacity={0.9}
-          onPress={handlePressCentralButton}
-          disabled={mode === "review" || mode === "typing"}
-          onLayout={(event) => {
-            if (containerCenter.x === 0) {
-              const { x, y, width, height } = event.nativeEvent.layout;
-              setContainerCenter({ x: x + width / 2, y: y + height / 2 });
-            }
-          }}
-        >
-          <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
-            <Ionicons
-              name="mic"
-              size={getResponsiveValue(60, 80)}
-              color="#8663DF"
+            <TextInput
+              ref={inputRef}
+              value={dreamText}
+              onChangeText={setDreamText}
+              placeholder="Describe your dream…"
+              placeholderTextColor="#D1A8C5"
+              multiline
+              maxLength={2000}
+              style={[styles.input, isIPad && styles.inputTablet]}
             />
-          </AnimatedView>
-        </TouchableOpacity>
-
-        {mode === "typing" && (
-          <View style={styles.inputModeWrapper}>
-            <Pressable style={styles.headerBtn} onPress={handleFullReset}>
-              <Ionicons
-                name="close"
-                size={getResponsiveValue(20, 28)}
-                color="#FFFFFF"
-              />
-            </Pressable>
-            <View
-              style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
-            >
-              <TextInput
-                ref={inputRef}
-                value={dreamText}
-                onChangeText={setDreamText}
-                placeholder="Describe your dream…"
-                placeholderTextColor="#D1A8C5"
-                multiline
-                maxLength={2000}
-                style={[styles.input, isIPad && styles.inputTablet]}
-              />
-              <Text
-                style={[styles.charCount, isIPad && styles.charCountTablet]}
-              >
-                {dreamText.length}/2000
-              </Text>
-              <ShinyGradientButton onPress={handleUploadText}>
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  "Create Comic"
-                )}
-              </ShinyGradientButton>
-            </View>
+            <Text style={[styles.charCount, isIPad && styles.charCountTablet]}>
+              {dreamText.length}/2000
+            </Text>
+            <ShinyGradientButton onPress={handleUploadText}>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                "Create Comic"
+              )}
+            </ShinyGradientButton>
           </View>
-        )}
+        </View>
+      )}
 
-        {mode === "review" && (
-          <View style={styles.reviewModeWrapper}>
-            <Text style={styles.statusText}>{recordingStatus}</Text>
-            <Text style={styles.timerText}>Total Time: {timer}</Text>
-            <View style={styles.reviewActions}>
-              <ShinyGradientButton onPress={handleUploadRecording}>
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  "Create Comic"
-                )}
-              </ShinyGradientButton>
-              <ShinyGradientButton onPress={handleFullReset}>
-                Record Again
-              </ShinyGradientButton>
-            </View>
-            <Pressable style={styles.closeReviewBtn} onPress={handleFullReset}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </Pressable>
+      {mode === "review" && (
+        <View style={styles.reviewModeWrapper}>
+          <Text style={styles.statusText}>{recordingStatus}</Text>
+          <Text style={styles.timerText}>Total Time: {timer}</Text>
+          <View style={styles.reviewActions}>
+            <ShinyGradientButton onPress={handleUploadRecording}>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                "Create Comic"
+              )}
+            </ShinyGradientButton>
+            <ShinyGradientButton onPress={handleFullReset}>
+              Record Again
+            </ShinyGradientButton>
           </View>
-        )}
-      </LinearGradient>
-    </Background>
+          <Pressable style={styles.closeReviewBtn} onPress={handleFullReset}>
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      )}
+    </LinearGradient>
   );
 };
 
