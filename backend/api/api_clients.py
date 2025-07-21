@@ -1,5 +1,6 @@
 import json
 import os
+import base64
 from openai import OpenAI
 from .prompt_builder import build_initial_prompt
 from io import BytesIO
@@ -66,8 +67,11 @@ def generate_image(prompt_text, avatar):
         image_generation_call = next((out for out in response.output if out.type == "image_generation_call"), None)
 
         if image_generation_call and image_generation_call.result:
-#           return the base64 image result
-            return image_generation_call.result.read()
+            base64_string = image_generation_call.result
+            
+            image_bytes = base64.b64decode(base64_string)
+            
+            return image_bytes
         else:
             print(f"Failed to generate image, Response: {response.output}")
             return None
