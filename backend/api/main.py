@@ -50,12 +50,27 @@ print("did we even start?")
 #also handle auth later
 @app.post("/generate-comic/")
 async def generate_comic(
-    comic_request: ComicRequest,
+    request: Request, # Change the signature to accept the raw request
     background_tasks: BackgroundTasks,
     authorization: str = Header(None)
-    
 ):
+    print("--- Attempting manual validation ---")
 
+    # 1. Manually parse the JSON body
+    try:
+        json_body = await request.json()
+        print("Received Body:", json_body)
+        
+        # 2. Manually validate the data against your Pydantic model
+        comic_request = ComicRequest(**json_body)
+
+    except Exception as e:
+        # 3. If validation fails, return a detailed error
+        print("Pydantic Validation Error:", e.json())
+        raise HTTPException(status_code=422, detail=json.loads(e.json()))
+    except Exception as e:
+        # Catch other errors like invalid JSON
+        raise HTTPException(status_code=400, detail=f"Error processing request: {e}")
 
     print("starting authentication")
     if not authorization:
