@@ -22,26 +22,26 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
   const getTextSize = () => {
     switch (size) {
       case "small":
-        return 16;
+        return 14;
       case "medium":
-        return 18;
+        return 15;
       case "large":
-        return 20;
+        return 16;
       default:
-        return 20;
+        return 16;
     }
   };
 
   const getButtonHeight = () => {
     switch (size) {
       case "small":
-        return 48;
+        return 32;
       case "medium":
-        return 56;
+        return 38;
       case "large":
-        return 64;
+        return 44;
       default:
-        return 64;
+        return 44;
     }
   };
 
@@ -57,9 +57,6 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
 
   return (
     <View style={styles.buttonContainer}>
-      {/* Clean blur background layer */}
-      <BlurView intensity={30} tint="dark" style={styles.blurBackground} />
-
       <Pressable
         onPress={onPress}
         disabled={disabled}
@@ -71,24 +68,7 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
         ]}
         android_ripple={{ color: "rgba(255,255,255,0.1)" }}
       >
-        <LinearGradient
-          colors={
-            disabled
-              ? ["#4A4A4A", "#666666"]
-              : ["#00EAFF", "#6633EE", "#FF4EE0"]
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.buttonInner}
-        >
-          {/* Subtle inner glow */}
-          <LinearGradient
-            colors={["rgba(255,255,255,0.15)", "transparent"]}
-            style={styles.innerGlow}
-          />
-
-          {wrappedChildren}
-        </LinearGradient>
+        <View style={styles.buttonInner}>{wrappedChildren}</View>
       </Pressable>
     </View>
   );
@@ -97,29 +77,29 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
   buttonContainer: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 40,
     overflow: "hidden",
-    shadowColor: "#00EAFF",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#8D79F0",
+    backgroundColor: "#492D81",
+    boxShadow: "1px -12px 17.7px 0px rgba(91, 55, 223, 0.31) inset",
   },
   buttonWrapper: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 40,
     overflow: "hidden",
-    shadowColor: "#00EAFF",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    backgroundColor: "#492D81",
+    borderWidth: 1,
+    borderColor: "#8D79F0",
+    boxShadow: "1px -12px 17.7px 0px rgba(91, 55, 223, 0.31) inset",
   },
   buttonInner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    borderRadius: 40,
+    backgroundColor: "#492D81",
   },
   buttonText: {
     fontWeight: "700",
@@ -129,36 +109,9 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     transform: [{ scale: 0.98 }],
-    shadowOpacity: 0.2,
+    opacity: 0.9,
   },
   buttonDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  innerGlow: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  blurBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 16,
-  },
-  blurOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    opacity: 0.5,
   },
 });

@@ -53,6 +53,7 @@ async def generate_comic(
     authorization: str = Header(None)
     
 ):
+    print("starting authentication")
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is required")
 
@@ -68,7 +69,7 @@ async def generate_comic(
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    
+    print("getting avatar")
     #---------get the avatar image--------------#
     profile_response = supabase.from_("profiles").select("avatar_url").eq("id", user.id).single().execute()
     if not profile_response.data or not profile_response.data.get("avatar_url"):
