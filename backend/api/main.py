@@ -246,7 +246,6 @@ async def get_all_comics(authorization: str = Header(None)):
 
     # Fetch comics from the database
     comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
-    
     comics_data = comics_response.data
     
     # This check prevents the server from crashing if no comics are found
