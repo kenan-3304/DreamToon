@@ -230,6 +230,19 @@ async def get_all_comics(authorization: str = Header(None)):
             raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    
+    #---------delete old comics----------#
+
+    try:
+        supabase.from_("comics").delete().match({
+            "user_id": user.id,
+            "status": "error"
+        }).execute()
+        print(f"Cleaned up failed comics for user {user.id}")
+    except Exception as e:
+        # If cleanup fails, just log it and continue. It's not a critical error.
+        print(f"Could not clean up failed comics: {e}")
+
 
     # Fetch comics from the database
     comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
