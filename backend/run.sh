@@ -1,4 +1,20 @@
 #!/bin/bash
+echo "--- STARTING DIAGNOSTIC SCRIPT ---"
+
+echo " "
+echo "1. Current Working Directory is:"
+pwd
+
+echo " "
+echo "2. Contents of Current Directory:"
+ls -la
+
+echo " "
+echo "3. Python's Search Path (sys.path) before any changes:"
+python -c "import sys; print(sys.path)"
+
+echo " "
+echo "--- ATTEMPTING TO START SERVER ---"
 
 # Add the current directory to Python's search path
 export PYTHONPATH=.
