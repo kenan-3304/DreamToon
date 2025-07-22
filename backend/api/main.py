@@ -2,10 +2,10 @@
 
 import os
 import base64
-import jwt
 import requests
-import uuid
 import json
+from redis import Redis
+from rq import Queue
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -28,9 +28,13 @@ app.add_middleware(
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
+redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
+q = Queue('comics_queue', connection=redis_conn)
+
 STYLE_LIBRARY = {
     "simpsons": "Simpsons animation — yellow tones, thick black outlines, cartoon exaggeration.",
-    "american": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features."
+    "american": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features.",
+    "anime": "naruto style"
     }
 
 class ComicRequest(BaseModel):
@@ -39,40 +43,30 @@ class ComicRequest(BaseModel):
     num_panels: int = 6
     style_name: str
 
-#will come from the front end later
-STORY_INPUT = "A laid-back guy with spiky hair is at an airport McDonald's in Italy, surrounded by bags of edibles. An officer approaches, looking angry. But then i recognize the officer and then the officer bursts out laughing, and everyone is relieved."
-NUM_PANELS = 6
-STYLE_NAME = "simpsons"
-#ponts to the right style avatar
-CHARACTER_REFERENCE_PATH = "./simpsons.png"
-OUTPUT_DIR = "output"
 
-print("did we even start?")
-
-#also handle auth later
 @app.post("/generate-comic/")
 async def generate_comic(
-    request: Request, # Change the signature to accept the raw request
-    background_tasks: BackgroundTasks,
+    comic_request: ComicRequest, # Change the signature to accept the raw request
+    #background_tasks: BackgroundTasks,
     authorization: str = Header(None)
 ):
-    print("--- Attempting manual validation ---")
+    #print("--- Attempting manual validation ---")
 
     # 1. Manually parse the JSON body
-    try:
-        json_body = await request.json()
-        print("Received Body:", json_body)
+    # try:
+    #     json_body = await request.json()
+    #     print("Received Body:", json_body)
         
-        # 2. Manually validate the data against your Pydantic model
-        comic_request = ComicRequest(**json_body)
+    #     # 2. Manually validate the data against your Pydantic model
+    #     comic_request = ComicRequest(**json_body)
 
-    except Exception as e:
-        # 3. If validation fails, return a detailed error
-        print("Pydantic Validation Error:", e.json())
-        raise HTTPException(status_code=422, detail=json.loads(e.json()))
-    except Exception as e:
-        # Catch other errors like invalid JSON
-        raise HTTPException(status_code=400, detail=f"Error processing request: {e}")
+    # except Exception as e:
+    #     # 3. If validation fails, return a detailed error
+    #     print("Pydantic Validation Error:", e.json())
+    #     raise HTTPException(status_code=422, detail=json.loads(e.json()))
+    # except Exception as e:
+    #     # Catch other errors like invalid JSON
+    #     raise HTTPException(status_code=400, detail=f"Error processing request: {e}")
 
     print("starting authentication")
     if not authorization:
@@ -147,8 +141,8 @@ async def generate_comic(
 
     #-------send full prompt for multi-thread approach---------#
 
-    background_tasks.add_task(
-        run_comic_generation_worker,
+    q.enqueue(
+        'worker.run_comic_generation_worker',
         dream_id,
         user.id,
         story_text,
