@@ -7,6 +7,8 @@ import {
   ScrollView,
   Alert,
   Modal,
+  Linking, // <-- Add Linking import
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -19,8 +21,11 @@ import { rgbaArrayToRGBAColor } from "react-native-reanimated/lib/typescript/Col
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
-  const { user, profile, logout } = useUser();
+  const { user, profile, logout, updateProfile } = useUser();
   const [showAvatarGenerator, setShowAvatarGenerator] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [newName, setNewName] = useState(profile?.name || "");
+  const [savingName, setSavingName] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -92,14 +97,18 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleManageSubscription = () => {
+    Linking.openURL("https://apps.apple.com/account/subscriptions");
+  };
+
   const settingsOptions = [
     {
       icon: <Ionicons name="person" size={24} color="#00EAFF" />,
       title: "Profile",
       subtitle: profile?.name || "Update your profile",
       onPress: () => {
-        // Navigate to profile edit screen
-        Alert.alert("Coming Soon", "Profile editing will be available soon!");
+        setNewName(profile?.name || "");
+        setShowEditNameModal(true);
       },
     },
     {
@@ -111,6 +120,12 @@ const SettingsScreen: React.FC = () => {
       onPress: () => {
         setShowAvatarGenerator(true);
       },
+    },
+    {
+      icon: <Ionicons name="card" size={24} color="#00EAFF" />, // Use a card icon for subscription
+      title: "Manage Subscription",
+      subtitle: "View or cancel your subscription",
+      onPress: handleManageSubscription,
     },
     {
       icon: <Ionicons name="information-circle" size={24} color="#00EAFF" />,
@@ -205,6 +220,107 @@ const SettingsScreen: React.FC = () => {
               setShowAvatarGenerator(false);
             }}
           />
+        </View>
+      </Modal>
+
+      {/* Edit Name Modal */}
+      <Modal
+        visible={showEditNameModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowEditNameModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#1a1333",
+              borderRadius: 20,
+              padding: 24,
+              width: "85%",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 20,
+                fontWeight: "700",
+                marginBottom: 16,
+              }}
+            >
+              Edit Name
+            </Text>
+            <TextInput
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Enter your name"
+              placeholderTextColor="#aaa"
+              style={{
+                width: "100%",
+                backgroundColor: "#2a2250",
+                color: "#fff",
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 16,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "#8D79F0",
+              }}
+            />
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Pressable
+                style={{
+                  backgroundColor: "#8D79F0",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 24,
+                  marginRight: 8,
+                  opacity: savingName ? 0.7 : 1,
+                }}
+                disabled={savingName}
+                onPress={async () => {
+                  if (!newName.trim()) return;
+                  setSavingName(true);
+                  try {
+                    await updateProfile({ name: newName.trim() });
+                    setShowEditNameModal(false);
+                  } catch (e) {
+                    Alert.alert("Error", "Failed to update name.");
+                  } finally {
+                    setSavingName(false);
+                  }
+                }}
+              >
+                <Text
+                  style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
+                >
+                  Save
+                </Text>
+              </Pressable>
+              <Pressable
+                style={{
+                  backgroundColor: "#333",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 24,
+                }}
+                onPress={() => setShowEditNameModal(false)}
+              >
+                <Text
+                  style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
+                >
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
     </LinearGradient>

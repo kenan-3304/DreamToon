@@ -260,7 +260,7 @@ const EnhancedDashboardScreen: React.FC = () => {
         >
           <Ionicons
             name="settings"
-            size={getResponsiveValue(20, 28)}
+            size={getResponsiveValue(28, 36)}
             color="#FFFFFF"
           />
         </Pressable>
@@ -280,7 +280,7 @@ const EnhancedDashboardScreen: React.FC = () => {
         >
           <Text style={styles.typeInstead}>Want to type instead?</Text>
         </Pressable>
-        <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
+        <View style={styles.navBar}>
           <Pressable
             style={styles.navBtn}
             onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}

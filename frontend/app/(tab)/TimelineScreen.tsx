@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import SimpleDropdown from "../../components/SimpleDropdown";
 import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import { useUser } from "../../context/UserContext";
@@ -113,6 +114,11 @@ export const TimelineScreen: React.FC = () => {
   const [monthIdx, setMonthIdx] = useState(() => new Date().getMonth());
   const [loading, setLoading] = useState(true);
   const [comics, setComics] = useState<ComicEntry[]>([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const years = Array.from(
+    new Set(comics.map((c) => new Date(c.created_at).getFullYear()))
+  ).sort((a, b) => b - a);
 
   /*──────── Fetch comics – ORIGINAL LOGIC ────────*/
   const fetchComics = async () => {
@@ -176,8 +182,8 @@ export const TimelineScreen: React.FC = () => {
           >
             <Ionicons
               name="settings"
-              size={getResponsiveValue(20, 28)}
-              color="#fff"
+              size={getResponsiveValue(28, 36)}
+              color="#FFFFFF"
             />
           </Pressable>
 
@@ -189,9 +195,34 @@ export const TimelineScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
-            <Text style={[styles.title, isIPad && styles.titleTablet]}>
-              Timeline
-            </Text>
+            <View
+              style={{
+                position: "relative",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={[
+                  styles.title,
+                  isIPad && styles.titleTablet,
+                  { textAlign: "center" },
+                ]}
+              >
+                Timeline
+              </Text>
+              <View style={{ position: "absolute", right: 0, top: 35 }}>
+                <SimpleDropdown
+                  selected={selectedYear.toString()}
+                  onSelect={(v) => setSelectedYear(parseInt(v as string, 10))}
+                  items={years.map(String)}
+                  placeholder="Year"
+                  field="year"
+                  activeDropdown={activeDropdown}
+                  setActiveDropdown={setActiveDropdown}
+                />
+              </View>
+            </View>
 
             {/* Month selector */}
             <View
@@ -315,7 +346,7 @@ export const TimelineScreen: React.FC = () => {
                         ]}
                         numberOfLines={1}
                       >
-                        {(c.style ?? "").toUpperCase()}
+                        {""}
                       </Text>
                     </LinearGradient>
                   </Pressable>
@@ -367,24 +398,15 @@ const styles = StyleSheet.create({
   },
   settingsBtn: {
     position: "absolute",
-    top: 24,
+    top: 50,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    zIndex: 10,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
   },
   settingsBtnTablet: {
-    top: 40,
+    top: 50,
     left: 40,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
   },
   scroll: {
     paddingTop: 100,
@@ -507,8 +529,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   panelImage: {
-    width: "102%",
-    height: "102%",
+    width: "103%",
+    height: "103%",
     borderRadius: 8,
   },
   navBar: {

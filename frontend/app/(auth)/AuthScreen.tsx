@@ -7,22 +7,23 @@ import {
   Animated,
   Easing,
   Alert,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
-import useEmailAuth from "../../hooks/useEmailAuth";
+import SocialLoginButton from "../../components/SocialLoginButton";
+import useAuth from "../../hooks/useAuth";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import googleIcon from "../../assets/images/google.png";
 
 const AuthScreen: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // --- THIS IS THE FIX ---
-  // Call the hook at the top level of the component
-  const { signUp, signIn, loading, error: authError } = useEmailAuth();
-  // -----------------------
+  // Use the simplified auth hook
+  const { signInWithGoogle, signUpWithEmailOtp, loading } = useAuth();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -33,73 +34,68 @@ const AuthScreen: React.FC = () => {
     }).start();
   }, [fadeAnim]);
 
-  const handleSignUp = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter both email and password.");
+  // This function handles both sign-up and sign-in via email OTP
+  const handleContinueWithEmail = async () => {
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email address.");
       return;
     }
     try {
-      // Now, use the 'signUp' function from the hook's return value
-      await signUp(email, password);
-      router.push("/(tab)/CreateToonScreen");
-    } catch (error) {
-      console.error("Sign Up Error:", error);
-      Alert.alert("Sign Up Failed", error.message);
+      await signUpWithEmailOtp(email);
+      // Navigate to the verification screen, passing the email
+      router.push({
+        pathname: "/(auth)/VerifyOtpScreen", // Ensure this path is correct
+        params: { email: email },
+      });
+    } catch (error: any) {
+      console.error("Email OTP Error:", error);
+      Alert.alert("Error", error.message);
     }
   };
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter both email and password.");
-      return;
-    }
-    try {
-      // Use the 'signIn' function from the hook's return value
-      await signIn(email, password);
-      router.push("/(tab)/EnhancedDashboardScreen");
-    } catch (error) {
-      console.error("Login Error:", error);
-      Alert.alert("Login Failed", error.message);
-    }
-  };
-
-  // The JSX part of your component remains the same.
-  // You could optionally use the 'loading' and 'authError'
-  // variables from the hook to disable buttons or show errors.
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
         <View style={styles.bodyWrapper}>
           <Text style={styles.heading}>Welcome</Text>
           <Text style={styles.tagline}>Get your dream comic in seconds</Text>
+
+          {/* --- PRIMARY ACTION: GOOGLE SIGN-IN --- */}
+          <View style={{ width: "100%", marginBottom: 40 }}>
+            <SocialLoginButton
+              icon={
+                <Image
+                  source={googleIcon}
+                  style={{ width: 22, height: 22, marginRight: 12 }}
+                  resizeMode="contain"
+                />
+              }
+              text="Continue with Google"
+              onPress={signInWithGoogle}
+              disabled={loading}
+            />
+          </View>
+
+          <Text style={styles.separatorText}>Or</Text>
+
+          {/* --- SECONDARY ACTION: EMAIL OTP --- */}
           <View style={styles.inputCard}>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Email address"
+              placeholder="Enter your email address"
               placeholderTextColor="#8B8B8B"
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.textInput}
             />
-            <View style={styles.divider} />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor="#8B8B8B"
-              secureTextEntry
-              style={styles.textInput}
-            />
           </View>
-          <View style={{ width: "100%", marginTop: 40 }}>
-            <ShinyGradientButton onPress={handleSignUp}>
-              Create Account
-            </ShinyGradientButton>
-          </View>
-          <View style={{ width: "100%", marginTop: 16 }}>
-            <ShinyGradientButton onPress={handleLogin}>
-              Login
+          <View style={{ width: "100%", marginTop: 24 }}>
+            <ShinyGradientButton
+              onPress={handleContinueWithEmail}
+              disabled={loading}
+            >
+              Continue with Email
             </ShinyGradientButton>
           </View>
         </View>
@@ -110,7 +106,6 @@ const AuthScreen: React.FC = () => {
 
 export default AuthScreen;
 
-// Styles are unchanged
 const styles = StyleSheet.create({
   container: { flex: 1 },
   bodyWrapper: {
@@ -131,6 +126,11 @@ const styles = StyleSheet.create({
     color: "#8B8B8B",
     marginBottom: 60,
     textAlign: "center",
+  },
+  separatorText: {
+    color: "#8B8B8B",
+    fontSize: 16,
+    marginBottom: 20,
   },
   inputCard: {
     width: "100%",

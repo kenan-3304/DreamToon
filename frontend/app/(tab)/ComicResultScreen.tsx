@@ -82,13 +82,6 @@ export default function ComicResultScreen() {
     fetchComicData();
   }, [id, urls]);
 
-  /*──────── Parse Query Param ────────*/
-  // let comicUrls: string[] = [];
-  // try {
-  //   if (urls) comicUrls = JSON.parse(urls);
-  // } catch {
-  //   if (typeof urls === "string" && urls.startsWith("http")) comicUrls = [urls];
-  // }
   const PANELS = panelUrls.length
     ? panelUrls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
     : FALLBACK;
@@ -96,7 +89,7 @@ export default function ComicResultScreen() {
   /*──────── Dynamic tile width ────────*/
   const calcPanelSize = (count: number) => {
     if (count <= 2) return "48%";
-    if (count <= 4) return "45%";
+    if (count <= 4) return "47%";
     return isIPad ? "42%" : "47%";
   };
   const panelSize = calcPanelSize(PANELS.length);
@@ -161,6 +154,12 @@ export default function ComicResultScreen() {
   };
 
   /*──────── Render ────────*/
+  const getBoardHeight = (count: number) => {
+    if (count <= 2) return SCREEN_HEIGHT * 0.33;
+    if (count <= 4) return SCREEN_HEIGHT * 0.41;
+    return SCREEN_HEIGHT * 0.65;
+  };
+
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       {/* Header */}
@@ -185,7 +184,10 @@ export default function ComicResultScreen() {
       >
         <Animated.View style={{ transform: [{ translateY }] }}>
           <View
-            style={[styles.boardWrapper, isIPad && styles.boardWrapperTablet]}
+            style={[
+              styles.boardWrapper,
+              { height: getBoardHeight(PANELS.length) },
+            ]}
           >
             {PANELS.map((p, idx) => (
               <Pressable

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import SimpleDropdown from "../../components/SimpleDropdown";
 
 // Constants from your original file
 const skinTones = [
@@ -24,15 +25,27 @@ const skinTones = [
   "#C19660",
   "#8B6F47",
 ] as const;
-const ages = Array.from({ length: 89 }, (_, i) => String(i + 12));
-const genders = [
+const ages: string[] = [
+  "9-12",
+  "13-17",
+  "18-22",
+  "23-29",
+  "30-39",
+  "40-49",
+  "50-59",
+  "60-69",
+  "70-79",
+  "80-89",
+  "90+",
+];
+const genders: string[] = [
   "Male",
   "Female",
   "Non-binary",
   "Prefer not to disclose",
-] as const;
-const hairTypes = ["Straight", "Wavy", "Curly", "Coily", "Bald"] as const;
-const hairColors = [
+];
+const hairTypes: string[] = ["Straight", "Wavy", "Curly", "Coily", "Bald"];
+const hairColors: string[] = [
   "Black",
   "Brown",
   "Blonde",
@@ -41,7 +54,7 @@ const hairColors = [
   "White",
   "Auburn",
   "Other",
-] as const;
+];
 
 const CreateToonScreen: React.FC = () => {
   const router = useRouter();
@@ -85,87 +98,6 @@ const CreateToonScreen: React.FC = () => {
   const continueNext = () =>
     canContinue && router.push("/(tab)/EnhancedDashboardScreen");
 
-  // Dropdown component from your original file
-  const SimpleDropdown = ({
-    selected,
-    onSelect,
-    items,
-    placeholder,
-    field,
-  }: {
-    selected: string;
-    onSelect: (value: string) => void;
-    items: readonly string[];
-    placeholder: string;
-    field: string;
-  }) => (
-    <View>
-      <Pressable
-        style={({ pressed }) => [
-          styles.dropdownButton,
-          pressed && { backgroundColor: "rgba(0,234,255,0.2)" },
-        ]}
-        onPress={() =>
-          setActiveDropdown(activeDropdown === field ? null : field)
-        }
-      >
-        <Text
-          style={[styles.dropdownText, !selected && styles.placeholderText]}
-        >
-          {selected || placeholder}
-        </Text>
-        <Ionicons
-          name="chevron-down"
-          size={18}
-          color="#00EAFF"
-          style={{
-            transform: [
-              { rotate: activeDropdown === field ? "180deg" : "0deg" },
-            ],
-          }}
-        />
-      </Pressable>
-
-      {activeDropdown === field && (
-        <View style={styles.dropdownList}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-            style={{ maxHeight: 200 }}
-          >
-            {items.map((item) => (
-              <Pressable
-                key={item}
-                style={({ pressed }) => [
-                  styles.dropdownItem,
-                  pressed && { backgroundColor: "rgba(0,234,255,0.2)" },
-                ]}
-                onPress={() => {
-                  onSelect(item);
-                  setActiveDropdown(null);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.dropdownItemText,
-                    selected === item && {
-                      color: "#00EAFF",
-                      fontWeight: "600",
-                    },
-                  ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {item}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-    </View>
-  );
-
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <ScrollView
@@ -206,16 +138,13 @@ const CreateToonScreen: React.FC = () => {
                   style={styles.uploadedImg}
                 />
               ) : (
-                <Ionicons name="camera" size={46} color="#00EAFF" />
+                <Ionicons name="camera" size={90} color="rgb(181, 99, 196)" />
               )}
             </Pressable>
             <View style={{ width: "100%", marginTop: 32, gap: 16 }}>
               <ShinyGradientButton onPress={launchCamera}>
                 📸 Take Photo
               </ShinyGradientButton>
-              <Pressable onPress={launchLibrary} style={styles.outlineBtn}>
-                <Text style={styles.outlineText}>🖼️ Choose from Gallery</Text>
-              </Pressable>
             </View>
           </>
         ) : (
@@ -224,40 +153,52 @@ const CreateToonScreen: React.FC = () => {
               <Text style={styles.label}>Age</Text>
               <SimpleDropdown
                 selected={form.age}
-                onSelect={(v) => updateForm("age", v)}
+                onSelect={(v) => updateForm("age", String(v))}
                 items={ages}
                 placeholder="Select age"
                 field="age"
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                style={{ height: 52, borderRadius: 12 }}
               />
             </View>
             <View>
               <Text style={styles.label}>Gender</Text>
               <SimpleDropdown
                 selected={form.gender}
-                onSelect={(v) => updateForm("gender", v)}
-                items={genders}
+                onSelect={(v) => updateForm("gender", String(v))}
+                items={[...genders]}
                 placeholder="Select gender"
                 field="gender"
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                style={{ height: 52, borderRadius: 12 }}
               />
             </View>
             <View>
               <Text style={styles.label}>Hair Type</Text>
               <SimpleDropdown
                 selected={form.hairType}
-                onSelect={(v) => updateForm("hairType", v)}
-                items={hairTypes}
+                onSelect={(v) => updateForm("hairType", String(v))}
+                items={[...hairTypes]}
                 placeholder="Select type"
                 field="hairType"
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                style={{ height: 52, borderRadius: 12 }}
               />
             </View>
             <View>
               <Text style={styles.label}>Hair Color</Text>
               <SimpleDropdown
                 selected={form.hairColor}
-                onSelect={(v) => updateForm("hairColor", v)}
-                items={hairColors}
+                onSelect={(v) => updateForm("hairColor", String(v))}
+                items={[...hairColors]}
                 placeholder="Select color"
                 field="hairColor"
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                style={{ height: 52, borderRadius: 12 }}
               />
             </View>
             <View>
@@ -332,18 +273,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
   },
-  tabTriggerActive: { backgroundColor: "rgba(0,234,255,0.18)" },
+  tabTriggerActive: { backgroundColor: "rgb(70, 34, 132)" },
   tabText: { color: "#FFFFFF", fontSize: 16, fontWeight: "500" },
   uploadBox: {
     width: 280,
     height: 200,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: "rgba(0,234,255,0.6)",
+    borderColor: "rgb(131, 77, 206)",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,234,255,0.05)",
+    backgroundColor: "rgba(177, 59, 186, 0.05)",
     marginTop: 32,
   },
   uploadedImg: { width: "100%", height: "100%", borderRadius: 14 },
@@ -440,6 +381,6 @@ const styles = StyleSheet.create({
   bottomContainer: {
     width: "100%",
     alignItems: "center",
-    marginTop: 40,
+    marginTop: 120,
   },
 });
