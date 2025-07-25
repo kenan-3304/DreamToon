@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../utils/supabase";
 import { Session, User } from "@supabase/supabase-js";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 
 //sets up the profile interface
 interface Profile {
@@ -18,6 +18,7 @@ interface Profile {
   original_photo_url?: string;
   subscription_status?: "free" | "trial" | "active" | "cancelled";
   last_avatar_created_at?: string;
+  display_avatar_path?: string;
 }
 
 interface UserContextType {
@@ -28,6 +29,7 @@ interface UserContextType {
   unlockedStyles: string[];
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  refetchProfileAndData: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -43,19 +45,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   //handle auth changes and initial load
   useEffect(() => {
-    setLoading(true);
-
     // get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // supabase.auth.getSession().then(({ data: { session } }) => {
+    //   setSession(session);
+    //   setUser(session?.user ?? null);
 
-      //if there is a user then get their profile
-      if (session?.user) {
-        fetchProfile(session.user);
-      }
-      setLoading(false);
-    });
+    //   //if there is a user then get their profile
+    //   if (session?.user) {
+    //     fetchProfile(session.user);
+    //   }
+    //   setLoading(false);
+    // });
 
     //Listen for any auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -69,7 +69,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           fetchProfile(currentUser);
         } else {
           setProfile(null);
+          setUnlockedStyles([]);
         }
+        setLoading(false); // <-- MOVE THIS HERE
       }
     );
 
@@ -80,20 +82,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const fetchProfile = async (user: User) => {
     try {
-      //try to get the data from a profile
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      //if there is data boom we are done return
-      if (data) {
-        setProfile(data);
-        return;
+      // Run fetches in parallel
+      const [profileResult, stylesResult] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("unlocked_styles").select("style").eq("user_id", user.id),
+      ]);
+
+      // Handle styles
+      if (stylesResult.data) {
+        setUnlockedStyles(stylesResult.data.map((s) => s.style));
+      } else if (stylesResult.error) {
+        throw stylesResult.error; // Rethrow style fetch error
       }
 
-      //if there is a error because there is no profile then create one
-      if (error && error.code == "PGRST116") {
+      // Handle profile
+      if (profileResult.data) {
+        setProfile(profileResult.data);
+      } else if (
+        profileResult.error &&
+        profileResult.error.code === "PGRST116"
+      ) {
+        // Profile not found, create it
         const { data: newProfile, error: createError } = await supabase
           .from("profiles")
           .insert({
@@ -105,29 +114,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           .single();
 
         if (createError) throw createError;
-
         setProfile(newProfile);
-      } else if (error) {
-        //if there is any other error just throw it and forget
-        throw error;
+      } else if (profileResult.error) {
+        throw profileResult.error; // Rethrow other profile errors
       }
     } catch (error) {
-      console.log("Error with fetching user profile:", error);
-    }
-
-    //FETCH THE USER STYLES
-    try {
-      const { data: stylesData, error: stylesError } = await supabase
-        .from("unlocked_styles")
-        .select("style")
-        .eq("user_id", user.id);
-
-      if (stylesData) {
-        setUnlockedStyles(stylesData.map((s) => s.style));
-      }
-    } catch (stylesError) {
-      console.log("Error fetching unlocked styles:", stylesError);
-      setUnlockedStyles([]); // Reset on error
+      console.log("Error fetching user data:", error);
+      // Reset states on error
+      setProfile(null);
+      setUnlockedStyles([]);
     }
   };
 
@@ -165,13 +160,28 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     logout,
     updateProfile,
     unlockedStyles,
+    refetchProfileAndData: () => {
+      if (user) {
+        fetchProfile(user);
+      }
+    },
   };
 
   //loading screen while initial session is being fetched
   return (
     <UserContext.Provider value={value}>
       {loading ? (
-        <View style={{ flex: 1, backgroundColor: "#0D0A3C" }} />
+        // Give the user feedback while loading
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "#0D0A3C",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color="#00EAFF" />
+        </View>
       ) : (
         children
       )}

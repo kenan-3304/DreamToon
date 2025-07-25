@@ -63,6 +63,15 @@ export default function TabLayout() {
             tabBarStyle: { display: "none" },
           }}
         />
+
+        <Tabs.Screen
+          name="AvatarStudioScreen"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: "none" },
+          }}
+        />
       </Tabs>
     </UserProvider>
   );

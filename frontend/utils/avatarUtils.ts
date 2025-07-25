@@ -1,197 +1,156 @@
 import { supabase } from "./supabase";
 import * as FileSystem from "expo-file-system";
 
+/**
+ * A helper function to upload a Base64 encoded string as a file to Supabase Storage.
+ * This is needed because the FastAPI server returns the generated image as Base64.
+ * @param base64String The Base64 encoded image data.
+ * @param fileName The desired path/filename in the Supabase bucket.
+ */
+async function uploadBase64ToSupabase(base64String: string, fileName: string) {
+  const tempPath = FileSystem.cacheDirectory + "temp_avatar_upload.png";
+  try {
+    // Write the base64 string to a temporary file in the app's cache directory
+    await FileSystem.writeAsStringAsync(tempPath, base64String, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // In React Native, we need to fetch the file URI to get its blob representation
+    const response = await fetch(tempPath);
+    const blob = await response.blob();
+
+    // Upload the blob to Supabase Storage
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, blob, { contentType: "image/png", upsert: false });
+
+    if (error) throw error;
+  } finally {
+    // Clean up the temporary file to save space, whether the upload succeeded or failed
+    await FileSystem.deleteAsync(tempPath, { idempotent: true });
+  }
+}
+
 export const avatarUtils = {
   /**
-   * Gets a signed URL for an avatar image stored in the private bucket
-   * @param filePath The path to the file in the avatars bucket (e.g., "user-id/comic_123.png")
-   * @param expiresIn Expiration time in seconds (default: 1 hour)
-   * @returns Promise<string> The signed URL
+   * Fetches all of a user's avatars and their corresponding signed URLs in one bulk operation.
+   * This is highly efficient for displaying a gallery.
    */
-  async getSignedAvatarUrl(
-    filePath: string,
-    expiresIn: number = 3600
-  ): Promise<string> {
-    try {
-      const { data, error } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(filePath, expiresIn);
-
-      if (error) {
-        console.error("Error creating signed URL:", error);
-        throw error;
-      }
-
-      return data.signedUrl;
-    } catch (error) {
-      console.error("Failed to get signed avatar URL:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Extracts the file path from a signed URL stored in the database
-   * This is a helper function to convert stored signed URLs back to file paths
-   * @param signedUrl The signed URL stored in the database
-   * @returns string | null The file path or null if invalid
-   */
-  extractFilePathFromSignedUrl(signedUrl: string): string | null {
-    try {
-      // Parse the URL to extract the file path
-      const url = new URL(signedUrl);
-      const pathParts = url.pathname.split("/");
-
-      // Find the index after 'storage/v1/object/sign/avatars/'
-      const avatarsIndex = pathParts.findIndex((part) => part === "avatars");
-      if (avatarsIndex === -1 || avatarsIndex + 1 >= pathParts.length) {
-        return null;
-      }
-
-      // Extract everything after 'avatars/' but before the query parameters
-      const filePath = pathParts.slice(avatarsIndex + 1).join("/");
-      return filePath;
-    } catch (error) {
-      console.error("Error extracting file path from signed URL:", error);
-      return null;
-    }
-  },
-
-  /**
-   * Refreshes a signed URL if it's expired or about to expire
-   * @param currentSignedUrl The current signed URL
-   * @param expiresIn Expiration time in seconds for the new URL
-   * @returns Promise<string> The new signed URL
-   */
-  async refreshSignedAvatarUrl(
-    currentSignedUrl: string,
-    expiresIn: number = 3600
-  ): Promise<string> {
-    const filePath = this.extractFilePathFromSignedUrl(currentSignedUrl);
-
-    if (!filePath) {
-      throw new Error("Invalid signed URL format");
-    }
-
-    return this.getSignedAvatarUrl(filePath, expiresIn);
-  },
-
-  async getMyAvatars() {
+  async getMyAvatarsWithSignedUrls(): Promise<
+    { path: string; signedUrl: string }[]
+  > {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error("User is not logged in.");
-    }
+    if (!user) throw new Error("User is not logged in.");
 
-    const { data, error } = await supabase
+    // 1. Get all the file paths from the database
+    const { data: pathsData, error: pathsError } = await supabase
       .from("avatars")
       .select("avatar_path")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-    return data;
+    if (pathsError) throw pathsError;
+    if (!pathsData || pathsData.length === 0) return [];
+
+    const paths = pathsData.map((p) => p.avatar_path);
+
+    // 2. Get all signed URLs in a single API call for efficiency
+    const { data: signedUrlsData, error: signedUrlsError } =
+      await supabase.storage.from("avatars").createSignedUrls(paths, 3600 * 24); // 24-hour expiry
+
+    if (signedUrlsError) throw signedUrlsError;
+
+    // 3. Map the paths and URLs together for stable keys in the UI
+    // The filter(item => item.path) is a safeguard against any null paths
+    return signedUrlsData
+      .filter((item) => item.path)
+      .map((item) => ({ path: item.path!, signedUrl: item.signedUrl }));
   },
 
+  /**
+   * The main function to create a new avatar.
+   * It sends the user's photo directly to the FastAPI backend and then finalizes the process.
+   */
   async createAvatar(
     imageUri: string,
     style: { name: string; prompt: string }
   ) {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const {
       data: { session },
     } = await supabase.auth.getSession();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!session || !user) throw new Error("User is not logged in");
 
-    if (!user || !session) throw new Error("User is not logged in");
+    let comicFileName = ""; // Define here to be accessible in the catch block
 
-    //gives some folder structure
-    const originalFile = `${user?.id}/original_${Date.now()}.jpg`;
+    try {
+      // 1. Construct FormData to send the image and prompt to the backend
+      const formData = new FormData();
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      formData.append("user_photo", blob, "user_photo.jpg");
+      formData.append("prompt", style.prompt);
 
-    const response = await fetch(imageUri);
-    const arrayBuffer = await response.arrayBuffer();
-    const byteArray = new Uint8Array(arrayBuffer);
+      // 2. Call your consolidated FastAPI backend
+      // IMPORTANT: Replace with your actual Render URL
+      const fastApiResponse = await fetch(
+        "https://dreamtoon.onrender.com/generate-avatar/",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: formData,
+        }
+      );
 
-    //send original photo to avatars table and storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(originalFile, byteArray, {
-        contentType: "image/jpeg",
-      });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data: urlData, error: urlError } = await supabase.storage
-      .from("avatars")
-      .createSignedUrl(originalFile, 3600);
-
-    if (urlError) throw urlError;
-
-    const pythonResponse = await fetch(
-      "https://dreamtoon-avatar.onrender.com/generate_avatar",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          image_url: urlData.signedUrl,
-          prompt: style.prompt,
-        }),
+      if (!fastApiResponse.ok) {
+        const errorBody = await fastApiResponse.json();
+        throw new Error(
+          `Avatar generation failed: ${
+            errorBody.detail || "Unknown server error"
+          }`
+        );
       }
-    );
 
-    if (!pythonResponse.ok) {
-      throw new Error(`Python backend failed ${pythonResponse.status}`);
+      const result = await fastApiResponse.json();
+      const base64Image = result.b64_json;
+
+      // 3. Upload the generated avatar to Supabase Storage
+      comicFileName = `${user.id}/comic_${Date.now()}.png`;
+      await uploadBase64ToSupabase(base64Image, comicFileName);
+
+      // 4. Finalize the creation by calling the secure Edge Function
+      const { error: invokeError } = await supabase.functions.invoke(
+        "finalize-avatar",
+        {
+          body: {
+            styleName: style.name,
+            avatarPath: comicFileName,
+            // The original photo is no longer uploaded to storage, so we pass a placeholder.
+            // You could remove this from the Edge Function if it's no longer needed.
+            originalPath: "client_direct_upload",
+          },
+        }
+      );
+
+      if (invokeError) throw invokeError;
+
+      return { newAvatarPath: comicFileName };
+    } catch (error) {
+      // If anything fails, try to clean up the generated avatar file if it was created
+      if (comicFileName) {
+        console.log(
+          "Creation failed, attempting to clean up orphaned avatar file..."
+        );
+        await supabase.storage.from("avatars").remove([comicFileName]);
+      }
+      // Re-throw the error so the UI can display it
+      throw error;
     }
-
-    const data = await pythonResponse.json();
-    const base_64_image = data.b64_json;
-
-    if (!base_64_image) {
-      throw new Error("Python backend did not return a image");
-    }
-
-    //make sure the avatar is in right form there is some weirdness here
-    const comicFileName = `${user?.id}/comic_${Date.now()}.png`;
-    const tempComicPath = FileSystem.cacheDirectory + "temp_comic.png";
-    await FileSystem.writeAsStringAsync(tempComicPath, base_64_image, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    const res = await fetch(tempComicPath);
-    const arrayBufferComic = await res.arrayBuffer();
-    const byteArrayComic = new Uint8Array(arrayBufferComic);
-
-    await supabase.storage
-      .from("avatars")
-      .upload(comicFileName, byteArrayComic, { contentType: "image/png" });
-
-    //UPDATE AVATARS TABLE WITH PATHS
-
-    await supabase.from("avatars").insert({
-      user_id: user.id,
-      style: style.name,
-      avatar_path: comicFileName,
-      original_photo_path: originalFile,
-    });
-
-    await supabase.from("unlocked_styles").upsert({
-      user_id: user.id,
-      style: style.name,
-    });
-
-    await supabase
-      .from("profiles")
-      .update({ last_avatar_created_at: new Date().toISOString() })
-      .eq("id", user.id);
-
-    return { newAvatarPath: comicFileName };
   },
 };

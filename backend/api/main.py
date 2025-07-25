@@ -6,11 +6,11 @@ import requests
 import json
 from redis import Redis
 from rq import Queue
-from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from .api_clients import get_moderation, transcribe_audio
+from .api_clients import get_moderation, transcribe_audio, generate_avatar_from_image
 from .helper import encode_image_to_base64
 from .db_client import supabase
 from .worker import run_comic_generation_worker
@@ -31,11 +31,6 @@ SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
 q = Queue('comics_queue', connection=redis_conn)
 
-STYLE_LIBRARY = {
-    "simpsons": "Simpsons animation — yellow tones, thick black outlines, cartoon exaggeration.",
-    "american": "A character portrait in the modern action animation style of 'Avatar: The Last Airbender' and the 'DC Animated Universe'. The art should be cel-shaded with clean, bold outlines and dynamic, expressive features.",
-    "anime": "naruto style"
-    }
 
 class ComicRequest(BaseModel):
     story: Optional[str] = None
@@ -155,6 +150,45 @@ async def generate_comic(
 
 
 
+
+@app.post("/generate-avatar/")
+async def generate_avatar(
+    authorization: str = Header(...),
+    user_photo: UploadFile = File(...),
+    prompt: str = Form(...)
+):
+    # 1. Authentication (This part remains the same)
+    print("--- Authenticating user for avatar generation ---")
+    try:
+        token = authorization.split(" ")[1]
+        response = supabase.auth.get_user(token)
+        user = response.user
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+
+    # 2. Call the dedicated API client function
+    print(f"--- Generating avatar for user {user.id} ---")
+    try:
+        image_bytes = await user_photo.read()
+        
+        # The endpoint now "directs" the work to the api_client
+        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
+        
+        # 3. Encode the final result and return to the client
+        b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
+        
+        print(f"--- Successfully generated avatar for user {user.id} ---")
+        return {"b64_json": b64_json, "status": "success"}
+
+    except Exception as e:
+        print(f"Error during avatar generation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate avatar image.")
+
+
+
+
 def is_content_safe_for_comic(text: str) -> (bool, str):
     """
     Performs a nuanced moderation check.
@@ -261,3 +295,5 @@ async def get_all_comics(authorization: str = Header(None)):
 
     # This ensures you always return a list, even if it's empty
     return comics_data or []
+
+

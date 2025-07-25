@@ -91,4 +91,39 @@ def transcribe_audio(audio_bytes):
     return transcription.text
 
 
+def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
+    """
+    Calls the OpenAI image editing API to generate an avatar.
+    
+    Args:
+        image_bytes: The user's photo as raw bytes.
+        prompt_text: The detailed prompt for the style.
+        
+    Returns:
+        The generated image as raw bytes.
+    """
+    try:
+        # Note: "dall-e-2" is the correct model for the images.edit endpoint.
+        response = client.images.edit(
+            model="dall-e-2",
+            image=image_bytes,
+            prompt=prompt_text,
+            n=1,
+            size="1024x1024",
+            response_format="b64_json" # Ask for Base64 directly
+        )
+        
+        # Decode the Base64 response from OpenAI back into bytes
+        b64_string = response.data[0].b64_json
+        generated_image_bytes = base64.b64decode(b64_string)
+        
+        return generated_image_bytes
+        
+    except Exception as e:
+        print(f"An OpenAI API error occurred during avatar generation: {e}")
+        # Re-raise the exception to be handled by the main endpoint
+        raise e
+
+
+
     

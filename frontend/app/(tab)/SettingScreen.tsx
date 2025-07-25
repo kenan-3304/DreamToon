@@ -15,14 +15,12 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
-import { AvatarGenerator } from "../../components/AvatarGenerator";
 import { Avatar } from "../../components/Avatar";
 import { rgbaArrayToRGBAColor } from "react-native-reanimated/lib/typescript/Colors";
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
   const { user, profile, logout, updateProfile } = useUser();
-  const [showAvatarGenerator, setShowAvatarGenerator] = useState(false);
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [newName, setNewName] = useState(profile?.name || "");
   const [savingName, setSavingName] = useState(false);
@@ -114,11 +112,11 @@ const SettingsScreen: React.FC = () => {
     {
       icon: <Ionicons name="brush" size={24} color="#00EAFF" />,
       title: "Comic Avatar",
-      subtitle: profile?.avatar_url
+      subtitle: profile?.display_avatar_path
         ? "Update your comic avatar"
         : "Create your comic avatar",
       onPress: () => {
-        setShowAvatarGenerator(true);
+        router.push({ pathname: "/(tab)/AvatarStudioScreen" });
       },
     },
     {
@@ -161,8 +159,8 @@ const SettingsScreen: React.FC = () => {
         {/* User Info Section */}
         <View style={styles.userSection}>
           <View style={styles.userAvatar}>
-            {profile?.avatar_url ? (
-              <Avatar avatarUrl={profile.avatar_url} size={100} />
+            {profile?.display_avatar_path ? (
+              <Avatar avatarUrl={profile.display_avatar_path} size={100} />
             ) : (
               <Ionicons name="person" size={40} color="#00EAFF" />
             )}
@@ -194,34 +192,6 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.logoutText}>Logout</Text>
         </Pressable>
       </ScrollView>
-
-      {/* Avatar Generator Modal */}
-      <Modal
-        visible={showAvatarGenerator}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => setShowAvatarGenerator(false)}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </Pressable>
-            <Text style={styles.modalTitle}>Generate Comic Avatar</Text>
-          </View>
-          <AvatarGenerator
-            onSuccess={(avatarUrl) => {
-              setShowAvatarGenerator(false);
-              // The profile will be automatically updated via UserContext
-            }}
-            onError={(error) => {
-              setShowAvatarGenerator(false);
-            }}
-          />
-        </View>
-      </Modal>
 
       {/* Edit Name Modal */}
       <Modal
