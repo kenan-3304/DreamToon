@@ -16,6 +16,7 @@ import SocialLoginButton from "../../components/SocialLoginButton";
 import useAuth from "../../hooks/useAuth";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import googleIcon from "../../assets/images/google.png";
+import { supabase } from "../../utils/supabase"; // Make sure this import is present
 
 const AuthScreen: React.FC = () => {
   const router = useRouter();
@@ -53,6 +54,35 @@ const AuthScreen: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Could not retrieve user after sign-in.");
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError && profileError.code !== "PGRST116") {
+        throw profileError;
+      }
+
+      if (!profile || profile.subscription_status === "free") {
+        router.replace("/(modals)/PaywallScreen");
+      } else {
+        router.replace("/(tab)/EnhancedDashboardScreen");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -71,7 +101,7 @@ const AuthScreen: React.FC = () => {
                 />
               }
               text="Continue with Google"
-              onPress={signInWithGoogle}
+              onPress={handleGoogleSignIn}
               disabled={loading}
             />
           </View>

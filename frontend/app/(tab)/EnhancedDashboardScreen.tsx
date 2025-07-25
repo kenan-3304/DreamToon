@@ -182,6 +182,11 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   const handleUploadText = async () => {
+    if (profile?.subscription_status === "free") {
+      router.push({
+        pathname: "/(modals)/PaywallScreen",
+      });
+    }
     if (!dreamText.trim() || isLoading) {
       setIsLoading(true);
       Keyboard.dismiss();
@@ -217,6 +222,12 @@ const EnhancedDashboardScreen: React.FC = () => {
     }
   };
   const handleUploadRecording = async () => {
+    if (profile?.subscription_status === "free") {
+      router.push({
+        pathname: "/(modals)/PaywallScreen",
+      });
+    }
+
     if (!recordingUri || isLoading) return;
     setIsLoading(true);
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "DreamToon",
     "slug": "DreamToon",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/ToonIcon.png",
     "userInterfaceStyle": "dark",
@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.minks.dreamtoon",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to microphone to record your dreams.",
         "NSCameraUsageDescription": "This app may need camera access for future features.",

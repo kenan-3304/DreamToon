@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import * as FileSystem from "expo-file-system";
 
 export const avatarUtils = {
   /**
@@ -72,5 +73,125 @@ export const avatarUtils = {
     }
 
     return this.getSignedAvatarUrl(filePath, expiresIn);
+  },
+
+  async getMyAvatars() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("User is not logged in.");
+    }
+
+    const { data, error } = await supabase
+      .from("avatars")
+      .select("avatar_path")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+    return data;
+  },
+
+  async createAvatar(
+    imageUri: string,
+    style: { name: string; prompt: string }
+  ) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!user || !session) throw new Error("User is not logged in");
+
+    //gives some folder structure
+    const originalFile = `${user?.id}/original_${Date.now()}.jpg`;
+
+    const response = await fetch(imageUri);
+    const arrayBuffer = await response.arrayBuffer();
+    const byteArray = new Uint8Array(arrayBuffer);
+
+    //send original photo to avatars table and storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(originalFile, byteArray, {
+        contentType: "image/jpeg",
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from("avatars")
+      .createSignedUrl(originalFile, 3600);
+
+    if (urlError) throw urlError;
+
+    const pythonResponse = await fetch(
+      "https://dreamtoon-avatar.onrender.com/generate_avatar",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          image_url: urlData.signedUrl,
+          prompt: style.prompt,
+        }),
+      }
+    );
+
+    if (!pythonResponse.ok) {
+      throw new Error(`Python backend failed ${pythonResponse.status}`);
+    }
+
+    const data = await pythonResponse.json();
+    const base_64_image = data.b64_json;
+
+    if (!base_64_image) {
+      throw new Error("Python backend did not return a image");
+    }
+
+    //make sure the avatar is in right form there is some weirdness here
+    const comicFileName = `${user?.id}/comic_${Date.now()}.png`;
+    const tempComicPath = FileSystem.cacheDirectory + "temp_comic.png";
+    await FileSystem.writeAsStringAsync(tempComicPath, base_64_image, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const res = await fetch(tempComicPath);
+    const arrayBufferComic = await res.arrayBuffer();
+    const byteArrayComic = new Uint8Array(arrayBufferComic);
+
+    await supabase.storage
+      .from("avatars")
+      .upload(comicFileName, byteArrayComic, { contentType: "image/png" });
+
+    //UPDATE AVATARS TABLE WITH PATHS
+
+    await supabase.from("avatars").insert({
+      user_id: user.id,
+      style: style.name,
+      avatar_path: comicFileName,
+      original_photo_path: originalFile,
+    });
+
+    await supabase.from("unlocked_styles").upsert({
+      user_id: user.id,
+      style: style.name,
+    });
+
+    await supabase
+      .from("profiles")
+      .update({ last_avatar_created_at: new Date().toISOString() })
+      .eq("id", user.id);
+
+    return { newAvatarPath: comicFileName };
   },
 };

@@ -1,62 +1,36 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import {
-  NavigationIndependentTree,
-  DefaultTheme,
-} from "@react-navigation/native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "react-native";
+import { Redirect } from "expo-router";
+import { useSession } from "./_layout"; // Import the useSession hook from the layout
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 
-import LoginScreen from "./(auth)/AuthScreen";
-import WelcomeScreen from "./(auth)/WelcomeScreen";
-import CreateToonScreen from "./(tab)/CreateToonScreen";
-import EnhancedDashboardScreen from "./(tab)/EnhancedDashboardScreen";
+const Index = () => {
+  const { session, loading } = useSession();
 
-// Define the types for your navigation stack
-export type RootStackParamList = {
-  Login: undefined;
-  WelcomeScreen: undefined;
-  CreateToonScreen: undefined;
-  EnhancedDashboardScreen: undefined;
+  // While the session is loading, show a spinner.
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
+
+  // If loading is finished and there is no session, redirect to the auth flow.
+  if (!session) {
+    return <Redirect href="/(auth)/WelcomeScreen" />;
+  }
+
+  // If loading is finished and there IS a session, redirect to the main app.
+  return <Redirect href="/(tab)/EnhancedDashboardScreen" />;
 };
 
-const MyTheme = {
-  ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: "#0D0A3C" }, // dark fallback
-};
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0D0A3C", // Match your app's theme
+  },
+});
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-export default function App() {
-  return (
-    <SafeAreaProvider>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#0D0A3C"
-        translucent
-      />
-      <NavigationIndependentTree>
-        <NavigationContainer theme={MyTheme}>
-          <Stack.Navigator
-            initialRouteName="WelcomeScreen"
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen
-              name="CreateToonScreen"
-              component={CreateToonScreen}
-            />
-            <Stack.Screen
-              name="EnhancedDashboardScreen"
-              component={EnhancedDashboardScreen}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </NavigationIndependentTree>
-    </SafeAreaProvider>
-  );
-}
+export default Index;

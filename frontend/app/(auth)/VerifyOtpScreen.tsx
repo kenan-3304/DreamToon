@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // Assuming you use expo icons
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import useAuth from "../../hooks/useAuth";
+import { supabase } from "../../utils/supabase"; // Make sure this import is present
 
 const VerifyOtpScreen: React.FC = () => {
   const router = useRouter();
@@ -48,16 +49,35 @@ const VerifyOtpScreen: React.FC = () => {
     try {
       if (!email) throw new Error("Email not found");
       await verifyOtp(email, otp);
-      // On success, the user is verified and logged in.
-      // The root layout should handle navigation to the main app.
-      router.replace("/(tab)/EnhancedDashboardScreen");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Could not retrieve user after verification.");
+
+      // Step 3: Fetch the user's profile from the database.
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError && profileError.code !== "PGRST116") {
+        throw profileError;
+      }
+
+      // Step 4: Navigate based on subscription status.
+      if (!profile || profile.subscription_status === "free") {
+        router.replace("/(modals)/PaywallScreen");
+      } else {
+        router.replace("/(tab)/EnhancedDashboardScreen");
+      }
     } catch (error: any) {
       Alert.alert("Verification Failed", error.message);
     }
   };
 
   return (
-    <LinearGradient colors={["#492D81", "#1A1A3A"]} style={styles.container}>
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="white" />

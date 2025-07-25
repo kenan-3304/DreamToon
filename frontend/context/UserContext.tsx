@@ -16,6 +16,8 @@ interface Profile {
   character_design?: string;
   avatar_url?: string;
   original_photo_url?: string;
+  subscription_status?: "free" | "trial" | "active" | "cancelled";
+  last_avatar_created_at?: string;
 }
 
 interface UserContextType {
@@ -23,6 +25,7 @@ interface UserContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  unlockedStyles: string[];
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
@@ -36,6 +39,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [unlockedStyles, setUnlockedStyles] = useState<string[]>([]);
 
   //handle auth changes and initial load
   useEffect(() => {
@@ -95,6 +99,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           .insert({
             id: user.id,
             name: user.email?.split("@")[0] || "Dreamer",
+            subscription_status: "free",
           })
           .select()
           .single();
@@ -108,6 +113,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.log("Error with fetching user profile:", error);
+    }
+
+    //FETCH THE USER STYLES
+    try {
+      const { data: stylesData, error: stylesError } = await supabase
+        .from("unlocked_styles")
+        .select("style")
+        .eq("user_id", user.id);
+
+      if (stylesData) {
+        setUnlockedStyles(stylesData.map((s) => s.style));
+      }
+    } catch (stylesError) {
+      console.log("Error fetching unlocked styles:", stylesError);
+      setUnlockedStyles([]); // Reset on error
     }
   };
 
@@ -137,7 +157,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     await supabase.auth.signOut();
   };
 
-  const value = { session, user, profile, loading, logout, updateProfile };
+  const value = {
+    session,
+    user,
+    profile,
+    loading,
+    logout,
+    updateProfile,
+    unlockedStyles,
+  };
 
   //loading screen while initial session is being fetched
   return (
