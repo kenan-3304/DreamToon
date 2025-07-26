@@ -4,13 +4,62 @@ import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
+import appleAuth from "@invertase/react-native-apple-authentication";
 import { Alert } from "react-native";
 
 export default function useAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- NATIVE GOOGLE SIGN-IN (No changes needed) ---
+  /**
+   * Performs Apple Sign-In and authenticates with Supabase.
+   * Throws an error on failure.
+   */
+  const signInWithApple = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Add the recommended check to ensure Apple Auth is supported.
+      if (!appleAuth.isSupported) {
+        throw new Error(
+          "Apple Authentication is not supported on this device."
+        );
+      }
+
+      // Start the Apple sign-in request
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+      });
+
+      // Get the identity token from the response
+      const { identityToken } = appleAuthRequestResponse;
+
+      if (identityToken) {
+        // Sign in with Supabase using the identity token
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: identityToken,
+        });
+
+        if (error) {
+          throw error; // Throw Supabase error
+        }
+      } else {
+        throw new Error("Apple sign-in failed: No identity token received.");
+      }
+    } catch (e: any) {
+      setError(e.message);
+      throw e; // Re-throw the error to be caught in the UI component
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Performs Google Sign-In and authenticates with Supabase.
+   * Throws an error on failure.
+   */
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
@@ -26,7 +75,7 @@ export default function useAuth() {
       const userInfo = await GoogleSignin.signIn();
 
       if (userInfo.data?.idToken) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
+        const { error } = await supabase.auth.signInWithIdToken({
           provider: "google",
           token: userInfo.data.idToken,
         });
@@ -35,16 +84,16 @@ export default function useAuth() {
         throw new Error("Google sign-in failed: No ID token present!");
       }
     } catch (e: any) {
-      if (e.code !== statusCodes.SIGN_IN_CANCELLED) {
-        setError(e.message);
-        console.error("Google Sign-In Error:", e);
-      }
+      setError(e.message);
+      throw e; // Re-throw the error to be caught in the UI component
     } finally {
       setLoading(false);
     }
   };
 
-  // --- EMAIL OTP SIGN-UP / SIGN-IN (No changes needed) ---
+  /**
+   * Sends a one-time password (OTP) to the user's email.
+   */
   const signUpWithEmailOtp = async (email: string) => {
     setLoading(true);
     setError(null);
@@ -64,7 +113,9 @@ export default function useAuth() {
     }
   };
 
-  // --- VERIFY EMAIL OTP (No changes needed) ---
+  /**
+   * Verifies the OTP sent to the user's email.
+   */
   const verifyOtp = async (email: string, token: string) => {
     setLoading(true);
     setError(null);
@@ -84,11 +135,10 @@ export default function useAuth() {
     }
   };
 
-  // The signInWithEmail function has been removed.
-
   return {
     loading,
     error,
+    signInWithApple,
     signInWithGoogle,
     signUpWithEmailOtp,
     verifyOtp,

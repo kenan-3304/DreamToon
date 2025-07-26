@@ -15,22 +15,26 @@ import { Ionicons } from "@expo/vector-icons";
 const ALL_STYLES = [
   {
     name: "Ghibli",
-    prompt: "a vibrant, whimsical portrait in the Studio Ghibli art style...",
+    prompt:
+      "A beautiful and whimsical portrait in the art style of Studio Ghibli. Lush, hand-painted watercolor background with detailed foliage and soft, warm sunlight. Clean, expressive character design inspired by Hayao Miyazaki, with a sense of wonder and nostalgia. Cinematic, pastoral, heartwarming.",
     image: require("../assets/images/studio_ghibli.png"),
   },
   {
     name: "Adventure Time",
-    prompt: "a dynamic portrait in a modern anime art style...",
+    prompt:
+      "A quirky and surreal portrait in the distinct art style of Adventure Time. Simple, rounded character designs with 'noodle' limbs and minimalist dot eyes. Rendered with flat, vibrant colors and thick, clean outlines against a whimsical, candy-colored landscape. Art by Pendleton Ward, cartoon network style.",
     image: require("../assets/images/adventure_time.png"),
   },
   {
     name: "DC Comics",
-    prompt: "DC Comics style",
+    prompt:
+      "A dynamic and heroic portrait in the style of modern DC Comics. Strong, anatomical character with a dramatic pose. Detailed ink work with heavy use of shadows and cross-hatching for a gritty, high-contrast look. Cinematic lighting, graphic novel aesthetic, art by Jim Lee.",
     image: require("../assets/images/dc.jpg"),
   },
   {
     name: "Simpsons",
-    prompt: "Simpsons style",
+    prompt:
+      "A satirical and humorous portrait in the iconic art style of The Simpsons. Character with yellow skin, large round eyes, and a prominent overbite. Rendered in a 2D flat color style with bold black outlines, reminiscent of Matt Groening's animation.",
     image: require("../assets/images/simpsons.png"),
   },
 ];

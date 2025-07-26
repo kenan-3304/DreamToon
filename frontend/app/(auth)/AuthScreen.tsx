@@ -8,23 +8,27 @@ import {
   Easing,
   Alert,
   Image,
+  Platform, // Import Platform API
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import SocialLoginButton from "../../components/SocialLoginButton";
 import useAuth from "../../hooks/useAuth";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons"; // Import an icon for Apple
 import googleIcon from "../../assets/images/google.png";
-import { supabase } from "../../utils/supabase"; // Make sure this import is present
+import appleIcon from "../../assets/images/apple_icon.png";
+import { supabase } from "../../utils/supabase";
+import { statusCodes } from "@react-native-google-signin/google-signin";
 
 const AuthScreen: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Use the simplified auth hook
-  const { signInWithGoogle, signUpWithEmailOtp, loading } = useAuth();
+  // Destructure the new signInWithApple function from the hook
+  const { signInWithApple, signInWithGoogle, signUpWithEmailOtp, loading } =
+    useAuth();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -35,29 +39,12 @@ const AuthScreen: React.FC = () => {
     }).start();
   }, [fadeAnim]);
 
-  // This function handles both sign-up and sign-in via email OTP
-  const handleContinueWithEmail = async () => {
-    if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address.");
-      return;
-    }
+  /**
+   * A reusable function to handle navigation after a successful sign-in.
+   * Checks the user's subscription status and redirects accordingly.
+   */
+  const handleSuccessfulSignIn = async () => {
     try {
-      await signUpWithEmailOtp(email);
-      // Navigate to the verification screen, passing the email
-      router.push({
-        pathname: "/(auth)/VerifyOtpScreen", // Ensure this path is correct
-        params: { email: email },
-      });
-    } catch (error: any) {
-      console.error("Email OTP Error:", error);
-      Alert.alert("Error", error.message);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -69,16 +56,69 @@ const AuthScreen: React.FC = () => {
         .eq("id", user.id)
         .single();
 
+      // PGRST116 means no profile was found, which is expected for a new user.
       if (profileError && profileError.code !== "PGRST116") {
         throw profileError;
       }
 
+      // If no profile exists or the user is on the free tier, show the paywall.
       if (!profile || profile.subscription_status === "free") {
         router.replace("/(modals)/PaywallScreen");
       } else {
         router.replace("/(tab)/EnhancedDashboardScreen");
       }
     } catch (error: any) {
+      Alert.alert("Error", `Failed to process sign-in: ${error.message}`);
+    }
+  };
+
+  /**
+   * Handles the Apple Sign-In flow.
+   */
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+      await handleSuccessfulSignIn();
+    } catch (error: any) {
+      // Do not show an alert if the user simply cancelled the flow.
+      if (error.code !== "1001") {
+        // '1001' is the code for user cancellation on Apple Sign In
+        Alert.alert("Sign-In Error", error.message);
+      }
+    }
+  };
+
+  /**
+   * Handles the Google Sign-In flow.
+   */
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+      await handleSuccessfulSignIn();
+    } catch (error: any) {
+      // Do not show an alert if the user simply cancelled the flow.
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert("Sign-In Error", error.message);
+      }
+    }
+  };
+
+  /**
+   * Handles the Email OTP flow.
+   */
+  const handleContinueWithEmail = async () => {
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email address.");
+      return;
+    }
+    try {
+      await signUpWithEmailOtp(email);
+      router.push({
+        pathname: "/(auth)/VerifyOtpScreen",
+        params: { email: email },
+      });
+    } catch (error: any) {
+      console.error("Email OTP Error:", error);
       Alert.alert("Error", error.message);
     }
   };
@@ -90,7 +130,25 @@ const AuthScreen: React.FC = () => {
           <Text style={styles.heading}>Welcome</Text>
           <Text style={styles.tagline}>Get your dream comic in seconds</Text>
 
-          {/* --- PRIMARY ACTION: GOOGLE SIGN-IN --- */}
+          {/* --- PRIMARY ACTION: APPLE SIGN-IN (iOS only) --- */}
+          {Platform.OS === "ios" && (
+            <View style={{ width: "100%", marginBottom: 16 }}>
+              <SocialLoginButton
+                icon={
+                  <Image
+                    source={appleIcon}
+                    style={{ width: 35, height: 35, marginRight: 12 }}
+                    resizeMode="contain"
+                  />
+                }
+                text="Continue with Apple"
+                onPress={handleAppleSignIn}
+                disabled={loading}
+              />
+            </View>
+          )}
+
+          {/* --- GOOGLE SIGN-IN --- */}
           <View style={{ width: "100%", marginBottom: 40 }}>
             <SocialLoginButton
               icon={
