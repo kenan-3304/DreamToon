@@ -104,9 +104,22 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
     """
     try:
         # Note: "dall-e-2" is the correct model for the images.edit endpoint.
+        
+        # Validate that we have image bytes
+        if not image_bytes:
+            raise ValueError("No image bytes provided")
+        
+        print(f"Image bytes length: {len(image_bytes)}")
+        print(f"First few bytes: {image_bytes[:10]}")
+        
+        # Create a BytesIO object with the image bytes and set the proper content type
+        image_file = BytesIO(image_bytes)
+        image_file.name = "user_photo.png"
+        
+        # Use the file object directly instead of a tuple
         response = client.images.edit(
             model="dall-e-2",
-            image=image_bytes,
+            image=image_file,
             prompt=prompt_text,
             n=1,
             size="1024x1024",

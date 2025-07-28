@@ -79,13 +79,24 @@ async def generate_comic(
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    print("getting avatar")
-    #---------get the avatar image--------------#
-    profile_response = supabase.from_("profiles").select("avatar_url").eq("id", user.id).single().execute()
-    if not profile_response.data or not profile_response.data.get("avatar_url"):
-        raise HTTPException(status_code=404, detail="User profile or avatar not found.")
-    
-    avatar_path = profile_response.data["avatar_url"]
+    print(f"getting avatar for style: {comic_request.style_name}")
+
+    avatar_response = supabase.from_("avatars") \
+        .select("avatar_path") \
+        .eq("user_id", user.id) \
+        .eq("style", comic_request.style_name) \
+        .order("created_at", desc=True) \
+        .limit(1) \
+        .single() \
+        .execute()
+
+    if not avatar_response.data or not avatar_response.data.get("avatar_path"):
+        # This could happen if a user somehow has a style unlocked but no avatar for it.
+        # It's a good edge case to handle.
+        raise HTTPException(status_code=404, detail=f"No avatar found for the style '{comic_request.style_name}'. Please create one first.")
+
+    avatar_path = avatar_response.data["avatar_path"]
+
 
     # 3. Download the private avatar image from the 'avatars' bucket
     try:
