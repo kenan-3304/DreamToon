@@ -168,11 +168,10 @@ async def generate_avatar(
     user_photo: UploadFile = File(...),
     prompt: str = Form(...)
 ):
-    # 1. Authentication (This part remains the same)
+    # 1. Authentication (Stays the same)
     print("--- Authenticating user for avatar generation ---")
     try:
-        token = authorization.split(" ")[1]
-        response = supabase.auth.get_user(token)
+        # ... your auth logic ...
         user = response.user
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
@@ -182,21 +181,40 @@ async def generate_avatar(
     # 2. Call the dedicated API client function
     print(f"--- Generating avatar for user {user.id} ---")
     try:
+        # --- NEW: Add detailed checks for the uploaded file ---
+        if not user_photo:
+            print("---! ERROR: user_photo object is None !---")
+            raise HTTPException(status_code=400, detail="No photo was uploaded.")
+
+        print(f"--- Received file: '{user_photo.filename}', Content-Type: {user_photo.content_type}, Size: {user_photo.size} ---")
+
+        if user_photo.size == 0:
+            print("---! ERROR: Uploaded file is empty (0 bytes) !---")
+            raise HTTPException(status_code=400, detail="The uploaded photo is empty.")
+        # --- END NEW ---
+
         image_bytes = await user_photo.read()
         
-        # The endpoint now "directs" the work to the api_client
+        # Add one more check after reading
+        if not image_bytes:
+            print("---! ERROR: Reading the file resulted in empty bytes !---")
+            raise HTTPException(status_code=500, detail="Server failed to read the uploaded image data.")
+
         generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
         
-        # 3. Encode the final result and return to the client
         b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
         
         print(f"--- Successfully generated avatar for user {user.id} ---")
         return {"b64_json": b64_json, "status": "success"}
 
     except Exception as e:
+        # This will now catch our new HTTPExceptions as well
         print(f"Error during avatar generation: {str(e)}")
+        # Check if it's already an HTTPException, if so, re-raise it
+        if isinstance(e, HTTPException):
+            raise e
+        # Otherwise, wrap it in a generic 500 error
         raise HTTPException(status_code=500, detail="Failed to generate avatar image.")
-
 
 
 
