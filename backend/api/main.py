@@ -164,33 +164,42 @@ async def generate_comic(
 
 # In main.py
 
+# main.py
+
+# ... (imports remain the same)
+
 @app.post("/generate-avatar/")
 async def generate_avatar(
     authorization: str = Header(...),
     user_photo: UploadFile = File(...),
     prompt: str = Form(...)
 ):
-    # 1. Authentication (This part remains the same)
+    # 1. Authentication (no changes here)
     print("--- Authenticating user for avatar generation ---")
     try:
         token = authorization.split(" ")[1]
-        
-        # FIX: Renamed 'response' to 'auth_response' for clarity.
-        # This variable holds the result of the token verification.
         auth_response = supabase.auth.get_user(token)
-        
         user = auth_response.user
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    # 2. Call the dedicated API client function
     print(f"--- Generating avatar for user {user.id} ---")
     try:
-        generated_image_bytes = generate_avatar_from_image(user_photo.file, prompt)
+        # 🔻 MODIFICATION: Read the file's contents into a bytes object.
+        image_bytes = await user_photo.read()
+
+        # 💡 ADDED: A crucial check to ensure the file is not empty.
+        if not image_bytes:
+            raise HTTPException(
+                status_code=400, 
+                detail="Received an empty image file. Please upload a valid image."
+            )
+
+        # Pass the raw bytes to the API client function.
+        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
         
-        # 3. Encode the final result and return to the client
         b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
         
         print(f"--- Successfully generated avatar for user {user.id} ---")
@@ -199,7 +208,6 @@ async def generate_avatar(
     except Exception as e:
         print(f"Error during avatar generation: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to generate avatar image.")
-
 
 
 def is_content_safe_for_comic(text: str) -> (bool, str):

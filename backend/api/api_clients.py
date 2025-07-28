@@ -91,7 +91,7 @@ def transcribe_audio(audio_bytes):
     return transcription.text
 
 
-def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
+def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes: # 👈 Change signature back to bytes
     """
     Calls the OpenAI image editing API to generate an avatar.
     
@@ -103,30 +103,20 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
         The generated image as raw bytes.
     """
     try:
-        # Note: "dall-e-2" is the correct model for the images.edit endpoint.
-        
-        # Validate that we have image bytes
-        if not image_bytes:
-            raise ValueError("No image bytes provided")
-        
-        print(f"Image bytes length: {len(image_bytes)}")
-        print(f"First few bytes: {image_bytes[:10]}")
-        
-        # Create a BytesIO object with the image bytes and set the proper content type
+        # 🔻 MODIFICATION: Revert to wrapping the incoming bytes in a BytesIO object.
+        # This gives the OpenAI library a file-like object that it can measure and read.
         image_file = BytesIO(image_bytes)
-        image_file.name = "user_photo.png"
         
-        # Use the file object directly instead of a tuple
+        # Note: The 'dall-e-2' model is correct for the images.edit endpoint.
         response = client.images.edit(
             model="dall-e-2",
             image=image_file,
             prompt=prompt_text,
             n=1,
             size="1024x1024",
-            response_format="b64_json" # Ask for Base64 directly
+            response_format="b64_json"
         )
         
-        # Decode the Base64 response from OpenAI back into bytes
         b64_string = response.data[0].b64_json
         generated_image_bytes = base64.b64decode(b64_string)
         
@@ -136,6 +126,7 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
         print(f"An OpenAI API error occurred during avatar generation: {e}")
         # Re-raise the exception to be handled by the main endpoint
         raise e
+
 
 
 
