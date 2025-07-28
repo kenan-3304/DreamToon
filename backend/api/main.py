@@ -188,10 +188,7 @@ async def generate_avatar(
     # 2. Call the dedicated API client function
     print(f"--- Generating avatar for user {user.id} ---")
     try:
-        image_bytes = await user_photo.read()
-        
-        # The endpoint now "directs" the work to the api_client
-        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
+        generated_image_bytes = generate_avatar_from_image(user_photo.file, prompt)
         
         # 3. Encode the final result and return to the client
         b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
