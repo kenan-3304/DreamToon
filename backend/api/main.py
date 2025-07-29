@@ -42,6 +42,27 @@ class ComicRequest(BaseModel):
 class AvatarRequest(BaseModel):
     user_photo_b64: str
     prompt: str
+    name: str
+
+def authenticateUser(authorization: str = Header()):
+    user = None
+    
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header is required")
+    
+    try:
+        token = authorization.split(" ")[1]
+        response = supabase.auth.getUser(token)
+        user = response.user
+
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    
+    return user
+
 
 
 @app.post("/generate-comic/")
@@ -153,7 +174,7 @@ async def generate_comic(
     #-------send full prompt for multi-thread approach---------#
 
     q.enqueue(
-        'worker.run_comic_generation_worker',
+        'backend.api.worker.run_comic_generation_worker',
         dream_id,
         user.id,
         story_text,
@@ -172,16 +193,8 @@ async def generate_avatar(
     avatar_request: AvatarRequest,
     authorization: str = Header(...)
 ):
-    # 1. Authentication (this part stays the same)
     print("--- Authenticating user for avatar generation ---")
-    try:
-        token = authorization.split(" ")[1]
-        auth_response = supabase.auth.get_user(token)
-        user = auth_response.user
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    user = authenticateUser(authorization)
 
     # 2. Add the job to the queue and return immediately
     try:
@@ -190,7 +203,8 @@ async def generate_avatar(
             'backend.api.worker.run_avatar_generation_worker', # The path to your new function
             user.id,
             avatar_request.prompt,
-            avatar_request.user_photo_b64
+            avatar_request.user_photo_b64,
+            avatar_request.name
         )
 
         # Respond to the client immediately

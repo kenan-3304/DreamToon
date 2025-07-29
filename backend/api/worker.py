@@ -82,7 +82,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
 
 
-def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str):
+def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
     """
     A background worker that handles the entire avatar generation process.
     """
@@ -113,7 +113,7 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str):
             invoke_options={
                 "body": {
                     "userId": user_id,
-                    "styleName": prompt,
+                    "styleName": name,
                     "avatarPath": file_path,
                 }
             }
