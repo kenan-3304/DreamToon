@@ -88,7 +88,9 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str):
     """
     print(f"--- Starting background avatar generation for user {user_id} ---")
     try:
-        image_bytes = base64.b64decode(image_b64)
+        tiny_placeholder_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        image_bytes = base64.b64decode(tiny_placeholder_b64)
+
 
         # 1. Generate the image using OpenAI
         generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
