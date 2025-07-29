@@ -94,60 +94,39 @@ def transcribe_audio(audio_bytes):
 
 def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
     """
-    Calls the OpenAI API to generate a new avatar based on a user's photo and a style prompt.
-    
+    Calls the OpenAI image editing API (DALL-E 2) to generate an avatar.
+    This endpoint is suitable for applying a style to an entire image.
+
     Args:
         image_bytes: The user's photo as raw bytes.
-        prompt_text: The detailed prompt for the style.
-        
+        prompt_text: A DETAILED prompt describing the desired style.
+
     Returns:
-        The generated image as raw bytes, or None if an error occurs.
+        The generated image as raw bytes.
     """
     try:
-        # Encode the input image to base64, as required by the API for image inputs.
-        b64_image = base64.b64encode(image_bytes).decode('utf-8')
-        
-        # This message structure tells GPT-4o to look at the user's photo
-        # and then follow the instructions in the text prompt to create a new image.
-        response = client.chat.completions.create(
-            model="gpt-4o",  # Using the powerful gpt-4o model is best for this
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt_text
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{b64_image}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens=1000 # Adjust as needed
+        # The BytesIO object gives the OpenAI library a file-like object to read from.
+        image_file = BytesIO(image_bytes)
+        image_file.name = 'image.png'
+
+        # Use the dall-e-2 model for the images.edit endpoint.
+        response = client.images.edit(
+            model="dall-e-2",
+            image=image_file,
+            prompt=prompt_text,
+            n=1,
+            size="1024x1024",
+            response_format="b64_json"  # Get the image back directly as base64
         )
 
-        # Extract the image URL from the response (assuming DALL-E 3 is used by gpt-4o)
-        # The response structure may vary, so you might need to inspect it.
-        # This is a common pattern where the model provides a URL to the generated image.
-        image_url = response.choices[0].message.content
+        b64_string = response.data[0].b64_json
+        generated_image_bytes = base64.b64decode(b64_string)
 
-        # You may need to parse the response if it contains more than just the URL.
-        # For example, if the model returns a block of text with a URL inside.
-        # This example assumes the URL is the primary content.
-
-        # Download the newly generated image from the URL
-        image_response = requests.get(image_url)
-        image_response.raise_for_status()  # Raise an exception for bad status codes
-        
-        return image_response.content # Return the raw bytes of the new image
+        return generated_image_bytes
 
     except Exception as e:
         print(f"An OpenAI API error occurred during avatar generation: {e}")
+        # Re-raise the exception to be handled by the main endpoint
         raise e
 
 
