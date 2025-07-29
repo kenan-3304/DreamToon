@@ -187,7 +187,7 @@ async def generate_avatar(
     try:
         print(f"--- Enqueuing avatar generation for user {user.id} ---")
         q.enqueue(
-            'backend.worker.run_avatar_generation_worker', # The path to your new function
+            'backend.api.worker.run_avatar_generation_worker', # The path to your new function
             user.id,
             avatar_request.prompt,
             avatar_request.user_photo_b64
