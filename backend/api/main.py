@@ -217,11 +217,17 @@ async def generate_avatar(
             "finalize-avatar",
             invoke_options={
                 "body": {
+                    "userId": user.id,
                     "styleName": avatar_request.prompt, # Assuming prompt is the style name
                     "avatarPath": file_path,
                 }
             }
         )
+
+        invoke_response_data = invoke_response.data
+        if isinstance(invoke_response_data, dict) and invoke_response_data.get('error'):
+            raise Exception(f"Finalize-avatar edge function failed: {invoke_response_data['error']}")
+
 
         print("--- Successfully created and stored avatar ---")
         return {"status": "success", "path": file_path}
