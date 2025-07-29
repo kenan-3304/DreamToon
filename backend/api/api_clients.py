@@ -105,30 +105,34 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
         The generated image as raw bytes.
     """
     try:
-        # The BytesIO object gives the OpenAI library a file-like object to read from.
-        image_file = BytesIO(image_bytes)
-        image_file.name = 'image.png'
-        print("prompt text: ", prompt_text)
+        print(f"--- Generating avatar with gpt-image-1 model and prompt: {prompt_text[:70]}... ---")
 
-        # Use the dall-e-2 model for the images.edit endpoint.
+        # The API expects the image data as a tuple: (filename, bytes)
+        image_to_send = ("user_image.png", image_bytes)
+
+        # This API call is adapted from your old, working code
         response = client.images.edit(
-            model="dall-e-2",
-            image=image_file,
+            model="gpt-image-1",
+            image=[image_to_send], # Pass the image bytes directly
             prompt=prompt_text,
             n=1,
-            size="1024x1024",
-            response_format="b64_json"  # Get the image back directly as base64
+            size="1024x1024"
         )
-
+        
+        # The response from gpt-image-1 is already base64
         b64_string = response.data[0].b64_json
+        if not b64_string:
+            raise Exception("API call returned an empty image string.")
+
         generated_image_bytes = base64.b64decode(b64_string)
 
+        print("--- Successfully received generated avatar from API ---")
         return generated_image_bytes
 
     except Exception as e:
         print(f"An OpenAI API error occurred during avatar generation: {e}")
-        # Re-raise the exception to be handled by the main endpoint
         raise e
+
 
 
 
