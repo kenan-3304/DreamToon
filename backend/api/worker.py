@@ -88,7 +88,6 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
     """
     print(f"--- Starting background avatar generation for user {user_id} ---")
     try:
-        #tiny_placeholder_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
         image_bytes = base64.b64decode(image_b64)
 
 

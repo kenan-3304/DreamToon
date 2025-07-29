@@ -122,7 +122,6 @@ async def generate_comic(
     #----------Create a DB instance-------------#
     insert_response = supabase.from_("comics").insert({
         "user_id": user.id,
-        "transcript": comic_request.story,
         "style": comic_request.style_name
     }).execute()
     
@@ -142,7 +141,7 @@ async def generate_comic(
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
         raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
 
-    supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
+    supabase.from_("comics").insert({"transcript": story_text}).eq("id", dream_id).execute()
 
     #---------Check Moderation----------#
     # we have to check ovbious moderation issues
