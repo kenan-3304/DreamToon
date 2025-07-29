@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { ShinyGradientButton } from "@/components/ShinyGradientButton";
 
 export default function AvatarStudioScreen() {
   const router = useRouter(); // --- ADD: Router for navigation ---
@@ -205,22 +206,28 @@ export default function AvatarStudioScreen() {
             ) : isCooldownActive() ? (
               <Text style={styles.cooldownText}>{getCooldownText()}</Text>
             ) : (
-              <Pressable
-                style={styles.createButton}
+              <ShinyGradientButton
                 onPress={() => setShowStyleSelector(true)}
+                disabled={loading}
               >
-                <Text style={styles.createButtonText}>Create New Avatar</Text>
-              </Pressable>
+                Create New Avatar
+              </ShinyGradientButton>
             )}
           </View>
         }
       />
 
-      <Modal visible={showStyleSelector} animationType="slide">
-        {/* You will likely want to style your StyleSelector and Modal view as well */}
+      <Modal
+        visible={showStyleSelector}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
         <View style={styles.modalView}>
-          <StyleSelector onStyleSelect={handleCreateFlow} mode="creation" />
-          <Button title="Cancel" onPress={() => setShowStyleSelector(false)} />
+          <StyleSelector
+            onStyleSelect={handleCreateFlow}
+            mode="creation"
+            onClose={() => setShowStyleSelector(false)}
+          />
         </View>
       </Modal>
     </LinearGradient>
@@ -293,8 +300,26 @@ const styles = StyleSheet.create({
   },
   modalView: {
     flex: 1,
-    backgroundColor: "#0D0A3C",
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    backgroundColor: "transparent",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 20,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    flex: 1,
+    textAlign: "center",
   },
 });

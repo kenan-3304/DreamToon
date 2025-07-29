@@ -35,13 +35,13 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
   const getButtonHeight = () => {
     switch (size) {
       case "small":
-        return 32;
+        return 36;
       case "medium":
-        return 38;
+        return 44;
       case "large":
-        return 44;
+        return 52;
       default:
-        return 44;
+        return 52;
     }
   };
 
@@ -77,28 +77,22 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
   buttonContainer: {
     width: "100%",
-    borderRadius: 40,
+    borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#8D79F0",
     backgroundColor: "#492D81",
-    boxShadow: "1px -12px 17.7px 0px rgba(91, 55, 223, 0.31) inset",
   },
   buttonWrapper: {
     width: "100%",
-    borderRadius: 40,
+    borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#492D81",
-    borderWidth: 1,
-    borderColor: "#8D79F0",
-    boxShadow: "1px -12px 17.7px 0px rgba(91, 55, 223, 0.31) inset",
   },
   buttonInner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    borderRadius: 40,
+    borderRadius: 12,
     backgroundColor: "#492D81",
   },
   buttonText: {

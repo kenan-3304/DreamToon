@@ -77,6 +77,8 @@ export const avatarUtils = {
     imageUri: string,
     style: { name: string; prompt: string }
   ) {
+    console.log("--- 1. Starting createAvatar process ---");
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -87,16 +89,38 @@ export const avatarUtils = {
 
     let comicFileName = ""; // Define here to be accessible in the catch block
 
+    console.log(
+      `--- 2. User authenticated: ${user.id}. Preparing to send request. ---`
+    );
+    console.log(`--- Image URI: ${imageUri} ---`);
+    console.log(`--- Style Name: ${style.name} ---`);
+
     try {
       // 1. Construct FormData to send the image and prompt to the backend
       const formData = new FormData();
+
+      console.log("--- 3. Fetching image blob from URI... ---");
+
       const response = await fetch(imageUri);
       const blob = await response.blob();
+
+      if (!blob) {
+        throw new Error("Failed to create blob from image URI.");
+      }
+      console.log(
+        `--- 4. Image blob created successfully. Size: ${blob.size} bytes. ---`
+      );
+
       formData.append("user_photo", blob, "user_photo.jpg");
       formData.append("prompt", style.prompt);
 
+      console.log(
+        "--- 5. FormData prepared. Making fetch request to backend... ---"
+      );
+
       // 2. Call your consolidated FastAPI backend
       // IMPORTANT: Replace with your actual Render URL
+
       const fastApiResponse = await fetch(
         "https://dreamtoon.onrender.com/generate-avatar/",
         {
@@ -108,8 +132,14 @@ export const avatarUtils = {
         }
       );
 
+      console.log(
+        `--- 6. Backend responded with status: ${fastApiResponse.status} ---`
+      );
+
       if (!fastApiResponse.ok) {
         const errorBody = await fastApiResponse.json();
+        console.error("--- BACKEND ERROR ---", errorBody);
+
         throw new Error(
           `Avatar generation failed: ${
             errorBody.detail || "Unknown server error"

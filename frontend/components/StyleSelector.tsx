@@ -11,8 +11,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useUser } from "../context/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 
+// Define the style type
+interface Style {
+  name: string;
+  prompt: string;
+  image: any;
+}
+
 // Define all your app's styles here
-const ALL_STYLES = [
+const ALL_STYLES: Style[] = [
   {
     name: "Ghibli",
     prompt:
@@ -39,19 +46,28 @@ const ALL_STYLES = [
   },
 ];
 
-export const StyleSelector = ({ onStyleSelect, mode = "selection" }) => {
+interface StyleSelectorProps {
+  onStyleSelect: (style: Style) => void;
+  mode?: "selection" | "creation";
+  onClose?: () => void;
+}
+
+export const StyleSelector: React.FC<StyleSelectorProps> = ({
+  onStyleSelect,
+  mode = "selection",
+  onClose,
+}) => {
   const { unlockedStyles } = useUser();
 
-  const renderStyleCard = ({ item: style }) => {
+  const renderStyleCard = ({ item: style }: { item: Style }) => {
     const isUnlocked = unlockedStyles.includes(style.name);
-    // --- FIX: A style is selectable if we are in 'creation' mode OR if it's already unlocked ---
     const isSelectable = mode === "creation" || isUnlocked;
 
     return (
       <Pressable
         style={styles.card}
         onPress={() => onStyleSelect(style)}
-        disabled={!isSelectable} // <-- Use the new 'isSelectable' variable
+        disabled={!isSelectable}
       >
         <ImageBackground
           source={style.image}
@@ -62,7 +78,6 @@ export const StyleSelector = ({ onStyleSelect, mode = "selection" }) => {
             <Text style={styles.styleName}>{style.name}</Text>
           </View>
 
-          {/* --- FIX: Show the locked overlay only if it's NOT selectable --- */}
           {!isSelectable && (
             <View style={styles.lockedOverlay}>
               <Ionicons name="lock-closed" size={32} color="#FFFFFF" />
@@ -74,16 +89,22 @@ export const StyleSelector = ({ onStyleSelect, mode = "selection" }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Choose a Style</Text>
+    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Choose a Style</Text>
+        <Pressable onPress={onClose}>
+          <Ionicons name="close" size={30} color="#FFFFFF" />
+        </Pressable>
+      </View>
       <FlatList
         data={ALL_STYLES}
         renderItem={renderStyleCard}
         keyExtractor={(item) => item.name}
         numColumns={2}
         contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
       />
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -91,45 +112,61 @@ export const StyleSelector = ({ onStyleSelect, mode = "selection" }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 30,
+    paddingHorizontal: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
     color: "#FFFFFF",
     textAlign: "center",
-    marginBottom: 20,
+    flex: 1,
   },
   listContainer: {
     alignItems: "center",
+    paddingBottom: 40,
   },
   card: {
-    width: 150,
-    height: 150,
-    borderRadius: 15,
-    margin: 10,
-    overflow: "hidden", // Ensures the ImageBackground respects the borderRadius
+    width: 160,
+    height: 160,
+    borderRadius: 20,
+    margin: 8,
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   imageBackground: {
     flex: 1,
-    justifyContent: "flex-end", // Aligns the text container to the bottom
+    justifyContent: "flex-end",
   },
   textContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   styleName: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
   },
   lockedOverlay: {
-    ...StyleSheet.absoluteFillObject, // Makes the overlay cover the entire card
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },

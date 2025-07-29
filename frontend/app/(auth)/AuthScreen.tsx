@@ -9,6 +9,8 @@ import {
   Alert,
   Image,
   Platform, // Import Platform API
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -61,9 +63,9 @@ const AuthScreen: React.FC = () => {
         throw profileError;
       }
 
-      // If no profile exists or the user is on the free tier, show the paywall.
-      if (!profile || profile.subscription_status === "free") {
-        router.replace("/(modals)/PaywallScreen");
+      // If no profile exists, they're a new user - send to create toon screen
+      if (!profile) {
+        router.replace("/(tab)/CreateToonScreen");
       } else {
         router.replace("/(tab)/EnhancedDashboardScreen");
       }
@@ -125,69 +127,71 @@ const AuthScreen: React.FC = () => {
 
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
-      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        <View style={styles.bodyWrapper}>
-          <Text style={styles.heading}>Welcome</Text>
-          <Text style={styles.tagline}>Get your dream comic in seconds</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+          <View style={styles.bodyWrapper}>
+            <Text style={styles.heading}>Welcome</Text>
+            <Text style={styles.tagline}>Get your dream comic in seconds</Text>
 
-          {/* --- PRIMARY ACTION: APPLE SIGN-IN (iOS only) --- */}
-          {Platform.OS === "ios" && (
-            <View style={{ width: "100%", marginBottom: 16 }}>
+            {/* --- PRIMARY ACTION: APPLE SIGN-IN (iOS only) --- */}
+            {Platform.OS === "ios" && (
+              <View style={{ width: "100%", marginBottom: -4 }}>
+                <SocialLoginButton
+                  icon={
+                    <Image
+                      source={appleIcon}
+                      style={{ width: 40, height: 40, marginRight: 12 }}
+                      resizeMode="contain"
+                    />
+                  }
+                  text="Continue with Apple"
+                  onPress={handleAppleSignIn}
+                  disabled={loading}
+                />
+              </View>
+            )}
+
+            {/* --- GOOGLE SIGN-IN --- */}
+            <View style={{ width: "100%", marginBottom: 32 }}>
               <SocialLoginButton
                 icon={
                   <Image
-                    source={appleIcon}
-                    style={{ width: 35, height: 35, marginRight: 12 }}
+                    source={googleIcon}
+                    style={{ width: 22, height: 22, marginRight: 12 }}
                     resizeMode="contain"
                   />
                 }
-                text="Continue with Apple"
-                onPress={handleAppleSignIn}
+                text="Continue with Google"
+                onPress={handleGoogleSignIn}
                 disabled={loading}
               />
             </View>
-          )}
 
-          {/* --- GOOGLE SIGN-IN --- */}
-          <View style={{ width: "100%", marginBottom: 40 }}>
-            <SocialLoginButton
-              icon={
-                <Image
-                  source={googleIcon}
-                  style={{ width: 22, height: 22, marginRight: 12 }}
-                  resizeMode="contain"
-                />
-              }
-              text="Continue with Google"
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-            />
-          </View>
+            <Text style={styles.separatorText}>━━━━━━━━━ or ━━━━━━━━━</Text>
 
-          <Text style={styles.separatorText}>Or</Text>
-
-          {/* --- SECONDARY ACTION: EMAIL OTP --- */}
-          <View style={styles.inputCard}>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email address"
-              placeholderTextColor="#8B8B8B"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.textInput}
-            />
+            {/* --- SECONDARY ACTION: EMAIL OTP --- */}
+            <View style={styles.inputCard}>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter your email address"
+                placeholderTextColor="#8B8B8B"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.textInput}
+              />
+            </View>
+            <View style={{ width: "100%", marginTop: 24 }}>
+              <ShinyGradientButton
+                onPress={handleContinueWithEmail}
+                disabled={loading}
+              >
+                Continue with Email
+              </ShinyGradientButton>
+            </View>
           </View>
-          <View style={{ width: "100%", marginTop: 24 }}>
-            <ShinyGradientButton
-              onPress={handleContinueWithEmail}
-              disabled={loading}
-            >
-              Continue with Email
-            </ShinyGradientButton>
-          </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </TouchableWithoutFeedback>
     </LinearGradient>
   );
 };
@@ -200,7 +204,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingHorizontal: 40,
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: 100,
   },
   heading: {
     fontSize: 44,
@@ -212,7 +217,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 18,
     color: "#8B8B8B",
-    marginBottom: 60,
+    marginBottom: 40,
     textAlign: "center",
   },
   separatorText: {
@@ -223,7 +228,7 @@ const styles = StyleSheet.create({
   inputCard: {
     width: "100%",
     backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 18,
+    borderRadius: 10,
     paddingHorizontal: 20,
   },
   textInput: {

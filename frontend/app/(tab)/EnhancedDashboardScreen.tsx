@@ -19,6 +19,7 @@ import { supabase } from "../../utils/supabase";
 import { useRouter } from "expo-router";
 import Background from "@/components/ui/Background";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
+import { StyleSelector } from "../../components/StyleSelector";
 import { useUser } from "../../context/UserContext";
 
 import Animated, {
@@ -40,7 +41,7 @@ const isIPad = Platform.OS === "ios" && isTablet();
 const getResponsiveValue = (phone: number, tablet: number) =>
   isIPad ? tablet : phone;
 
-type AppMode = "idle" | "typing" | "recording" | "review";
+type AppMode = "idle" | "typing" | "recording" | "review" | "style-selection";
 
 const EnhancedDashboardScreen: React.FC = () => {
   const router = useRouter();
@@ -56,6 +57,7 @@ const EnhancedDashboardScreen: React.FC = () => {
     "Ready to record your dream!"
   );
   const [containerCenter, setContainerCenter] = useState({ x: 0, y: 0 });
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
 
   const dashboardOpacity = useSharedValue(1);
   const morphProgress = useSharedValue(0);
@@ -165,12 +167,18 @@ const EnhancedDashboardScreen: React.FC = () => {
     setRecordingStatus("Ready to record your dream!");
     setRecordingUri(null);
     setDreamText("");
+    setSelectedStyle(null);
     Keyboard.dismiss();
     if (recording) {
       recording.stopAndUnloadAsync();
       setRecording(null);
     }
     if (tick.current) clearInterval(tick.current);
+  };
+
+  const handleStyleSelection = (style: { name: string; prompt: string }) => {
+    setSelectedStyle(style.name);
+    setMode("review"); // Go back to review mode after style selection
   };
 
   const handlePressCentralButton = () => {
@@ -186,11 +194,20 @@ const EnhancedDashboardScreen: React.FC = () => {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });
+      return;
     }
+
+    if (!selectedStyle) {
+      setMode("style-selection");
+      return;
+    }
+
     if (!dreamText.trim() || isLoading) {
-      setIsLoading(true);
-      Keyboard.dismiss();
+      return;
     }
+
+    setIsLoading(true);
+    Keyboard.dismiss();
 
     try {
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
@@ -203,7 +220,7 @@ const EnhancedDashboardScreen: React.FC = () => {
         body: JSON.stringify({
           story: dreamText.trim(),
           num_panels: 6,
-          style_name: "american",
+          style_name: selectedStyle,
         }),
       });
 
@@ -219,13 +236,21 @@ const EnhancedDashboardScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
       setDreamText("");
+      setSelectedStyle(null);
     }
   };
+
   const handleUploadRecording = async () => {
     if (profile?.subscription_status === "free") {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });
+      return;
+    }
+
+    if (!selectedStyle) {
+      setMode("style-selection");
+      return;
     }
 
     if (!recordingUri || isLoading) return;
@@ -243,7 +268,7 @@ const EnhancedDashboardScreen: React.FC = () => {
         body: JSON.stringify({
           audio_url: recordingUri,
           num_panels: 6,
-          style_name: "american",
+          style_name: selectedStyle,
         }),
       });
 
@@ -259,6 +284,7 @@ const EnhancedDashboardScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
       setRecordingUri(null);
+      setSelectedStyle(null);
     }
   };
 
@@ -375,14 +401,36 @@ const EnhancedDashboardScreen: React.FC = () => {
             <Text style={[styles.charCount, isIPad && styles.charCountTablet]}>
               {dreamText.length}/2000
             </Text>
-            <ShinyGradientButton onPress={handleUploadText}>
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                "Create Comic"
+            <View style={styles.buttonContainer}>
+              <ShinyGradientButton
+                onPress={handleUploadText}
+                disabled={!selectedStyle}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : selectedStyle ? (
+                  "Create Comic"
+                ) : (
+                  "Choose Style First"
+                )}
+              </ShinyGradientButton>
+              {!selectedStyle && (
+                <ShinyGradientButton onPress={() => setMode("style-selection")}>
+                  Choose Style
+                </ShinyGradientButton>
               )}
-            </ShinyGradientButton>
+            </View>
           </View>
+        </View>
+      )}
+
+      {mode === "style-selection" && (
+        <View style={styles.styleSelectionWrapper}>
+          <StyleSelector
+            onStyleSelect={handleStyleSelection}
+            mode="selection"
+            onClose={handleFullReset}
+          />
         </View>
       )}
 
@@ -390,14 +438,27 @@ const EnhancedDashboardScreen: React.FC = () => {
         <View style={styles.reviewModeWrapper}>
           <Text style={styles.statusText}>{recordingStatus}</Text>
           <Text style={styles.timerText}>Total Time: {timer}</Text>
+          {selectedStyle && (
+            <Text style={styles.selectedStyleText}>Style: {selectedStyle}</Text>
+          )}
           <View style={styles.reviewActions}>
-            <ShinyGradientButton onPress={handleUploadRecording}>
+            <ShinyGradientButton
+              onPress={handleUploadRecording}
+              disabled={!selectedStyle}
+            >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
-              ) : (
+              ) : selectedStyle ? (
                 "Create Comic"
+              ) : (
+                "Choose Style First"
               )}
             </ShinyGradientButton>
+            {!selectedStyle && (
+              <ShinyGradientButton onPress={() => setMode("style-selection")}>
+                Choose Style
+              </ShinyGradientButton>
+            )}
             <ShinyGradientButton onPress={handleFullReset}>
               Record Again
             </ShinyGradientButton>
@@ -530,6 +591,24 @@ const styles = StyleSheet.create({
   },
   reviewActions: { width: "90%", maxWidth: 350, gap: 20 },
   closeReviewBtn: { position: "absolute", top: 60, right: 20 },
+  styleSelectionWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#12081C",
+    zIndex: 20,
+  },
+  selectedStyleText: {
+    color: "#D1A8C5",
+    fontSize: 18,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  buttonContainer: {
+    width: "100%",
+    gap: 20,
+    alignItems: "center",
+  },
 });
 
 export default EnhancedDashboardScreen;
