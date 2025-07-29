@@ -239,7 +239,7 @@ async def generate_avatar(
             }
         )
 
-        invoke_response_data = invoke_response.data
+        invoke_response_data = json.loads(invoke_response)        
         if isinstance(invoke_response_data, dict) and invoke_response_data.get('error'):
             raise Exception(f"Finalize-avatar edge function failed: {invoke_response_data['error']}")
 
