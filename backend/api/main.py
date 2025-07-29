@@ -201,15 +201,34 @@ async def generate_avatar(
 
         # Pass the raw bytes to the API client function.
         generated_image_bytes = generate_avatar_from_image(image_bytes, avatar_request.prompt)
+        file_path = f"{user.id}/avatar_{int(time.time())}.png"
+        print(f"--- Uploading generated avatar to Supabase at path: {file_path} ---")
+
+        supabase.storage.from_("avatars").upload(
+            path=file_path,
+            file=generated_image_bytes,
+            file_options={"content-type": "image/png"}
+        )
+
         
-        b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
-        
-        print(f"--- Successfully generated avatar for user {user.id} ---")
-        return {"b64_json": b64_json, "status": "success"}
+        print("--- Finalizing avatar creation... ---")
+        invoke_response = supabase.functions.invoke(
+            "finalize-avatar",
+            invoke_options={
+                "body": {
+                    "styleName": avatar_request.prompt, # Assuming prompt is the style name
+                    "avatarPath": file_path,
+                }
+            }
+        )
+
+        print("--- Successfully created and stored avatar ---")
+        return {"status": "success", "path": file_path}
 
     except Exception as e:
-        print(f"Error during avatar generation: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to generate avatar image.")
+        # This will catch errors from OpenAI, Supabase upload, or Edge Function
+        print(f"An unexpected error occurred during avatar creation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate and store avatar.")
 
 
 def is_content_safe_for_comic(text: str) -> (bool, str):
