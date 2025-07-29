@@ -167,18 +167,12 @@ async def generate_comic(
 
 
 
-# In main.py
-
-# main.py
-
-# ... (imports remain the same)
-
 @app.post("/generate-avatar/")
 async def generate_avatar(
     avatar_request: AvatarRequest,
     authorization: str = Header(...)
 ):
-    # 1. Authentication (no changes here)
+    # 1. Authentication (this part stays the same)
     print("--- Authenticating user for avatar generation ---")
     try:
         token = authorization.split(" ")[1]
@@ -189,68 +183,22 @@ async def generate_avatar(
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    print(f"--- Generating avatar for user {user.id} ---")
+    # 2. Add the job to the queue and return immediately
     try:
-        # 🔻 MODIFICATION: Read the file's contents into a bytes object.
-        image_bytes = base64.b64decode(avatar_request.user_photo_b64)
-        # 💡 ADDED: A crucial check to ensure the file is not empty.
-        if not image_bytes:
-            raise HTTPException(
-                status_code=400, 
-                detail="Received an empty image file. Please upload a valid image."
-            )
-
-        # Pass the raw bytes to the API client function.
-        generated_image_bytes = generate_avatar_from_image(image_bytes, avatar_request.prompt)
-
-        ######################################################################
-        if generated_image_bytes:
-            debug_filename = f"/tmp/debug_avatar_{user.id}_{int(time.time())}.png"
-            try:
-                with open(debug_filename, "wb") as f:
-                    f.write(generated_image_bytes)
-                print(f"--- ✅ Successfully saved debug image to {debug_filename} ---")
-            except Exception as e:
-                print(f"--- ❗️ Failed to save debug image: {e} ---")
-        else:
-            print("--- ❗️ Image generation returned None, cannot save debug image. ---")
-            raise HTTPException(status_code=500, detail="Image generation failed, returned no data.")
-        ##############################################################################
-
-        file_path = f"{user.id}/avatar_{int(time.time())}.png"
-        print(f"--- Uploading generated avatar to Supabase at path: {file_path} ---")
-
-        supabase.storage.from_("avatars").upload(
-            path=file_path,
-            file=generated_image_bytes,
-            file_options={"content-type": "image/png"}
+        print(f"--- Enqueuing avatar generation for user {user.id} ---")
+        q.enqueue(
+            'worker.run_avatar_generation_worker', # The path to your new function
+            user.id,
+            avatar_request.prompt,
+            avatar_request.user_photo_b64
         )
 
-        
-        print("--- Finalizing avatar creation... ---")
-        invoke_response = supabase.functions.invoke(
-            "finalize-avatar",
-            invoke_options={
-                "body": {
-                    "userId": user.id,
-                    "styleName": avatar_request.prompt, # Assuming prompt is the style name
-                    "avatarPath": file_path,
-                }
-            }
-        )
-
-        invoke_response_data = json.loads(invoke_response)        
-        if isinstance(invoke_response_data, dict) and invoke_response_data.get('error'):
-            raise Exception(f"Finalize-avatar edge function failed: {invoke_response_data['error']}")
-
-
-        print("--- Successfully created and stored avatar ---")
-        return {"status": "success", "path": file_path}
+        # Respond to the client immediately
+        return {"status": "processing", "message": "Avatar generation has started and will be available shortly."}
 
     except Exception as e:
-        # This will catch errors from OpenAI, Supabase upload, or Edge Function
-        print(f"An unexpected error occurred during avatar creation: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to generate and store avatar.")
+        print(f"An unexpected error occurred during avatar enqueue: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to start avatar generation process.")
 
 
 def is_content_safe_for_comic(text: str) -> (bool, str):

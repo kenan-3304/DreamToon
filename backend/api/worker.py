@@ -1,8 +1,10 @@
 # worker.py
 
 import concurrent.futures
+import time
+import base64
 from .db_client import supabase
-from .api_clients import get_panel_descriptions, generate_image
+from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image
 from .prompt_builder import build_image_prompt
 
 # --- This is a helper function to generate a single panel ---
@@ -77,3 +79,44 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
     except Exception as e:
         print(f"[{dream_id}] An error occurred: {e}")
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+
+
+def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str):
+    """
+    A background worker that handles the entire avatar generation process.
+    """
+    print(f"--- Starting background avatar generation for user {user_id} ---")
+    try:
+        image_bytes = base64.b64decode(image_b64)
+
+        # 1. Generate the image using OpenAI
+        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
+        if not generated_image_bytes:
+            raise Exception("Image generation failed to return data.")
+
+        # 2. Upload the new avatar to Supabase Storage
+        file_path = f"{user_id}/avatar_{int(time.time())}.png"
+        print(f"--- Worker uploading avatar to: {file_path} ---")
+        supabase.storage.from_("avatars").upload(
+            path=file_path,
+            file=generated_image_bytes,
+            file_options={"content-type": "image/png"}
+        )
+
+        # 3. Finalize the database records by calling the edge function
+        print("--- Worker calling finalize-avatar edge function ---")
+        supabase.functions.invoke(
+            "finalize-avatar",
+            invoke_options={
+                "body": {
+                    "userId": user_id,
+                    "styleName": prompt,
+                    "avatarPath": file_path,
+                }
+            }
+        )
+        print(f"--- ✅ Background avatar generation complete for user {user_id} ---")
+
+    except Exception as e:
+        print(f"--- ❗️ Background avatar generation failed: {e} ---")
+        # Here you could add logic to update a status in your database to 'error'
