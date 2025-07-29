@@ -1,6 +1,7 @@
 import json
 import os
 import base64
+import requests
 from openai import OpenAI
 from .prompt_builder import build_initial_prompt
 from io import BytesIO
