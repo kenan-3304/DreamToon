@@ -20,25 +20,10 @@ Deno.serve(async (req) => {
 
   try {
     // Step 1: Authenticate the user making the request
-    // We create a standard client JUST to verify the user's token
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
-    const {
-      data: { user },
-      error: userError,
-    } = await userClient.auth.getUser();
-    if (userError || !user) throw new Error("Authentication failed.");
 
     // Step 2: Get the request body
-    const { styleName, avatarPath, originalPath } = await req.json();
-    if (!styleName || !avatarPath || !originalPath) {
+    const { userId, styleName, avatarPath } = await req.json();
+    if (!userId || !styleName || !avatarPath) {
       throw new Error("Missing required parameters.");
     }
 
@@ -49,17 +34,17 @@ Deno.serve(async (req) => {
     // Using the admin client allows us to bypass any Row Level Security policies
 
     const { error: avatarError } = await adminClient.from("avatars").insert({
-      user_id: user.id, // We use the authenticated user's ID
+      user_id: userId, // We use the authenticated user's ID
       style: styleName,
       avatar_path: avatarPath,
-      original_photo_path: originalPath,
+      original_photo_path: "server_generated",
     });
     if (avatarError) throw avatarError;
 
     const { error: styleError } = await adminClient
       .from("unlocked_styles")
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         style: styleName,
       });
     if (styleError) throw styleError;
@@ -70,7 +55,7 @@ Deno.serve(async (req) => {
         last_avatar_created_at: new Date().toISOString(),
         display_avatar_path: avatarPath,
       })
-      .eq("id", user.id);
+      .eq("id", userId);
     if (profileError) throw profileError;
 
     return new Response(JSON.stringify({ success: true }), {

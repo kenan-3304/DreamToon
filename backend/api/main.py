@@ -202,6 +202,21 @@ async def generate_avatar(
 
         # Pass the raw bytes to the API client function.
         generated_image_bytes = generate_avatar_from_image(image_bytes, avatar_request.prompt)
+
+        ######################################################################
+        if generated_image_bytes:
+            debug_filename = f"/tmp/debug_avatar_{user.id}_{int(time.time())}.png"
+            try:
+                with open(debug_filename, "wb") as f:
+                    f.write(generated_image_bytes)
+                print(f"--- ✅ Successfully saved debug image to {debug_filename} ---")
+            except Exception as e:
+                print(f"--- ❗️ Failed to save debug image: {e} ---")
+        else:
+            print("--- ❗️ Image generation returned None, cannot save debug image. ---")
+            raise HTTPException(status_code=500, detail="Image generation failed, returned no data.")
+        ##############################################################################
+
         file_path = f"{user.id}/avatar_{int(time.time())}.png"
         print(f"--- Uploading generated avatar to Supabase at path: {file_path} ---")
 
