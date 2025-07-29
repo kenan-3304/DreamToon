@@ -108,6 +108,7 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
         # The BytesIO object gives the OpenAI library a file-like object to read from.
         image_file = BytesIO(image_bytes)
         image_file.name = 'image.png'
+        print("prompt text: ", prompt_text)
 
         # Use the dall-e-2 model for the images.edit endpoint.
         response = client.images.edit(
