@@ -3,6 +3,7 @@
 import concurrent.futures
 import time
 import base64
+import os
 from .db_client import supabase
 from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image
 from .prompt_builder import build_image_prompt
@@ -120,3 +121,10 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str):
     except Exception as e:
         print(f"--- ❗️ Background avatar generation failed: {e} ---")
         # Here you could add logic to update a status in your database to 'error'
+
+
+def run_debug_worker():
+    """A simple test function to see if the worker is running at all."""
+    print("--- ✅ DEBUG WORKER HAS STARTED ---")
+    print(f"--- Worker's Current Directory: {os.getcwd()} ---")
+    print("--- ✅ DEBUG WORKER FINISHED ---")

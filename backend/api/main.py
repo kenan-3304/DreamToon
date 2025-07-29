@@ -309,3 +309,11 @@ async def get_all_comics(authorization: str = Header(None)):
     return comics_data or []
 
 
+
+
+@app.get("/debug-worker/")
+async def debug_worker():
+    """Endpoint to test if the RQ worker is running correctly."""
+    print("--- Enqueuing DEBUG worker ---")
+    q.enqueue('backend.api.worker.run_debug_worker')
+    return {"status": "Debug job enqueued. Check your worker logs."}
