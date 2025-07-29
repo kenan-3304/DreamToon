@@ -38,6 +38,10 @@ class ComicRequest(BaseModel):
     num_panels: int = 6
     style_name: str
 
+class AvatarRequest(BaseModel):
+    user_photo_b64: str
+    prompt: str
+
 
 @app.post("/generate-comic/")
 async def generate_comic(
@@ -170,9 +174,8 @@ async def generate_comic(
 
 @app.post("/generate-avatar/")
 async def generate_avatar(
-    authorization: str = Header(...),
-    user_photo: UploadFile = File(...),
-    prompt: str = Form(...)
+    avatar_request: AvatarRequest,
+    authorization: str = Header(...)
 ):
     # 1. Authentication (no changes here)
     print("--- Authenticating user for avatar generation ---")
@@ -188,8 +191,7 @@ async def generate_avatar(
     print(f"--- Generating avatar for user {user.id} ---")
     try:
         # 🔻 MODIFICATION: Read the file's contents into a bytes object.
-        image_bytes = await user_photo.read()
-
+        image_bytes = base64.b64decode(avatar_request.user_photo_b64)
         # 💡 ADDED: A crucial check to ensure the file is not empty.
         if not image_bytes:
             raise HTTPException(
@@ -198,7 +200,7 @@ async def generate_avatar(
             )
 
         # Pass the raw bytes to the API client function.
-        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
+        generated_image_bytes = generate_avatar_from_image(image_bytes, avatar_request.prompt)
         
         b64_json = base64.b64encode(generated_image_bytes).decode('utf-8')
         
