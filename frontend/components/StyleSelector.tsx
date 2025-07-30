@@ -23,25 +23,25 @@ const ALL_STYLES: Style[] = [
   {
     name: "Ghibli",
     prompt:
-      "A beautiful and whimsical portrait in the art style of Studio Ghibli. Lush, hand-painted watercolor background with detailed foliage and soft, warm sunlight. Clean, expressive character design inspired by Hayao Miyazaki, with a sense of wonder and nostalgia. Cinematic, pastoral, heartwarming.",
+      "Create a stylized character drawing inspired by the art style of Studio Ghibli. Use soft, hand-painted watercolor textures with a lush natural background and gentle sunlight. The character should evoke a warm, nostalgic feeling, with expressive features and a sense of childlike wonder. The input image provides reference for mood, pose, and hair silhouette, not for realism.",
     image: require("../assets/images/studio_ghibli.png"),
   },
   {
     name: "Adventure Time",
     prompt:
-      "A quirky and surreal portrait in the distinct art style of Adventure Time. Simple, rounded character designs with 'noodle' limbs and minimalist dot eyes. Rendered with flat, vibrant colors and thick, clean outlines against a whimsical, candy-colored landscape. Art by Pendleton Ward, cartoon network style.",
+      "Create a cartoon-style character drawing in the art style of Adventure Time: simple, rounded character design, noodle limbs, dot eyes, vibrant flat colors, thick outlines, and a candy-colored background. The input image provides general reference for mood, lighting, and character silhouette, but should not be interpreted literally or photorealistically",
     image: require("../assets/images/adventure_time.png"),
   },
   {
     name: "DC Comics",
     prompt:
-      "A dynamic and heroic portrait in the style of modern DC Comics. Strong, anatomical character with a dramatic pose. Detailed ink work with heavy use of shadows and cross-hatching for a gritty, high-contrast look. Cinematic lighting, graphic novel aesthetic, art by Jim Lee.",
+      "Create a stylized superhero character in the aesthetic of modern DC Comics. Use bold anatomy, dynamic posing, dramatic lighting, and detailed ink lines with cross-hatching. The character should have a gritty, high-contrast graphic novel look. Use the input image only as loose reference for posture and mood — do not replicate the person.",
     image: require("../assets/images/dc.jpg"),
   },
   {
     name: "Simpsons",
     prompt:
-      "A satirical and humorous portrait in the iconic art style of The Simpsons. Character with yellow skin, large round eyes, and a prominent overbite. Rendered in a 2D flat color style with bold black outlines, reminiscent of Matt Groening's animation.",
+      "Create a stylized cartoon character in the art style of The Simpsons. Use flat colors, yellow skin tone, oversized round eyes, and simple linework with bold outlines. Place the character in a satirical, suburban setting. Use the input image as loose reference for pose and general hairstyle, but avoid realism or facial replication.",
     image: require("../assets/images/simpsons.png"),
   },
 ];

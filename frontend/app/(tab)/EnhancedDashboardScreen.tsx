@@ -58,6 +58,7 @@ const EnhancedDashboardScreen: React.FC = () => {
   );
   const [containerCenter, setContainerCenter] = useState({ x: 0, y: 0 });
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [previousMode, setPreviousMode] = useState<AppMode>("idle");
 
   const dashboardOpacity = useSharedValue(1);
   const morphProgress = useSharedValue(0);
@@ -176,9 +177,16 @@ const EnhancedDashboardScreen: React.FC = () => {
     if (tick.current) clearInterval(tick.current);
   };
 
+  // When entering style-selection, store the current mode
+  const enterStyleSelection = () => {
+    setPreviousMode(mode);
+    setMode("style-selection");
+  };
+
+  // In handleStyleSelection, go back to the stored mode
   const handleStyleSelection = (style: { name: string; prompt: string }) => {
     setSelectedStyle(style.name);
-    setMode("review"); // Go back to review mode after style selection
+    setMode(previousMode);
   };
 
   const handlePressCentralButton = () => {
@@ -256,20 +264,29 @@ const EnhancedDashboardScreen: React.FC = () => {
     if (!recordingUri || isLoading) return;
     setIsLoading(true);
 
+    //create form data
+    const formData = new FormData();
+    //CHANGE FOR GOOGLE
+    const uri = Platform.OS === "ios" ? recordingUri : `file://${recordingUri}`;
+
+    formData.append("audio_file", {
+      uri: uri,
+      name: "recording.m4a",
+      type: "audio/m4a",
+    } as any);
+
+    formData.append("num_panels", "6");
+    formData.append("style_name", selectedStyle);
+
     try {
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
 
       const response = await fetch(backendURL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({
-          audio_url: recordingUri,
-          num_panels: 6,
-          style_name: selectedStyle,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -415,7 +432,7 @@ const EnhancedDashboardScreen: React.FC = () => {
                 )}
               </ShinyGradientButton>
               {!selectedStyle && (
-                <ShinyGradientButton onPress={() => setMode("style-selection")}>
+                <ShinyGradientButton onPress={enterStyleSelection}>
                   Choose Style
                 </ShinyGradientButton>
               )}
@@ -455,7 +472,7 @@ const EnhancedDashboardScreen: React.FC = () => {
               )}
             </ShinyGradientButton>
             {!selectedStyle && (
-              <ShinyGradientButton onPress={() => setMode("style-selection")}>
+              <ShinyGradientButton onPress={enterStyleSelection}>
                 Choose Style
               </ShinyGradientButton>
             )}

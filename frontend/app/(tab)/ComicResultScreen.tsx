@@ -125,7 +125,7 @@ export default function ComicResultScreen() {
 
   /*──────── Navigation helpers ────────*/
   const discard = () => router.push("/(tab)/EnhancedDashboardScreen");
-  const handleBack = () => (panelUrls.length ? router.back() : discard());
+  const handleBack = () => router.push("/(tab)/TimelineScreen");
 
   /*──────── Share / Download ────────*/
   const handleShare = async () => {
@@ -300,13 +300,14 @@ const styles = StyleSheet.create({
   },
   header: {
     position: "absolute",
-    top: 20,
+    top: 60,
     left: 0,
     right: 0,
     height: 46,
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
+    zIndex: 1,
   },
   headerTablet: {
     height: 80,
@@ -315,9 +316,9 @@ const styles = StyleSheet.create({
     paddingRight: 32,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -339,6 +340,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     paddingHorizontal: 20,
+    paddingTop: 80, // Add top padding to avoid overlap with header
     alignItems: "center",
     marginBottom: 120,
   },

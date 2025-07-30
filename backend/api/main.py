@@ -67,8 +67,10 @@ def authenticateUser(authorization: str = Header()):
 
 @app.post("/generate-comic/")
 async def generate_comic(
-    comic_request: ComicRequest, # Change the signature to accept the raw request
-    #background_tasks: BackgroundTasks,
+    style_name: str = Form(...),
+    num_panels: int = Form(6),
+    audio_file: Optional[UploadFile] = File(None),
+    story: Optional[str] = Form(None),
     authorization: str = Header(None)
 ):
 
@@ -88,12 +90,12 @@ async def generate_comic(
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
 
-    print(f"getting avatar for style: {comic_request.style_name}")
+    print(f"getting avatar for style: {style_name}")
 
     avatar_response = supabase.from_("avatars") \
         .select("avatar_path") \
         .eq("user_id", user.id) \
-        .eq("style", comic_request.style_name) \
+        .eq("style", style_name) \
         .order("created_at", desc=True) \
         .limit(1) \
         .single() \
@@ -102,7 +104,7 @@ async def generate_comic(
     if not avatar_response.data or not avatar_response.data.get("avatar_path"):
         # This could happen if a user somehow has a style unlocked but no avatar for it.
         # It's a good edge case to handle.
-        raise HTTPException(status_code=404, detail=f"No avatar found for the style '{comic_request.style_name}'. Please create one first.")
+        raise HTTPException(status_code=404, detail=f"No avatar found for the style '{style_name}'. Please create one first.")
 
     avatar_path = avatar_response.data["avatar_path"]
 
@@ -122,7 +124,7 @@ async def generate_comic(
     #----------Create a DB instance-------------#
     insert_response = supabase.from_("comics").insert({
         "user_id": user.id,
-        "style": comic_request.style_name
+        "style": style_name
     }).execute()
     
     dream_id = insert_response.data[0]['id']
@@ -130,12 +132,11 @@ async def generate_comic(
 
     #----------Send the text or process audio--------------#
     story_text = ""
-    if comic_request.story:
-        story_text = comic_request.story
-    elif comic_request.audio_url:
-        audio_response = requests.get(comic_request.audio_url)
-        audio_response.raise_for_status()
-        story_text = transcribe_audio(audio_response.content)
+    if story:
+        story_text = story
+    elif audio_file:
+        audio_content = await audio_file.read()
+        story_text = transcribe_audio(audio_content)
     else:
         # Update status to error if no input is provided
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
@@ -160,8 +161,8 @@ async def generate_comic(
         dream_id,
         user.id,
         story_text,
-        comic_request.num_panels,
-        comic_request.style_name,
+        num_panels,
+        style_name,
         avatar_b64
     )
 
