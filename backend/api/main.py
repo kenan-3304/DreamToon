@@ -79,7 +79,7 @@ async def generate_comic(
         .select("avatar_path") \
         .eq("user_id", user.id) \
         .eq("style", style_name) \
-        .order("created_at", ascending=False) \
+        .order("created_at", desc=True) \
         .limit(1) \
         .single() \
         .execute()
