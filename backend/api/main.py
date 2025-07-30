@@ -79,7 +79,7 @@ async def generate_comic(
         .select("avatar_path") \
         .eq("user_id", user.id) \
         .eq("style", style_name) \
-        .order("created_at", desc=True) \
+        .order("created_at", ascending=False) \
         .limit(1) \
         .single() \
         .execute()
@@ -123,7 +123,7 @@ async def generate_comic(
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
         raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
 
-    supabase.from_("comics").insert({"transcript": story_text}).eq("id", dream_id).execute()
+    supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
 
     #---------Check Moderation----------#
     # we have to check ovbious moderation issues
