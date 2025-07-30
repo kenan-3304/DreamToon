@@ -21,7 +21,7 @@ const Index = () => {
   }
 
   // If loading is finished and there IS a session, redirect to the main app.
-  return <Redirect href="/(tab)/EnhancedDashboardScreen" />;
+  return <Redirect href="/(tab)/" />;
 };
 
 const styles = StyleSheet.create({

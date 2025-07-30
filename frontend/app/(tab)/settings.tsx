@@ -9,6 +9,7 @@ import {
   Modal,
   Linking, // <-- Add Linking import
   TextInput,
+  Platform, // <-- Add Platform import
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -146,23 +147,16 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={{ width: 40 }} /> {/* Spacer to balance the back button */}
-      </View>
+      {/* Add this spacer */}
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Info Section */}
         <View style={styles.userSection}>
           <View style={styles.userAvatar}>
             {profile?.display_avatar_path ? (
-              <Avatar avatarUrl={profile.display_avatar_path} size={100} />
+              <Avatar avatarUrl={profile.display_avatar_path} size={130} />
             ) : (
-              <Ionicons name="person" size={40} color="#00EAFF" />
+              <Ionicons name="person" size={60} color="#00EAFF" />
             )}
           </View>
           <Text style={styles.userName}>{profile?.name || "Dreamer"}</Text>
@@ -300,6 +294,7 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 60, // Add fixed top padding
   },
   header: {
     flexDirection: "row",
@@ -329,6 +324,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 1, // Add fixed top padding
   },
   userSection: {
     alignItems: "center",
@@ -338,9 +334,9 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   userAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "rgba(0,234,255,0.1)",
     alignItems: "center",
     justifyContent: "center",

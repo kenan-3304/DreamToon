@@ -178,7 +178,7 @@ export const TimelineScreen: React.FC = () => {
           {/* Settings */}
           <Pressable
             style={[styles.settingsBtn, isIPad && styles.settingsBtnTablet]}
-            onPress={() => router.push("/(tab)/SettingScreen")}
+            onPress={() => router.push("/(tab)/settings")}
           >
             <Ionicons
               name="settings"
@@ -358,10 +358,10 @@ export const TimelineScreen: React.FC = () => {
           </ScrollView>
 
           {/* Navigation Bar */}
-          <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
+          {/* <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
             <Pressable
               style={styles.navBtn}
-              onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
+              onPress={() => router.push("/(tab)/index")}
             >
               <Ionicons
                 name="home"
@@ -371,7 +371,7 @@ export const TimelineScreen: React.FC = () => {
             </Pressable>
             <Pressable
               style={styles.navBtn}
-              onPress={() => router.push("/(tab)/TimelineScreen")}
+              onPress={() => router.push("/(tab)/timeline")}
             >
               <Ionicons
                 name="book"
@@ -379,7 +379,7 @@ export const TimelineScreen: React.FC = () => {
                 color="#FFFFFF"
               />
             </Pressable>
-          </View>
+          </View> */}
         </View>
       </Background>
     </LinearGradient>

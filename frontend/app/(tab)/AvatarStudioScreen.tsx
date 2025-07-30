@@ -23,16 +23,18 @@ import { ShinyGradientButton } from "@/components/ShinyGradientButton";
 
 export default function AvatarStudioScreen() {
   const router = useRouter(); // --- ADD: Router for navigation ---
-  const { profile, refetchProfileAndData } = useUser();
-  const [avatars, setAvatars] = useState<{ path: string; signedUrl: string }[]>(
-    []
-  );
+  const { profile, refetchProfileAndData, updateProfile } = useUser();
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [avatars, setAvatars] = useState<{ path: string; signedUrl: string }[]>(
+    []
+  );
+
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollingJobId, setPollingJobId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Note: I've updated this to use the better function from my previous advice
     avatarUtils
       .getMyAvatarsWithSignedUrls()
       .then((data) => {
@@ -50,8 +52,58 @@ export default function AvatarStudioScreen() {
       });
   }, []);
 
+  // --- This entire useEffect hook manages the polling process ---
+  useEffect(() => {
+    if (!pollingJobId) return;
+
+    setIsPolling(true);
+
+    // Set up a timer to check the status every 5 seconds
+    const interval = setInterval(async () => {
+      try {
+        const status = await avatarUtils.checkAvatarStatus(pollingJobId);
+
+        // If the job is done (successfully or with an error), stop polling.
+        if (status === "complete" || status === "error") {
+          clearInterval(interval);
+          setIsPolling(false);
+          setPollingJobId(null);
+
+          if (status === "complete") {
+            Alert.alert("Success!", "Your new avatar is ready.");
+
+            // --- CHANGE: Using Promise.all for more efficient data refreshing ---
+            await Promise.all([
+              avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
+                setAvatars(
+                  (data || [])
+                    .filter((item) => item.path)
+                    .map(({ path, signedUrl }) => ({
+                      path: path as string,
+                      signedUrl,
+                    }))
+                );
+              }),
+              refetchProfileAndData(), // Refreshes profile and cooldown timer
+            ]);
+            // --- END CHANGE ---
+          } else {
+            Alert.alert("Error", "Avatar generation failed. Please try again.");
+          }
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+        clearInterval(interval);
+        setIsPolling(false);
+        setPollingJobId(null);
+      }
+    }, 5000);
+
+    // Clean up the timer if the user navigates away from the screen
+    return () => clearInterval(interval);
+  }, [pollingJobId]);
+
   const isCooldownActive = () => {
-    // ... (your existing cooldown logic is correct) ...
     if (!profile?.last_avatar_created_at) return false;
     const lastDate = new Date(profile.last_avatar_created_at);
     const now = new Date();
@@ -143,20 +195,12 @@ export default function AvatarStudioScreen() {
   ) => {
     setIsCreating(true);
     try {
-      await avatarUtils.createAvatar(imageUri, style);
-      await Promise.all([
-        avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
-          setAvatars(
-            (data || [])
-              .filter((item) => item.path)
-              .map(({ path, signedUrl }) => ({
-                path: path as string,
-                signedUrl,
-              }))
-          );
-        }),
-        refetchProfileAndData(),
-      ]);
+      const response = await avatarUtils.createAvatar(imageUri, style);
+      if (response && response.job_id) {
+        setPollingJobId(response.job_id);
+      } else {
+        throw new Error("Failed to initialize the avatart generation job.");
+      }
     } catch (e: any) {
       Alert.alert(
         "Creation Failed",
@@ -175,6 +219,45 @@ export default function AvatarStudioScreen() {
     );
   }
 
+  const handleAvatarPress = (item: { path: string; signedUrl: string }) => {
+    Alert.alert("Manage Avatar", "What would you like to do?", [
+      {
+        text: "Set as Display Picture",
+        onPress: async () => {
+          try {
+            await updateProfile({ display_avatar_path: item.path });
+            Alert.alert("Success", "Your profile picture has been updated!");
+          } catch (error) {
+            Alert.alert("Error", "Could not update your profile picture.");
+          }
+        },
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          Alert.alert("Are you sure?", "This action cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete It",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await avatarUtils.deleteAvatar(item.path);
+                  setAvatars((prev) =>
+                    prev.filter((a) => a.path !== item.path)
+                  );
+                } catch (error: any) {
+                  Alert.alert("Error", error.message);
+                }
+              },
+            },
+          ]),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       {/* --- ADD: Header for navigation --- */}
@@ -192,17 +275,33 @@ export default function AvatarStudioScreen() {
           <Text style={styles.galleryTitle}>Your Collection</Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.avatarWrapper}>
+          <Pressable
+            style={styles.avatarWrapper}
+            onPress={() => handleAvatarPress(item)}
+          >
             <Avatar avatarUrl={item.signedUrl} size={100} />
-          </View>
+            {profile?.display_avatar_path === item.path && (
+              <View style={styles.selectedIndicator}>
+                <Ionicons name="checkmark-circle" size={24} color="#00EAFF" />
+              </View>
+            )}
+          </Pressable>
         )}
         keyExtractor={(item) => item.path} // Using path for a stable key
         numColumns={3}
         contentContainerStyle={styles.galleryContainer}
         ListFooterComponent={
           <View style={styles.buttonContainer}>
-            {isCreating ? (
-              <ActivityIndicator color="#FFFFFF" size="large" />
+            {/* Update the button's loading state logic --- */}
+            {isCreating || isPolling ? (
+              <View style={{ alignItems: "center" }}>
+                <ActivityIndicator color="#FFFFFF" size="large" />
+                <Text style={styles.cooldownText}>
+                  {isPolling
+                    ? "Generating your avatar..."
+                    : "Sending to studio..."}
+                </Text>
+              </View>
             ) : isCooldownActive() ? (
               <Text style={styles.cooldownText}>{getCooldownText()}</Text>
             ) : (
@@ -321,5 +420,12 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     flex: 1,
     textAlign: "center",
+  },
+  selectedIndicator: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 12,
   },
 });

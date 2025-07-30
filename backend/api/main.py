@@ -33,11 +33,8 @@ redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
 q = Queue('comics_queue', connection=redis_conn)
 
 
-class ComicRequest(BaseModel):
-    story: Optional[str] = None
-    audio_url: Optional[str] = None
-    num_panels: int = 6
-    style_name: str
+class DeleteAvatarRequest(BaseModel):
+    avatar_path: str
 
 class AvatarRequest(BaseModel):
     user_photo_b64: str
@@ -73,22 +70,8 @@ async def generate_comic(
     story: Optional[str] = Form(None),
     authorization: str = Header(None)
 ):
-
-    print("starting authentication")
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header is required")
-
-    try:
-        token = authorization.split(" ")[1] 
-        
-        # Use the Supabase client to verify the token and get the user
-        response = supabase.auth.get_user(token)
-        user = response.user
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+    
+    user = authenticateUser(authorization)
 
     print(f"getting avatar for style: {style_name}")
 
@@ -103,20 +86,18 @@ async def generate_comic(
 
     if not avatar_response.data or not avatar_response.data.get("avatar_path"):
         # This could happen if a user somehow has a style unlocked but no avatar for it.
-        # It's a good edge case to handle.
         raise HTTPException(status_code=404, detail=f"No avatar found for the style '{style_name}'. Please create one first.")
 
     avatar_path = avatar_response.data["avatar_path"]
 
-
-    # 3. Download the private avatar image from the 'avatars' bucket
+    #download the avatar image
     try:
         image_bytes = supabase.storage.from_("avatars").download(avatar_path)
     except Exception as e:
-        # Handle cases where the file might not exist in storage
+        # file might not exist in storage
         raise HTTPException(status_code=404, detail=f"Failed to download avatar from storage: {e}")
 
-    # 4. Encode the downloaded image bytes into a Base64 string
+    # Encode the downloaded image bytes into a Base64 string
     avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
     print("--- Starting Comic Generation Process ---")
@@ -181,21 +162,49 @@ async def generate_avatar(
 
     # 2. Add the job to the queue and return immediately
     try:
-        print(f"--- Enqueuing avatar generation for user {user.id} ---")
-        q.enqueue(
+        job = q.enqueue(
             'backend.api.worker.run_avatar_generation_worker', # The path to your new function
             user.id,
             avatar_request.prompt,
             avatar_request.user_photo_b64,
-            avatar_request.name
+            avatar_request.name,
+            job_id=job.id
+
         )
 
+        supabase.from_("avatar_generations").insert({
+            "job_id": job.id,
+            "user_id": user.id,
+            "status": "processing"
+        }).execute()
+
         # Respond to the client immediately
-        return {"status": "processing", "message": "Avatar generation has started and will be available shortly."}
+        return {"status": "processing", "job_id": job.id}
 
     except Exception as e:
         print(f"An unexpected error occurred during avatar enqueue: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to start avatar generation process.")
+    
+@app.get("/avatar-status/{job_id}")
+async def get_avatar_status(job_id: str, authorization: str = Header(...)):
+    user = authenticateUser(authorization)
+    response = supabase.from_("avatar_generations").select("status") \
+        .eq("job_id", job_id).eq("user_id", user.id).single().execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return {"status": response.data.get("status")}
+
+
+@app.delete("/delete-avatar/")
+async def delete_avatar(request: DeleteAvatarRequest, authorization: str = Header(...)):
+    user = authenticateUser(authorization)
+    if not request.avatar_path.startswith(user.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    supabase.storage.from_("avatars").remove([request.avatar_path])
+    supabase.from_("avatars").delete().eq("avatar_path", request.avatar_path).execute()
+
+    return {"status": "success"}
 
 
 def is_content_safe_for_comic(text: str) -> (bool, str):

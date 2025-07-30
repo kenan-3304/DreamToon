@@ -64,6 +64,8 @@ const EnhancedDashboardScreen: React.FC = () => {
   const morphProgress = useSharedValue(0);
   const micOpacity = useSharedValue(1);
   const audioLevel = useSharedValue(0);
+  const micScale = useSharedValue(1);
+  const micGlow = useSharedValue(0);
 
   const inputRef = useRef<TextInput>(null);
   const tick = useRef<any>(null);
@@ -77,10 +79,58 @@ const EnhancedDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     Audio.requestPermissionsAsync();
+
     return () => {
       if (tick.current) clearInterval(tick.current);
     };
   }, []);
+
+  // Separate useEffect for mic animations
+  useEffect(() => {
+    if (mode !== "idle") return; // Only animate when in idle mode
+
+    let isActive = true;
+    let animationInterval: number;
+
+    // Combined breathing and glow effect - synchronized 4-second cycle
+    const startMicAnimation = () => {
+      // Start both animations together
+      micScale.value = withTiming(1.05, {
+        duration: 2000,
+        easing: Easing.inOut(Easing.ease),
+      });
+      micGlow.value = withTiming(0.6, {
+        duration: 2000,
+        easing: Easing.inOut(Easing.ease),
+      });
+
+      // After 2 seconds, start shrinking and fading
+      animationInterval = setTimeout(() => {
+        if (isActive) {
+          micScale.value = withTiming(1, {
+            duration: 2000,
+            easing: Easing.inOut(Easing.ease),
+          });
+          micGlow.value = withTiming(0, {
+            duration: 2000,
+            easing: Easing.inOut(Easing.ease),
+          });
+
+          // After another 2 seconds, restart the cycle
+          setTimeout(() => {
+            if (isActive) startMicAnimation();
+          }, 2000);
+        }
+      }, 2000);
+    };
+
+    startMicAnimation();
+
+    return () => {
+      isActive = false;
+      if (animationInterval) clearTimeout(animationInterval);
+    };
+  }, [mode]); // Re-run when mode changes
 
   const dashboardAnimatedStyle = useAnimatedStyle(() => ({
     opacity: dashboardOpacity.value,
@@ -90,7 +140,12 @@ const EnhancedDashboardScreen: React.FC = () => {
 
   const micAnimatedStyle = useAnimatedStyle(() => ({
     opacity: micOpacity.value,
-    transform: [{ scale: micOpacity.value }],
+    transform: [{ scale: micScale.value }],
+  }));
+
+  const micGlowAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: micGlow.value,
+    transform: [{ scale: 1.2 + micGlow.value * 0.3 }],
   }));
 
   const startRecording = async () => {
@@ -109,6 +164,10 @@ const EnhancedDashboardScreen: React.FC = () => {
     dashboardOpacity.value = withTiming(0, { duration: 400 });
     micOpacity.value = withTiming(0, { duration: 400 });
     morphProgress.value = withTiming(1, { duration: 800 });
+
+    // Stop the mic animations during recording
+    micScale.value = withTiming(1, { duration: 200 });
+    micGlow.value = withTiming(0, { duration: 200 });
 
     try {
       await Audio.setAudioModeAsync({
@@ -162,6 +221,10 @@ const EnhancedDashboardScreen: React.FC = () => {
     micOpacity.value = withTiming(1, { duration: 600 });
     morphProgress.value = withTiming(0, { duration: 600 });
     audioLevel.value = withTiming(0, { duration: 600 });
+
+    // Restart mic animations when returning to idle
+    micScale.value = withTiming(1, { duration: 600 });
+    micGlow.value = withTiming(0, { duration: 600 });
 
     setMode("idle");
     setTimer("0:00");
@@ -219,17 +282,19 @@ const EnhancedDashboardScreen: React.FC = () => {
 
     try {
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
+
+      const formData = new FormData();
+
+      formData.append("story", dreamText.trim());
+      formData.append("num_panels", "6");
+      formData.append("style_name", selectedStyle);
+
       const response = await fetch(backendURL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({
-          story: dreamText.trim(),
-          num_panels: 6,
-          style_name: selectedStyle,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -241,6 +306,10 @@ const EnhancedDashboardScreen: React.FC = () => {
       });
     } catch (e: any) {
       console.error("counldnt upload the text", e.message);
+      Alert.alert(
+        "Upload Failed",
+        e.message || "An unexpected error occurred."
+      );
     } finally {
       setIsLoading(false);
       setDreamText("");
@@ -298,6 +367,10 @@ const EnhancedDashboardScreen: React.FC = () => {
       });
     } catch (e) {
       console.error("counldnt upload the recording", e);
+      Alert.alert(
+        "Upload Failed",
+        e.message || "An unexpected error occurred."
+      );
     } finally {
       setIsLoading(false);
       setRecordingUri(null);
@@ -310,7 +383,7 @@ const EnhancedDashboardScreen: React.FC = () => {
       <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
         <Pressable
           style={styles.headerBtn}
-          onPress={() => router.push("/(tab)/SettingScreen")}
+          onPress={() => router.push("/(tab)/settings")}
         >
           <Ionicons
             name="settings"
@@ -325,37 +398,6 @@ const EnhancedDashboardScreen: React.FC = () => {
           </Text>
         </View>
         <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={() => {
-            setMode("typing");
-            dashboardOpacity.value = withTiming(0);
-          }}
-          style={styles.typeInsteadWrapper}
-        >
-          <Text style={styles.typeInstead}>Want to type instead?</Text>
-        </Pressable>
-        <View style={styles.navBar}>
-          <Pressable
-            style={styles.navBtn}
-            onPress={() => router.push("/(tab)/EnhancedDashboardScreen")}
-          >
-            <Ionicons
-              name="home"
-              size={getResponsiveValue(24, 32)}
-              color="#FFFFFF"
-            />
-          </Pressable>
-          <Pressable
-            style={styles.navBtn}
-            onPress={() => router.push("/(tab)/TimelineScreen")}
-          >
-            <Ionicons
-              name="book"
-              size={getResponsiveValue(24, 32)}
-              color="#C879FF"
-            />
-          </Pressable>
-        </View>
       </AnimatedView>
 
       {/* FIX: The sphere is now positioned absolutely behind the button */}
@@ -384,6 +426,9 @@ const EnhancedDashboardScreen: React.FC = () => {
           }
         }}
       >
+        {/* Glow effect behind the mic */}
+        <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
+
         <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
           <Ionicons
             name="mic"
@@ -392,6 +437,17 @@ const EnhancedDashboardScreen: React.FC = () => {
           />
         </AnimatedView>
       </TouchableOpacity>
+
+      {/* Type instead option below microphone */}
+      <Pressable
+        onPress={() => {
+          setMode("typing");
+          dashboardOpacity.value = withTiming(0);
+        }}
+        style={styles.typeInsteadWrapper}
+      >
+        <Text style={styles.typeInstead}>Want to type instead?</Text>
+      </Pressable>
 
       {mode === "typing" && (
         <View style={styles.inputModeWrapper}>
@@ -522,6 +578,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Glow effect behind the mic
+  micGlow: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: getResponsiveValue(60, 90),
+    backgroundColor: "rgba(134, 99, 223, 0.21)",
+    shadowColor: "#8663DF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 10,
+  },
 
   headerBtn: { position: "absolute", top: 50, left: 20, zIndex: 10 },
   greetingWrapper: { marginTop: 60 },
@@ -537,7 +606,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  typeInsteadWrapper: { paddingBottom: 20 },
+  typeInsteadWrapper: {
+    position: "absolute",
+    bottom: 120, // Position above the tab bar
+    alignSelf: "center",
+  },
   typeInstead: {
     color: "#D1A8C5",
     fontSize: getResponsiveValue(16, 20),

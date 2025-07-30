@@ -116,12 +116,6 @@ export const avatarUtils = {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    const resDebug = await fetch(
-      "https://dreamtoon.onrender.com/debug-worker/",
-      {
-        method: "GET",
-      }
-    );
     const fastApiResponse = await fetch(
       "https://dreamtoon.onrender.com/generate-avatar/",
       {
@@ -154,6 +148,51 @@ export const avatarUtils = {
     }
 
     // No need to handle the response body, the backend did everything.
-    return { success: true };
+    return await fastApiResponse.json();
+  },
+
+  async checkAvatarStatus(jobId: string): Promise<string> {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not Authorized");
+
+    const response = await fetch(
+      `https://dreamtoon.onrender.com/avatar-status/${jobId}`,
+      {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }
+    );
+
+    if (!response) {
+      throw new Error("Failed to fetch status");
+    }
+
+    const data = await response.json();
+    return data.status;
+  },
+
+  async deleteAvatar(avatarPath: string): Promise<void> {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const response = await fetch(
+      `https://dreamtoon.onrender.com/delete-avatar/`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ avatar_path: avatarPath }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.detail || "Failed to delete avatar.");
+    }
   },
 };

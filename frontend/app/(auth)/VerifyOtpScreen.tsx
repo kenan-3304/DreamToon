@@ -69,7 +69,7 @@ const VerifyOtpScreen: React.FC = () => {
       if (!profile || profile.subscription_status === "free") {
         router.replace("/(modals)/PaywallScreen");
       } else {
-        router.replace("/(tab)/EnhancedDashboardScreen");
+        router.replace("/(tab)/index");
       }
     } catch (error: any) {
       Alert.alert("Verification Failed", error.message);

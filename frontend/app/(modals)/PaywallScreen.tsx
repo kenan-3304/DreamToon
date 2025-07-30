@@ -32,7 +32,7 @@ const PaywallScreen: React.FC = () => {
             // User successfully subscribed or restored.
             // A webhook will handle updating your database in the background.
             // Navigate them into the main app.
-            router.replace("/(tab)/EnhancedDashboardScreen");
+            router.replace("/(tab)/index");
             break;
           case PAYWALL_RESULT.CANCELLED:
             // User closed the paywall. Navigate them back.

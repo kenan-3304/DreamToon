@@ -82,11 +82,11 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
 
 
-def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
+def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str, job_id: str):
     """
     A background worker that handles the entire avatar generation process.
     """
-    print(f"--- Starting background avatar generation for user {user_id} ---")
+    print(f"--- Starting background avatar generation for user {user_id} (JOB ID {job_id}---")
     try:
         image_bytes = base64.b64decode(image_b64)
 
@@ -117,6 +117,7 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
                 }
             }
         )
+        supabase.from_("avatar_generations").update({"status": "complete"}).eq("job_id", job_id).execute()
         print(f"--- ✅ Background avatar generation complete for user {user_id} ---")
 
     except Exception as e:

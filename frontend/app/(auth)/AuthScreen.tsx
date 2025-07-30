@@ -67,7 +67,7 @@ const AuthScreen: React.FC = () => {
       if (!profile) {
         router.replace("/(tab)/CreateToonScreen");
       } else {
-        router.replace("/(tab)/EnhancedDashboardScreen");
+        router.replace("/(tab)/index");
       }
     } catch (error: any) {
       Alert.alert("Error", `Failed to process sign-in: ${error.message}`);
