@@ -11,10 +11,11 @@ from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks, Up
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from .api_clients import get_moderation, transcribe_audio, generate_avatar_from_image
-from .helper import encode_image_to_base64
+from .api_clients import transcribe_audio
+from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser
 from .db_client import supabase
 from .worker import run_comic_generation_worker
+from .schema import DeleteAvatarRequest, AvatarRequest
 
 app = FastAPI()
 
@@ -28,40 +29,11 @@ app.add_middleware(
 )
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-
 redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
 q = Queue('comics_queue', connection=redis_conn)
 
 
-class DeleteAvatarRequest(BaseModel):
-    avatar_path: str
-
-class AvatarRequest(BaseModel):
-    user_photo_b64: str
-    prompt: str
-    name: str
-
-def authenticateUser(authorization: str = Header()):
-    user = None
-    
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header is required")
-    
-    try:
-        token = authorization.split(" ")[1]
-        response = supabase.auth.get_user(token)
-        user = response.user
-
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
-    
-    return user
-
-
-
+#Generate comic flow
 @app.post("/generate-comic/")
 async def generate_comic(
     style_name: str = Form(...),
@@ -70,6 +42,18 @@ async def generate_comic(
     story: Optional[str] = Form(None),
     authorization: str = Header(None)
 ):
+    """Generates a full comic strip.
+
+        Args:
+            style_name (string): The name of the style for the comic.
+            num_panels (string): The maximum amount of panles allowed.
+            audio_file (File): an audio file describing a story
+            story (string): a text description of a story
+            authorization (string): authorization header
+
+        Returns:
+            dict: the dream id so the front end can load immediately.
+        """
     
     user = authenticateUser(authorization)
 
@@ -151,16 +135,26 @@ async def generate_comic(
 
 
 
-
+#generate avatar flow
 @app.post("/generate-avatar/")
 async def generate_avatar(
     avatar_request: AvatarRequest,
     authorization: str = Header(...)
 ):
+    """Generates a avatar in a certain style.
+
+        Args:
+            avatar_request (AvatarRequest): contains user photo, style prompt, and style name
+            authorization (string): authorization header
+
+        Returns:
+            dict: the immediate status to allow for backend polling including the job id.
+        """
+    
     print("--- Authenticating user for avatar generation ---")
     user = authenticateUser(authorization)
 
-    # 2. Add the job to the queue and return immediately
+    # Add the job to the queue and return immediately
     try:
         job = q.enqueue(
             'backend.api.worker.run_avatar_generation_worker', # The path to your new function
@@ -172,6 +166,7 @@ async def generate_avatar(
 
         )
 
+        # Makes it easier for the front end to check if a avatar is done generating
         supabase.from_("avatar_generations").insert({
             "job_id": job.id,
             "user_id": user.id,
@@ -185,6 +180,7 @@ async def generate_avatar(
         print(f"An unexpected error occurred during avatar enqueue: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to start avatar generation process.")
     
+
 @app.get("/avatar-status/{job_id}")
 async def get_avatar_status(job_id: str, authorization: str = Header(...)):
     user = authenticateUser(authorization)
@@ -195,57 +191,17 @@ async def get_avatar_status(job_id: str, authorization: str = Header(...)):
     return {"status": response.data.get("status")}
 
 
-@app.delete("/delete-avatar/")
-async def delete_avatar(request: DeleteAvatarRequest, authorization: str = Header(...)):
-    user = authenticateUser(authorization)
-    if not request.avatar_path.startswith(user.id):
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    supabase.storage.from_("avatars").remove([request.avatar_path])
-    supabase.from_("avatars").delete().eq("avatar_path", request.avatar_path).execute()
-
-    return {"status": "success"}
-
-
-def is_content_safe_for_comic(text: str) -> (bool, str):
-    """
-    Performs a nuanced moderation check.
-    Allows for some 'violence' but blocks other categories strictly.
-    """
-    print("---reached mod check-----")
-    # these are the thresholds from 0-1 
-    MODERATION_THRESHOLDS = {
-        "hate": 0.1,
-        "hate/threatening": 0.05,
-        "harassment": 0.3,
-        "harassment/threatening": 0.1,
-        "self-harm": 0.05,
-        "self-harm/intent": 0.05,
-        "self-harm/instructions": 0.05,
-        "sexual": 0.2,
-        "sexual/minors": 0.01,
-        "violence": 0.4,  # I am allowing for more violence because of creative redirection
-        "violence/graphic": 0.15 # Stricter threshold for graphic violence
-    }
-
-    moderation_result = get_moderation(text)
-    
-    if not moderation_result:
-        return False, "Moderation API call failed."
-
-    # The API returns scores for each category. We check if any score exceeds our defined threshold.
-    category_scores = moderation_result.results[0].category_scores
-
-    for category, score in category_scores:
-        if category in MODERATION_THRESHOLDS and score > MODERATION_THRESHOLDS[category]:
-            return False, f"Content flagged for '{category}' with score {score:.4f} (threshold: {MODERATION_THRESHOLDS[category]})"
-
-    return True, "Content is compliant."
-
-
 
 @app.get("/comic-status/{dream_id}")
 async def get_comic_status(dream_id: str):
+    """Check to see if a certain comic is done generating.
+
+        Args:
+            dream_id (string): a unique id to help locate a certain table instance 
+
+        Returns:
+            dict: the immediate status and the signed urls if it is done.
+        """
     response = supabase.from_("comics").select("status, image_urls").eq("id", dream_id).single().execute()
     
     if not response.data:
@@ -267,21 +223,20 @@ async def get_comic_status(dream_id: str):
     # Return the signed URLs to the frontend
     return {"status": status, "panel_urls": signed_urls}
 
+
 #get the signed id for all comic thumbnails
 @app.get("/comics/")
 async def get_all_comics(authorization: str = Header(None)):
-    print("--- GET /comics/ endpoint was hit ---")
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header is required")
+    """Get the signed url for each first comic pic for the timeline.
 
-    try:
-        token = authorization.split(" ")[1]
-        response = supabase.auth.get_user(token)
-        user = response.user
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
+        Args:
+            authorization (string): authorization header
+
+        Returns:
+            comic_data (list): a list of urls.
+        """
+    print("--- GET /comics/ endpoint was hit ---")
+    user = authenticateUser(authorization)
     
     #---------delete old comics----------#
 
@@ -315,6 +270,48 @@ async def get_all_comics(authorization: str = Header(None)):
     return comics_data or []
 
 
+#Deletion of an avatar flow
+@app.delete("/delete-avatar/")
+async def delete_avatar(request: DeleteAvatarRequest, authorization: str = Header(...)):
+    """Delete a avatar.
+
+        Args:
+            request (DeleteAvatarRequest): contains the path to the avatar
+            authorization (string): authorization header
+
+        Returns:
+            dict: the immediate status.
+        """
+    user = authenticateUser(authorization)
+    if not request.avatar_path.startswith(user.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    supabase.storage.from_("avatars").remove([request.avatar_path])
+    supabase.from_("avatars").delete().eq("avatar_path", request.avatar_path).execute()
+
+    return {"status": "success"}
+
+
+@app.detele("/delete-comic")
+async def delete_comic(dream_id: str, authorization: str = Header(None)):
+    """Delete a comic
+
+        Args:
+            comic_path(string): the path to the comic storage bucket
+            authorization(Header): auth header
+        Returns:
+            dict: status being complete or some exception
+    """
+
+    user = authenticateUser(authorization)
+
+    if not dream_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    supabase.storage.from_("comics").remove([f"{user.id}/{dream_id}"])
+    supabase.from_("comics").delete().eq("id", dream_id).execute()
+    return {"status": "success"}
+        
 
 
 @app.get("/debug-worker/")
