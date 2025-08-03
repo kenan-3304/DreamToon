@@ -124,8 +124,8 @@ export default function ComicResultScreen() {
   });
 
   /*──────── Navigation helpers ────────*/
-  const discard = () => router.push("/(tab)/EnhancedDashboardScreen");
-  const handleBack = () => router.push("/(tab)/TimelineScreen");
+  const discard = () => router.push("/(tab)/");
+  const handleBack = () => router.push("/(tab)/timeline");
 
   /*──────── Share / Download ────────*/
   const handleShare = async () => {

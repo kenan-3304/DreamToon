@@ -71,11 +71,11 @@ function TabContent() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Profile",
+          title: "",
           tabBarIcon: ({ focused, color, size }) => (
             <View style={focused ? styles.activeIconContainer : null}>
               {profile?.display_avatar_path ? (
-                <Avatar avatarUrl={profile.display_avatar_path} size={27} />
+                <Avatar avatarUrl={profile.display_avatar_path} size={30} />
               ) : (
                 <Ionicons
                   name={focused ? "settings" : "settings-outline"}
@@ -92,7 +92,7 @@ function TabContent() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "",
           tabBarIcon: ({ focused, color, size }) => (
             <View style={focused ? styles.activeIconContainer : null}>
               <Ionicons
@@ -109,7 +109,7 @@ function TabContent() {
       <Tabs.Screen
         name="timeline"
         options={{
-          title: "Timeline",
+          title: "",
           tabBarIcon: ({ focused, color, size }) => (
             <View style={focused ? styles.activeIconContainer : null}>
               <Ionicons

@@ -381,16 +381,6 @@ const EnhancedDashboardScreen: React.FC = () => {
   return (
     <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
       <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
-        <Pressable
-          style={styles.headerBtn}
-          onPress={() => router.push("/(tab)/settings")}
-        >
-          <Ionicons
-            name="settings"
-            size={getResponsiveValue(28, 36)}
-            color="#FFFFFF"
-          />
-        </Pressable>
         <View style={styles.greetingWrapper}>
           <Text style={styles.greetingText}>{greeting},</Text>
           <Text style={styles.greetingNameText}>
@@ -431,7 +421,7 @@ const EnhancedDashboardScreen: React.FC = () => {
 
         <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
           <Ionicons
-            name="mic"
+            name="mic-outline"
             size={getResponsiveValue(60, 80)}
             color="#8663DF"
           />

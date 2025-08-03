@@ -175,18 +175,6 @@ export const TimelineScreen: React.FC = () => {
         <View style={styles.root}>
           {/* Gradient background */}
 
-          {/* Settings */}
-          <Pressable
-            style={[styles.settingsBtn, isIPad && styles.settingsBtnTablet]}
-            onPress={() => router.push("/(tab)/settings")}
-          >
-            <Ionicons
-              name="settings"
-              size={getResponsiveValue(28, 36)}
-              color="#FFFFFF"
-            />
-          </Pressable>
-
           <ScrollView
             contentContainerStyle={[
               styles.scroll,

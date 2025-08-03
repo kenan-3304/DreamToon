@@ -21,7 +21,6 @@ import { FontAwesome } from "@expo/vector-icons"; // Import an icon for Apple
 import googleIcon from "../../assets/images/google.png";
 import appleIcon from "../../assets/images/apple_icon.png";
 import { supabase } from "../../utils/supabase";
-import { statusCodes } from "@react-native-google-signin/google-signin";
 
 const AuthScreen: React.FC = () => {
   const router = useRouter();
@@ -29,8 +28,7 @@ const AuthScreen: React.FC = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Destructure the new signInWithApple function from the hook
-  const { signInWithApple, signInWithGoogle, signUpWithEmailOtp, loading } =
-    useAuth();
+  const { signInWithApple, signUpWithEmailOtp, loading } = useAuth();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
