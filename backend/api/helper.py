@@ -69,3 +69,15 @@ def authenticateUser(authorization: str = Header()):
         raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")
     
     return user
+
+def style_name_to_description(style_name):
+    """
+    Returns a one to two-sentence description of a given art style.
+    """
+    description = {
+        "Simpsons": "An art style mimicking The Simpsons, defined by its use of flat colors, a signature yellow skin tone, and oversized round eyes. It employs simple linework with bold outlines and is often set in a satirical, suburban environment.",
+        "Ghibli": "An art style inspired by Studio Ghibli, characterized by soft, hand-painted watercolor textures and lush, natural settings with gentle sunlight. This style evokes a warm, nostalgic feeling through expressive characters with a sense of childlike wonder.",
+        "Adventure Time": "A cartoon style inspired by Adventure Time, featuring simple rounded designs, 'noodle' limbs, and dot eyes. It uses vibrant flat colors, thick outlines, and whimsical, candy-colored backgrounds.",
+        "DC Comics": "A modern DC Comics aesthetic with a gritty, graphic novel look. It features bold anatomy, dynamic poses, dramatic lighting, and detailed ink lines with cross-hatching for a high-contrast feel."
+    }
+    return description.get(style_name, "A distinct art style.")

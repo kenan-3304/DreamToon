@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from .api_clients import transcribe_audio
-from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser
+from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description
 from .db_client import supabase
 from .worker import run_comic_generation_worker
 from .schema import DeleteAvatarRequest, AvatarRequest
@@ -121,13 +121,15 @@ async def generate_comic(
 
     #-------send full prompt for multi-thread approach---------#
 
+    style_description = style_name_to_description(style_name)
+
     q.enqueue(
         'backend.api.worker.run_comic_generation_worker',
         dream_id,
         user.id,
         story_text,
         num_panels,
-        style_name,
+        style_description,
         avatar_b64
     )
 
@@ -292,7 +294,7 @@ async def delete_avatar(request: DeleteAvatarRequest, authorization: str = Heade
     return {"status": "success"}
 
 
-@app.detele("/delete-comic")
+@app.delete("/delete-comic")
 async def delete_comic(dream_id: str, authorization: str = Header(None)):
     """Delete a comic
 

@@ -30,11 +30,11 @@ def generate_single_panel(panel_info: tuple):
 
 
 # --- This is the main worker function ---
-def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_name: str, avatar_b64):
+def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
     try:
         print(f"[{dream_id}] Worker started for user {user_id}.")
 
-        panel_data = get_panel_descriptions(story, num_panels, style_name)
+        panel_data = get_panel_descriptions(story, num_panels, style_description)
 
         # ------handle errors-------#
         if panel_data.get("status") == "error":
