@@ -77,10 +77,13 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
 
 
-def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str, job_id: str):
+def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
     """
     A background worker that handles the entire avatar generation process.
     """
+    from rq import get_current_job
+    job = get_current_job()
+    job_id = job.id if job else "unknown"
     print(f"--- Starting background avatar generation for user {user_id} (JOB ID {job_id}---")
     try:
         image_bytes = base64.b64decode(image_b64)

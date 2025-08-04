@@ -164,11 +164,10 @@ async def generate_avatar(
             avatar_request.prompt,
             avatar_request.user_photo_b64,
             avatar_request.name,
-            job_id=job.id
-
         )
 
         # Makes it easier for the front end to check if a avatar is done generating
+        print("setting up avatar generations job")
         supabase.from_("avatar_generations").insert({
             "job_id": job.id,
             "user_id": user.id,
