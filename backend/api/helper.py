@@ -1,6 +1,7 @@
 import base64
 from .api_clients import get_moderation
 from .db_client import supabase
+from fastapi import HTTPException, Header
 
 
 def encode_image_to_base64(image_path):

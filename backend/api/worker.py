@@ -11,13 +11,13 @@ from .prompt_builder import build_image_prompt
 # --- This is a helper function to generate a single panel ---
 def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
-    i, panel, user_id, dream_id, character_sheet, style, avatar = panel_info
+    i, panel, user_id, dream_id, avatar = panel_info
     print(f"[{dream_id}] Thread started for Panel {i+1}...")
 
 
 
     # Here you would build your final prompt and call the services
-    final_prompt = build_image_prompt(panel, character_sheet)
+    final_prompt = build_image_prompt(panel)
     image_bytes = generate_image(final_prompt, avatar)
     
     # Upload to Supabase Storage
@@ -48,11 +48,6 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
             supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
             return
 
-        character_sheet = panel_data.get("character_sheet", "follow reference image")
-        if not character_sheet:
-            print("No character sheet loaded")
-            character_sheet = "Follow reference image"
-
         title = panel_data.get("title", "Untitled Dream")
         if not title:
             title = "Untitled Dream"
@@ -61,7 +56,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         supabase.from_("comics").update({"title": title}).eq("id", dream_id).execute()
 
         #--------set up and start parallel flow-------#
-        panel_tasks = [(i, p, user_id, dream_id, character_sheet, style_name, avatar_b64) for i, p in enumerate(panels)]
+        panel_tasks = [(i, p, user_id, dream_id, avatar_b64) for i, p in enumerate(panels)]
         image_paths = []
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
