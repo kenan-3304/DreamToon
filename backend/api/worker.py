@@ -59,7 +59,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         panel_tasks = [(i, p, user_id, dream_id, avatar_b64) for i, p in enumerate(panels)]
         image_paths = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             results = executor.map(generate_single_panel, panel_tasks)
             image_paths = list(results)
 
