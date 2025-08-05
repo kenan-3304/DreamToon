@@ -35,7 +35,7 @@ const ALL_STYLES: Style[] = [
   {
     name: "DC Comics",
     prompt:
-      "Create a stylized superhero character in the aesthetic of modern DC Comics. Use bold anatomy, dynamic posing, dramatic lighting, and detailed ink lines with cross-hatching. The character should have a gritty, high-contrast graphic novel look. Use the input image only as loose reference for posture and mood — do not replicate the person.",
+      "Create a stylized superhero character in the aesthetic of modern DC Comics. Use bold anatomy, dynamic posing, dramatic lighting, and detailed ink lines with cross-hatching. The character should have a gritty, high-contrast graphic novel look, and a cinematic and serious tone. Use the input image only as loose reference for posture and mood — do not replicate the person.",
     image: require("../assets/images/dc.jpg"),
   },
   {

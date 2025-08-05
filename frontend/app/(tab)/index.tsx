@@ -268,6 +268,14 @@ const EnhancedDashboardScreen: React.FC = () => {
       return;
     }
 
+    if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
+      Alert.alert(
+        "You have reached the creation limit for today",
+        " Come back tomorrow for more"
+      );
+      return;
+    }
+
     if (!selectedStyle) {
       setMode("style-selection");
       return;
@@ -322,6 +330,14 @@ const EnhancedDashboardScreen: React.FC = () => {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });
+      return;
+    }
+
+    if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
+      Alert.alert(
+        "You have reached the comic creation limit for today",
+        " Come back tomorrow for more"
+      );
       return;
     }
 

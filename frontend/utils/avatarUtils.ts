@@ -105,6 +105,13 @@ export const avatarUtils = {
     style: { name: string; prompt: string }
   ) {
     console.log("--- 1. Starting createAvatar process ---");
+
+    const debugWorker = await fetch(
+      "https://dreamtoon.onrender.com/debug-worker/",
+      {
+        method: "GET",
+      }
+    );
     const {
       data: { session },
     } = await supabase.auth.getSession();

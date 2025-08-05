@@ -19,6 +19,8 @@ interface Profile {
   subscription_status?: "free" | "trial" | "active" | "cancelled";
   last_avatar_created_at?: string;
   display_avatar_path?: string;
+  daily_creation_count?: number;
+  last_creation_date?: Date;
 }
 
 interface UserContextType {
@@ -45,18 +47,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   //handle auth changes and initial load
   useEffect(() => {
-    // get the initial session
-    // supabase.auth.getSession().then(({ data: { session } }) => {
-    //   setSession(session);
-    //   setUser(session?.user ?? null);
-
-    //   //if there is a user then get their profile
-    //   if (session?.user) {
-    //     fetchProfile(session.user);
-    //   }
-    //   setLoading(false);
-    // });
-
     //Listen for any auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
