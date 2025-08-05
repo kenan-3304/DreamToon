@@ -28,7 +28,8 @@ const AuthScreen: React.FC = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Destructure the new signInWithApple function from the hook
-  const { signInWithApple, signUpWithEmailOtp, loading } = useAuth();
+  const { signInWithApple, signUpWithEmailOtp, signInWithGoogle, loading } =
+    useAuth();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -65,7 +66,7 @@ const AuthScreen: React.FC = () => {
       if (!profile) {
         router.replace("/(tab)/CreateToonScreen");
       } else {
-        router.replace("/(tab)/index");
+        router.replace("/(tab)/");
       }
     } catch (error: any) {
       Alert.alert("Error", `Failed to process sign-in: ${error.message}`);
