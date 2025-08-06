@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useUser } from "../../context/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
@@ -44,6 +45,7 @@ const getResponsiveValue = (phone: number, tablet: number) =>
 
 export default function ComicResultScreen() {
   const router = useRouter();
+  const { profile, session } = useUser();
   const { urls, id } = useLocalSearchParams<{ urls: string; id?: string }>();
 
   const [panelUrls, setPanelUrls] = useState<string[]>([]);
@@ -153,6 +155,42 @@ export default function ComicResultScreen() {
     }
   };
 
+  const deleteComic = async () => {
+    Alert.alert("Delete", "Are you sure you want to delete this comic?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const deleteResponse = await fetch(
+            "https://dreamtoon.onrender.com/delete-comic/",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
+                dream_id: id,
+              }),
+            }
+          );
+
+          if (!deleteResponse.ok) {
+            const errorBody = await deleteResponse.json();
+            console.error("--- BACKEND ERROR ---", errorBody);
+            throw new Error(
+              `Delete comic failed: ${
+                errorBody.detail || "Unknown server error"
+              }`
+            );
+          }
+
+          router.replace("/(tab)/timeline");
+        },
+      },
+    ]);
+  };
+
   /*──────── Render ────────*/
   const getBoardHeight = (count: number) => {
     if (count <= 2) return SCREEN_HEIGHT * 0.33;
@@ -211,6 +249,11 @@ export default function ComicResultScreen() {
           [
             { icon: "share", onPress: handleShare, color: "#9B5DE5" },
             { icon: "download", onPress: handleDownload, color: "#7F9CF5" },
+            {
+              icon: "trash",
+              onPress: deleteComic,
+              color: "rgba(255, 77, 77, 0.69)",
+            },
             { icon: "close", onPress: discard, color: "#FF4EE0" },
           ] as const
         ).map((b, i) => (

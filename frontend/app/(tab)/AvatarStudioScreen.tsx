@@ -194,6 +194,13 @@ export default function AvatarStudioScreen() {
     style: { name: string; prompt: string }
   ) => {
     setIsCreating(true);
+    //check subscription status
+    if (profile?.subscription_status === "free") {
+      router.push({
+        pathname: "/(modals)/PaywallScreen",
+      });
+      return;
+    }
     try {
       const response = await avatarUtils.createAvatar(imageUri, style);
       if (response && response.job_id) {

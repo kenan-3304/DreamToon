@@ -25,6 +25,11 @@ export const dashboardUtils = {
       return false;
     }
 
+    if (!profile?.display_avatar_path) {
+      Alert.alert("Generate a Avatar before creating a comic");
+      return false;
+    }
+
     if (profile?.last_creation_date && isNotToday(profile.last_creation_date)) {
       try {
         updateProfile({ daily_creation_count: 0 });
