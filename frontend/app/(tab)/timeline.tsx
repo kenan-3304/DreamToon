@@ -309,34 +309,21 @@ export const TimelineScreen: React.FC = () => {
                     </View>
 
                     {/* comic preview */}
-                    <LinearGradient
-                      colors={[
-                        "rgba(166, 19, 117, 0.15)",
-                        "rgba(255,78,224,0.12)",
-                      ]}
-                      style={styles.preview}
-                    >
-                      <View style={styles.gridCentered}>
+                    <View style={styles.previewContainer}>
+                      <View style={styles.comicFrame}>
                         {c.image_urls && c.image_urls.length > 0 && (
-                          <View style={styles.panel}>
+                          <View style={styles.panelContainer}>
                             <Image
-                              source={{ uri: c.image_urls[0] }} // Only load the first image
+                              source={{ uri: c.image_urls[0] }}
                               style={styles.panelImage}
                               resizeMode="cover"
                             />
+                            {/* Subtle overlay for depth */}
+                            <View style={styles.imageOverlay} />
                           </View>
                         )}
                       </View>
-                      <Text
-                        style={[
-                          styles.previewLabel,
-                          isIPad && styles.previewLabelTablet,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {""}
-                      </Text>
-                    </LinearGradient>
+                    </View>
                   </Pressable>
                 </FloatingCard>
               ))
@@ -344,30 +331,6 @@ export const TimelineScreen: React.FC = () => {
 
             <View style={{ height: getResponsiveValue(120, 160) }} />
           </ScrollView>
-
-          {/* Navigation Bar */}
-          {/* <View style={[styles.navBar, isIPad && styles.navBarTablet]}>
-            <Pressable
-              style={styles.navBtn}
-              onPress={() => router.push("/(tab)/index")}
-            >
-              <Ionicons
-                name="home"
-                size={getResponsiveValue(24, 32)}
-                color="#C879FF"
-              />
-            </Pressable>
-            <Pressable
-              style={styles.navBtn}
-              onPress={() => router.push("/(tab)/timeline")}
-            >
-              <Ionicons
-                name="book"
-                size={getResponsiveValue(24, 32)}
-                color="#FFFFFF"
-              />
-            </Pressable>
-          </View> */}
         </View>
       </Background>
     </LinearGradient>
@@ -487,39 +450,44 @@ const styles = StyleSheet.create({
   cardTitle: { flex: 1, color: "#fff", marginLeft: 12, fontWeight: "600" },
   cardTitleTablet: { fontSize: 16, marginLeft: 16 },
   /* preview */
-  preview: {
+  previewContainer: {
     borderRadius: 20,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-  },
-  previewTablet: {
-    borderRadius: 24,
     padding: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 },
-  gridCentered: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: -6,
-    marginTop: 2,
+  comicFrame: {
+    alignItems: "center",
     justifyContent: "center",
   },
-  panel: { flexBasis: "30%", aspectRatio: 1, borderRadius: 8 },
-  previewLabel: {
-    color: "#00eaff",
-    fontSize: 10,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  previewLabelTablet: {
-    fontSize: 12,
+  panelContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    // Shadow for iOS
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    // Shadow for Android
+    elevation: 6,
   },
   panelImage: {
-    width: "103%",
-    height: "103%",
-    borderRadius: 8,
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 12,
   },
   navBar: {
     position: "absolute",

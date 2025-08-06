@@ -75,7 +75,7 @@ function TabContent() {
           tabBarIcon: ({ focused, color, size }) => (
             <View style={focused ? styles.activeIconContainer : null}>
               {profile?.display_avatar_path ? (
-                <Avatar avatarUrl={profile.display_avatar_path} size={30} />
+                <Avatar avatarUrl={profile.display_avatar_path} size={33} />
               ) : (
                 <Ionicons
                   name={focused ? "settings" : "settings-outline"}

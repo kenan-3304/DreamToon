@@ -21,6 +21,7 @@ import Background from "@/components/ui/Background";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { StyleSelector } from "../../components/StyleSelector";
 import { useUser } from "../../context/UserContext";
+import { dashboardUtils } from "@/utils/dashboardUtils";
 
 import Animated, {
   useSharedValue,
@@ -45,7 +46,7 @@ type AppMode = "idle" | "typing" | "recording" | "review" | "style-selection";
 
 const EnhancedDashboardScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, session } = useUser();
+  const { profile, session, updateProfile } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
   const [dreamText, setDreamText] = useState("");
@@ -261,18 +262,7 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   const handleUploadText = async () => {
-    if (profile?.subscription_status === "free") {
-      router.push({
-        pathname: "/(modals)/PaywallScreen",
-      });
-      return;
-    }
-
-    if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
-      Alert.alert(
-        "You have reached the creation limit for today",
-        " Come back tomorrow for more"
-      );
+    if (!(await dashboardUtils.canUpload(profile, router, updateProfile))) {
       return;
     }
 
@@ -326,18 +316,7 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   const handleUploadRecording = async () => {
-    if (profile?.subscription_status === "free") {
-      router.push({
-        pathname: "/(modals)/PaywallScreen",
-      });
-      return;
-    }
-
-    if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
-      Alert.alert(
-        "You have reached the comic creation limit for today",
-        " Come back tomorrow for more"
-      );
+    if (!(await dashboardUtils.canUpload(profile, router, updateProfile))) {
       return;
     }
 

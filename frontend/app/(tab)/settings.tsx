@@ -343,6 +343,13 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 2,
     borderColor: "#00EAFF",
+    // Shadow for iOS
+    shadowColor: "rgb(0, 0, 0)",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    // Shadow for Android
+    elevation: 8,
   },
   avatarImage: {
     width: 76,

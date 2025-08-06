@@ -66,9 +66,7 @@ const ProcessingScreen: React.FC = () => {
           clearInterval(statusInterval);
           await updateProfile({ last_creation_date: new Date() });
           await updateProfile({
-            daily_creation_count: profile?.daily_creation_count
-              ? profile.daily_creation_count
-              : 0 + 1,
+            daily_creation_count: (profile?.daily_creation_count || 0) + 1,
           });
 
           router.replace({
