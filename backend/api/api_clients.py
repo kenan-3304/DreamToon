@@ -15,9 +15,9 @@ def get_moderation(story) -> bool:
     )
     return response
 
-def get_panel_descriptions(story, num_panels, style_name):
+def get_panel_descriptions(story, num_panels, style_description):
 
-    initial_prompt = build_initial_prompt(num_panels, style_name)
+    initial_prompt = build_initial_prompt(num_panels, style_description)
     panel_data = None
 
     try:
@@ -89,8 +89,7 @@ def transcribe_audio(audio_bytes):
         file=audio_file,
         response_format="text"
     )
-    return transcription.text
-
+    return transcription
 
 def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
     """
