@@ -10,12 +10,8 @@ interface SimpleDropdownProps {
   field: string;
   activeDropdown: string | null;
   setActiveDropdown: (v: string | null) => void;
-  style?: object;
+  style?: { height?: number; [key: string]: any };
 }
-
-const PURPLE = "rgba(177, 63, 179, 0.8)"; // matches selected month
-const UNSELECTED_BG = "rgba(0,0,0,0.3)";
-const UNSELECTED_BORDER = "rgba(255,255,255,0.1)";
 
 const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
   selected,
@@ -27,24 +23,32 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
   setActiveDropdown,
   style,
 }) => {
-  const resolvedHeight = style?.height ?? 30;
+  const resolvedHeight = style?.height ?? 40;
 
   return (
-    <View style={{ minWidth: 100, ...style }}>
+    <View style={{ minWidth: 120, ...style }}>
       <Pressable
         style={({ pressed }) => [
           {
             borderWidth: 1,
-            borderColor: UNSELECTED_BORDER,
-            borderRadius: 20,
-            backgroundColor: UNSELECTED_BG,
+            borderColor: "rgba(224,176,255,0.3)",
+            borderRadius: 16,
+            backgroundColor: "rgba(224,176,255,0.1)",
             height: resolvedHeight,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 19,
+            paddingHorizontal: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 3,
           },
-          pressed && { backgroundColor: "rgba(217, 11, 155, 0.2)" },
+          pressed && {
+            backgroundColor: "rgba(224,176,255,0.2)",
+            transform: [{ scale: 0.98 }],
+          },
         ]}
         onPress={() =>
           setActiveDropdown(activeDropdown === field ? null : field)
@@ -52,9 +56,9 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
       >
         <Text
           style={{
-            color: selected ? "#FFFFFF" : "rgba(255,255,255,0.6)",
-            fontSize: 12,
-            fontWeight: "500",
+            color: selected ? "#E0B0FF" : "rgba(224,176,255,0.7)",
+            fontSize: 14,
+            fontWeight: "600",
             flex: 1,
           }}
         >
@@ -62,8 +66,8 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
         </Text>
         <Ionicons
           name="chevron-down"
-          size={18}
-          color={PURPLE}
+          size={16}
+          color="#E0B0FF"
           style={{
             transform: [
               { rotate: activeDropdown === field ? "180deg" : "0deg" },
@@ -75,21 +79,21 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
         <View
           style={{
             position: "absolute",
-            top: resolvedHeight,
+            top: resolvedHeight + 4,
             left: 0,
             right: 0,
-            backgroundColor: UNSELECTED_BG,
-            borderRadius: 20,
+            backgroundColor: "rgba(43,34,58,0.95)",
+            borderRadius: 16,
             borderWidth: 1,
-            borderColor: UNSELECTED_BORDER,
+            borderColor: "rgba(224,176,255,0.3)",
             zIndex: 1000,
             shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            elevation: 10,
             overflow: "hidden",
-            padding: 0,
+            padding: 4,
           }}
         >
           <ScrollView
@@ -101,14 +105,21 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
                 key={item}
                 style={({ pressed }) => [
                   {
-                    paddingVertical: 7,
+                    paddingVertical: 10,
                     paddingHorizontal: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "rgba(255,255,255,0.1)",
-                    minHeight: 28,
+                    borderRadius: 12,
+                    marginBottom: 2,
                     justifyContent: "center",
+                    minHeight: 32,
                   },
-                  pressed && { backgroundColor: PURPLE },
+                  pressed && {
+                    backgroundColor: "rgba(224,176,255,0.2)",
+                  },
+                  selected === item && {
+                    backgroundColor: "rgba(224,176,255,0.15)",
+                    borderWidth: 1,
+                    borderColor: "rgba(224,176,255,0.4)",
+                  },
                 ]}
                 onPress={() => {
                   onSelect(item);
@@ -117,9 +128,10 @@ const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
               >
                 <Text
                   style={{
-                    color: selected === item ? PURPLE : "#FFFFFF",
-                    fontSize: 12,
-                    fontWeight: selected === item ? "600" : "500",
+                    color: selected === item ? "#E0B0FF" : "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: selected === item ? "700" : "500",
+                    textAlign: "center",
                   }}
                 >
                   {item}

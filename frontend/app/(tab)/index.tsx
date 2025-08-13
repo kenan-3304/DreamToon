@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -15,6 +21,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
 import { supabase } from "../../utils/supabase";
 import { useRouter } from "expo-router";
 import Background from "@/components/ui/Background";
@@ -22,14 +29,19 @@ import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { StyleSelector } from "../../components/StyleSelector";
 import { useUser } from "../../context/UserContext";
 import { dashboardUtils } from "@/utils/dashboardUtils";
+import FloatingParticles from "../../components/FloatingParticles";
 
 import Animated, {
   useSharedValue,
   withTiming,
+  withSpring,
+  withRepeat,
   Easing,
   useAnimatedStyle,
+  interpolate,
+  runOnJS,
 } from "react-native-reanimated";
-import DottedSphere from "../../components/SphereVisualizer"; // Adjust path if needed
+import DottedSphere from "../../components/SphereVisualizer";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -61,22 +73,38 @@ const EnhancedDashboardScreen: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [previousMode, setPreviousMode] = useState<AppMode>("idle");
 
+  // Enhanced animation values
   const dashboardOpacity = useSharedValue(1);
   const morphProgress = useSharedValue(0);
   const micOpacity = useSharedValue(1);
   const audioLevel = useSharedValue(0);
   const micScale = useSharedValue(1);
   const micGlow = useSharedValue(0);
+  const micRotation = useSharedValue(0);
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0);
+  const greetingScale = useSharedValue(1);
+  const greetingOpacity = useSharedValue(0);
 
   const inputRef = useRef<TextInput>(null);
   const tick = useRef<any>(null);
 
-  const greeting = (() => {
+  // Enhanced greeting with animation
+  const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return "Good Morning";
     if (h < 18) return "Good Afternoon";
     return "Good Evening";
-  })();
+  }, []);
+
+  // Animate greeting on mount
+  useEffect(() => {
+    greetingOpacity.value = withTiming(1, {
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+    });
+    greetingScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+  }, []);
 
   useEffect(() => {
     Audio.requestPermissionsAsync();
@@ -86,43 +114,46 @@ const EnhancedDashboardScreen: React.FC = () => {
     };
   }, []);
 
-  // Separate useEffect for mic animations
+  // Enhanced mic animations with smooth breathing and ripple effects
   useEffect(() => {
-    if (mode !== "idle") return; // Only animate when in idle mode
+    if (mode !== "idle") return;
 
     let isActive = true;
     let animationInterval: number;
 
-    // Combined breathing and glow effect - synchronized 4-second cycle
     const startMicAnimation = () => {
-      // Start both animations together
-      micScale.value = withTiming(1.05, {
-        duration: 2000,
+      // Smooth breathing effect without rotation
+      micScale.value = withTiming(1.06, {
+        duration: 2500,
         easing: Easing.inOut(Easing.ease),
       });
-      micGlow.value = withTiming(0.6, {
-        duration: 2000,
+      micGlow.value = withTiming(0.7, {
+        duration: 2500,
         easing: Easing.inOut(Easing.ease),
       });
 
-      // After 2 seconds, start shrinking and fading
+      // Subtle ripple effect
+      rippleScale.value = withTiming(1.3, { duration: 2500 });
+      rippleOpacity.value = withTiming(0.2, { duration: 1250 }, () => {
+        rippleOpacity.value = withTiming(0, { duration: 1250 });
+      });
+
       animationInterval = setTimeout(() => {
         if (isActive) {
           micScale.value = withTiming(1, {
-            duration: 2000,
+            duration: 2500,
             easing: Easing.inOut(Easing.ease),
           });
           micGlow.value = withTiming(0, {
-            duration: 2000,
+            duration: 2500,
             easing: Easing.inOut(Easing.ease),
           });
 
-          // After another 2 seconds, restart the cycle
           setTimeout(() => {
             if (isActive) startMicAnimation();
-          }, 2000);
+          }, 2500);
         }
-      }, 2000);
+      }, 2500);
     };
 
     startMicAnimation();
@@ -131,11 +162,11 @@ const EnhancedDashboardScreen: React.FC = () => {
       isActive = false;
       if (animationInterval) clearTimeout(animationInterval);
     };
-  }, [mode]); // Re-run when mode changes
+  }, [mode]);
 
+  // Enhanced animated styles
   const dashboardAnimatedStyle = useAnimatedStyle(() => ({
     opacity: dashboardOpacity.value,
-    // The dashboard UI should not be interactive when faded out
     transform: [{ scale: dashboardOpacity.value === 0 ? 0 : 1 }],
   }));
 
@@ -146,10 +177,38 @@ const EnhancedDashboardScreen: React.FC = () => {
 
   const micGlowAnimatedStyle = useAnimatedStyle(() => ({
     opacity: micGlow.value,
-    transform: [{ scale: 1.2 + micGlow.value * 0.3 }],
+    transform: [{ scale: 1.3 + micGlow.value * 0.4 }],
   }));
 
+  const rippleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: rippleOpacity.value,
+    transform: [{ scale: rippleScale.value }],
+  }));
+
+  const greetingAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: greetingOpacity.value,
+    transform: [{ scale: greetingScale.value }],
+  }));
+
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
+
   const startRecording = async () => {
+    triggerHaptic("medium");
+
     const { status } = await Audio.getPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
@@ -162,12 +221,12 @@ const EnhancedDashboardScreen: React.FC = () => {
     setMode("recording");
     setRecordingStatus("🎙️ Recording your dream...");
 
+    // Enhanced animations
     dashboardOpacity.value = withTiming(0, { duration: 400 });
     micOpacity.value = withTiming(0, { duration: 400 });
     morphProgress.value = withTiming(1, { duration: 800 });
 
-    // Stop the mic animations during recording
-    micScale.value = withTiming(1, { duration: 200 });
+    micScale.value = withSpring(1.2, { damping: 15, stiffness: 100 });
     micGlow.value = withTiming(0, { duration: 200 });
 
     try {
@@ -201,6 +260,8 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   const stopRecording = async () => {
+    triggerHaptic("light");
+
     if (tick.current) clearInterval(tick.current);
     if (!recording) return;
 
@@ -218,13 +279,14 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   const handleFullReset = () => {
+    triggerHaptic("light");
+
     dashboardOpacity.value = withTiming(1, { duration: 600 });
     micOpacity.value = withTiming(1, { duration: 600 });
     morphProgress.value = withTiming(0, { duration: 600 });
     audioLevel.value = withTiming(0, { duration: 600 });
 
-    // Restart mic animations when returning to idle
-    micScale.value = withTiming(1, { duration: 600 });
+    micScale.value = withSpring(1, { damping: 15, stiffness: 100 });
     micGlow.value = withTiming(0, { duration: 600 });
 
     setMode("idle");
@@ -241,14 +303,14 @@ const EnhancedDashboardScreen: React.FC = () => {
     if (tick.current) clearInterval(tick.current);
   };
 
-  // When entering style-selection, store the current mode
   const enterStyleSelection = () => {
+    triggerHaptic("light");
     setPreviousMode(mode);
     setMode("style-selection");
   };
 
-  // In handleStyleSelection, go back to the stored mode
   const handleStyleSelection = (style: { name: string; prompt: string }) => {
+    triggerHaptic("light");
     setSelectedStyle(style.name);
     setMode(previousMode);
   };
@@ -275,6 +337,7 @@ const EnhancedDashboardScreen: React.FC = () => {
       return;
     }
 
+    triggerHaptic("medium");
     setIsLoading(true);
     Keyboard.dismiss();
 
@@ -326,11 +389,11 @@ const EnhancedDashboardScreen: React.FC = () => {
     }
 
     if (!recordingUri || isLoading) return;
+
+    triggerHaptic("medium");
     setIsLoading(true);
 
-    //create form data
     const formData = new FormData();
-    //CHANGE FOR GOOGLE
     const uri = Platform.OS === "ios" ? recordingUri : `file://${recordingUri}`;
 
     formData.append("audio_file", {
@@ -360,7 +423,7 @@ const EnhancedDashboardScreen: React.FC = () => {
         pathname: "/(tab)/ProcessingScreen",
         params: { dream_id: data.dream_id },
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error("counldnt upload the recording", e);
       Alert.alert(
         "Upload Failed",
@@ -374,18 +437,22 @@ const EnhancedDashboardScreen: React.FC = () => {
   };
 
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
+      <FloatingParticles />
       <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
-        <View style={styles.greetingWrapper}>
+        <AnimatedView style={[styles.greetingWrapper, greetingAnimatedStyle]}>
           <Text style={styles.greetingText}>{greeting},</Text>
           <Text style={styles.greetingNameText}>
             {profile?.name ?? "Dreamer"}
           </Text>
-        </View>
+        </AnimatedView>
         <View style={{ flex: 1 }} />
       </AnimatedView>
 
-      {/* FIX: The sphere is now positioned absolutely behind the button */}
       {containerCenter.x > 0 && (
         <DottedSphere
           level={audioLevel}
@@ -395,7 +462,6 @@ const EnhancedDashboardScreen: React.FC = () => {
         />
       )}
 
-      {/* FIX: The TouchableOpacity now dynamically changes size and contains the visuals */}
       <TouchableOpacity
         style={[
           styles.centralButton,
@@ -411,9 +477,13 @@ const EnhancedDashboardScreen: React.FC = () => {
           }
         }}
       >
-        {/* Glow effect behind the mic */}
+        {/* Enhanced ripple effect */}
+        <AnimatedView style={[styles.micRipple, rippleAnimatedStyle]} />
+
+        {/* Enhanced glow effect */}
         <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
 
+        {/* Enhanced mic visuals */}
         <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
           <Ionicons
             name="mic-outline"
@@ -423,9 +493,9 @@ const EnhancedDashboardScreen: React.FC = () => {
         </AnimatedView>
       </TouchableOpacity>
 
-      {/* Type instead option below microphone */}
       <Pressable
         onPress={() => {
+          triggerHaptic("light");
           setMode("typing");
           dashboardOpacity.value = withTiming(0);
         }}
@@ -537,8 +607,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
   },
-
-  // FIX: The base style for the central button, centered in the screen
   centralButton: {
     position: "absolute",
     width: getResponsiveValue(120, 180),
@@ -547,36 +615,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
   },
-  // FIX: The style that gets applied to make the button full screen
   fullScreenPressable: {
     width: "100%",
     height: "100%",
   },
-  // FIX: The visual style for the mic button, now separate from the pressable area
   micVisuals: {
     width: "100%",
     height: "100%",
     borderRadius: getResponsiveValue(60, 90),
-    backgroundColor: "rgba(134, 99, 223, 0.1)",
-    borderWidth: 4,
-    borderColor: "rgba(134, 99, 223, 0.5)",
+    backgroundColor: "rgba(134, 99, 223, 0.2)",
+    borderWidth: 3,
+    borderColor: "rgba(134, 99, 223, 0.6)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#8663DF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  // Glow effect behind the mic
   micGlow: {
     position: "absolute",
     width: "100%",
     height: "100%",
     borderRadius: getResponsiveValue(60, 90),
-    backgroundColor: "rgba(134, 99, 223, 0.21)",
+    backgroundColor: "rgba(134, 99, 223, 0.3)",
     shadowColor: "#8663DF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 30,
+    elevation: 15,
   },
-
+  micRipple: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: getResponsiveValue(60, 90),
+    borderWidth: 2,
+    borderColor: "rgba(134, 99, 223, 0.5)",
+  },
   headerBtn: { position: "absolute", top: 50, left: 20, zIndex: 10 },
   greetingWrapper: { marginTop: 60 },
   greetingText: {
@@ -584,22 +661,31 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   greetingNameText: {
     fontSize: getResponsiveValue(40, 56),
-    color: "#C879FF",
+    color: "#E0B0FF",
     fontWeight: "700",
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   typeInsteadWrapper: {
     position: "absolute",
-    bottom: 120, // Position above the tab bar
+    bottom: 120,
     alignSelf: "center",
   },
   typeInstead: {
-    color: "#D1A8C5",
+    color: "#FFFFFF",
     fontSize: getResponsiveValue(16, 20),
     textDecorationLine: "underline",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   navBar: {
     width: "90%",
@@ -627,8 +713,8 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(200, 121, 255, 0.5)",
-    backgroundColor: "rgba(35, 11, 61, 0.7)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     color: "#FFFFFF",
     padding: 16,
     textAlignVertical: "top",
@@ -637,7 +723,7 @@ const styles = StyleSheet.create({
   },
   inputTablet: { height: 300, borderRadius: 24, padding: 20, marginBottom: 20 },
   charCount: {
-    color: "#D1A8C5",
+    color: "#FFFFFF",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 16,
@@ -652,13 +738,13 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   statusText: {
-    color: "#D1A8C5",
+    color: "#FFFFFF",
     fontSize: 18,
     marginBottom: 10,
     textAlign: "center",
   },
   timerText: {
-    color: "#FFFFFF",
+    color: "#E0B0FF",
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 40,
@@ -674,7 +760,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   selectedStyleText: {
-    color: "#D1A8C5",
+    color: "#FFFFFF",
     fontSize: 18,
     marginBottom: 10,
     textAlign: "center",

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,14 +12,15 @@ import {
   Alert,
   Image,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import SimpleDropdown from "../../components/SimpleDropdown";
 import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import { useUser } from "../../context/UserContext";
-import Background from "../../components/ui/Background";
 
 /*********************
  * Types & constants
@@ -70,35 +71,62 @@ interface ComicEntry {
 }
 
 /*********************
- * Floating wrapper
+ * Enhanced Floating wrapper
  *********************/
 const FloatingCard: React.FC<{ delay: number; children: React.ReactNode }> = ({
   children,
   delay,
 }) => {
   const translateY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 600,
+        delay: delay * 100,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 400,
+        delay: delay * 100,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Continuous floating animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(translateY, {
-          toValue: -5,
-          duration: 1800,
-          delay,
-          easing: Easing.inOut(Easing.quad),
+          toValue: -8,
+          duration: 2000,
+          delay: delay * 200,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
           toValue: 0,
-          duration: 1800,
-          easing: Easing.inOut(Easing.quad),
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [translateY, delay]);
+  }, [translateY, scale, opacity, delay]);
 
   return (
-    <Animated.View style={{ transform: [{ translateY }] }}>
+    <Animated.View
+      style={{
+        transform: [{ translateY }, { scale }],
+        opacity,
+      }}
+    >
       {children}
     </Animated.View>
   );
@@ -116,16 +144,39 @@ export const TimelineScreen: React.FC = () => {
   const [comics, setComics] = useState<ComicEntry[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
   const years = Array.from(
     new Set(comics.map((c) => new Date(c.created_at).getFullYear()))
   ).sort((a, b) => b - a);
 
-  /*──────── Fetch comics – ORIGINAL LOGIC ────────*/
-  const fetchComics = async () => {
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
+
+  /*──────── Fetch comics – ENHANCED LOGIC ────────*/
+  const fetchComics = async (isRefresh = false) => {
     if (!profile) return;
-    setLoading(true);
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      // 1. Get the user's session to retrieve the access token.
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -133,7 +184,6 @@ export const TimelineScreen: React.FC = () => {
         throw new Error("User not authenticated. Cannot fetch comics.");
       }
 
-      // 2. Call new backend endpoint with the authorization header.
       const response = await fetch("https://dreamtoon.onrender.com/comics/", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -141,27 +191,50 @@ export const TimelineScreen: React.FC = () => {
       });
 
       if (!response.ok) {
-        // Handle potential errors from your backend API
         const errorData = await response.json();
         throw new Error(
           errorData.detail || "Failed to fetch comics from server."
         );
       }
 
-      // 3. The backend returns the comics with valid, signed URLs ready for display.
       const comicsFromServer: ComicEntry[] = await response.json();
       setComics(comicsFromServer);
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to load your dreams. Try again.");
+      Alert.alert(
+        "Error",
+        "Failed to load your dreams. Pull down to try again."
+      );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchComics();
   }, [profile]);
+
+  const handleRefresh = () => {
+    triggerHaptic("light");
+    fetchComics(true);
+  };
+
+  const handleMonthPress = (idx: number) => {
+    triggerHaptic("light");
+    setMonthIdx(idx);
+  };
+
+  const handleComicPress = (comic: ComicEntry) => {
+    triggerHaptic("medium");
+    router.push({
+      pathname: "/(tab)/ComicResultScreen",
+      params: {
+        urls: JSON.stringify(comic.image_urls),
+        id: comic.id,
+      },
+    });
+  };
 
   /*──────── Month filter ────────*/
   const filtered = comics.filter(
@@ -170,230 +243,257 @@ export const TimelineScreen: React.FC = () => {
 
   /*──────── Render ────────*/
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.root}>
-      <Background source={require("../../assets/images/timeline.jpeg")}>
-        <View style={styles.root}>
-          {/* Gradient background */}
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.root}
+    >
+      <ScrollView
+        contentContainerStyle={[styles.scroll, isIPad && styles.scrollTablet]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#E0B0FF"
+            colors={["#E0B0FF"]}
+          />
+        }
+      >
+        {/* Enhanced Header */}
+        <View style={styles.headerContainer}>
+          <Text style={[styles.title, isIPad && styles.titleTablet]}>
+            Your Dreams
+          </Text>
+          <Text style={styles.subtitle}>Relive your comic adventures</Text>
+        </View>
 
-          <ScrollView
-            contentContainerStyle={[
-              styles.scroll,
-              isIPad && styles.scrollTablet,
+        {/* Year and Month Filters */}
+        <View style={styles.filtersContainer}>
+          {/* Year Filter */}
+          <View style={styles.yearFilterContainer}>
+            <Text style={styles.filterLabel}>Year</Text>
+            <SimpleDropdown
+              selected={selectedYear.toString()}
+              onSelect={(v) => setSelectedYear(parseInt(v as string, 10))}
+              items={years.map(String)}
+              placeholder="Select Year"
+              field="year"
+              activeDropdown={activeDropdown}
+              setActiveDropdown={setActiveDropdown}
+              style={{ height: 44 }}
+            />
+          </View>
+
+          {/* Enhanced Month selector */}
+          <View
+            style={[
+              styles.monthBarContainer,
+              isIPad && styles.monthBarContainerTablet,
             ]}
-            showsVerticalScrollIndicator={false}
           >
-            {/* Header */}
-            <View
-              style={{
-                position: "relative",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <Text
-                style={[
-                  styles.title,
-                  isIPad && styles.titleTablet,
-                  { textAlign: "center" },
-                ]}
-              >
-                Timeline
-              </Text>
-              <View style={{ position: "absolute", right: 0, top: 35 }}>
-                <SimpleDropdown
-                  selected={selectedYear.toString()}
-                  onSelect={(v) => setSelectedYear(parseInt(v as string, 10))}
-                  items={years.map(String)}
-                  placeholder="Year"
-                  field="year"
-                  activeDropdown={activeDropdown}
-                  setActiveDropdown={setActiveDropdown}
-                />
-              </View>
-            </View>
-
-            {/* Month selector */}
-            <View
-              style={[
-                styles.monthBarContainer,
-                isIPad && styles.monthBarContainerTablet,
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.monthBar,
+                isIPad && styles.monthBarTablet,
               ]}
             >
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.monthBar,
-                  isIPad && styles.monthBarTablet,
-                ]}
-              >
-                {MONTHS.map((m, idx) => (
-                  <Pressable
-                    key={m}
+              {MONTHS.map((m, idx) => (
+                <Pressable
+                  key={m}
+                  style={[
+                    styles.monthChip,
+                    isIPad && styles.monthChipTablet,
+                    idx === monthIdx && styles.monthChipActive,
+                  ]}
+                  onPress={() => handleMonthPress(idx)}
+                >
+                  <Text
                     style={[
-                      styles.monthChip,
-                      isIPad && styles.monthChipTablet,
-                      idx === monthIdx && styles.monthChipActive,
+                      styles.monthChipText,
+                      isIPad && styles.monthChipTextTablet,
+                      idx === monthIdx && styles.monthChipTextActive,
                     ]}
-                    onPress={() => setMonthIdx(idx)}
                   >
-                    <Text
+                    {m}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Enhanced Content */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#E0B0FF" size="large" />
+            <Text style={styles.loadingText}>Loading your dreams...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="moon-outline" size={64} color="#E0B0FF" />
+            <Text style={[styles.emptyText, isIPad && styles.emptyTextTablet]}>
+              No dreams this month
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Create your first comic to see it here!
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.comicsContainer}>
+            {filtered.map((c, idx) => (
+              <FloatingCard key={c.id} delay={idx}>
+                <Pressable
+                  style={[styles.card, isIPad && styles.cardTablet]}
+                  onPress={() => handleComicPress(c)}
+                  onPressIn={() => {
+                    // Add press animation
+                  }}
+                >
+                  {/* Enhanced header */}
+                  <View style={styles.cardHeader}>
+                    <View
                       style={[
-                        styles.monthChipText,
-                        isIPad && styles.monthChipTextTablet,
-                        idx === monthIdx && styles.monthChipTextActive,
+                        styles.dateBadge,
+                        isIPad && styles.dateBadgeTablet,
                       ]}
                     >
-                      {m}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Content */}
-            {loading ? (
-              <ActivityIndicator
-                color="#00eaff"
-                size="large"
-                style={{ marginTop: 40 }}
-              />
-            ) : filtered.length === 0 ? (
-              <Text style={[styles.empty, isIPad && styles.emptyTablet]}>
-                No dreams this month.
-              </Text>
-            ) : (
-              filtered.map((c, idx) => (
-                <FloatingCard key={c.id} delay={idx * 200}>
-                  <Pressable
-                    style={styles.card}
-                    onPress={() => {
-                      router.push({
-                        pathname: "/(tab)/ComicResultScreen",
-                        params: {
-                          urls: JSON.stringify(c.image_urls),
-                          id: c.id,
-                        },
-                      });
-                    }}
-                  >
-                    {/* header */}
-                    <View style={styles.cardHeader}>
-                      <View
+                      <Ionicons
+                        name="calendar-outline"
+                        size={12}
+                        color="#E0B0FF"
+                      />
+                      <Text
                         style={[
-                          styles.dateBadge,
-                          isIPad && styles.dateBadgeTablet,
+                          styles.dateText,
+                          isIPad && styles.dateTextTablet,
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.dateText,
-                            isIPad && styles.dateTextTablet,
-                          ]}
-                        >
-                          {new Date(c.created_at).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </Text>
-                      </View>
+                        {new Date(c.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.titleContainer}>
                       <Text
                         style={[
                           styles.cardTitle,
                           isIPad && styles.cardTitleTablet,
                         ]}
-                        numberOfLines={1}
+                        numberOfLines={2}
                       >
                         {c.title}
                       </Text>
+                      {c.style && (
+                        <Text style={styles.styleText}>{c.style}</Text>
+                      )}
                     </View>
+                  </View>
 
-                    {/* comic preview */}
-                    <View style={styles.previewContainer}>
-                      <View style={styles.comicFrame}>
-                        {c.image_urls && c.image_urls.length > 0 && (
-                          <View style={styles.panelContainer}>
-                            <Image
-                              source={{ uri: c.image_urls[0] }}
-                              style={styles.panelImage}
-                              resizeMode="cover"
-                            />
-                            {/* Subtle overlay for depth */}
-                            <View style={styles.imageOverlay} />
-                          </View>
-                        )}
-                      </View>
+                  {/* Enhanced comic preview */}
+                  <View style={styles.previewContainer}>
+                    <View style={styles.comicFrame}>
+                      {c.image_urls && c.image_urls.length > 0 && (
+                        <View style={styles.panelContainer}>
+                          <Image
+                            source={{ uri: c.image_urls[0] }}
+                            style={styles.panelImage}
+                            resizeMode="cover"
+                          />
+                          <View style={styles.imageOverlay} />
+                        </View>
+                      )}
                     </View>
-                  </Pressable>
-                </FloatingCard>
-              ))
-            )}
+                  </View>
+                </Pressable>
+              </FloatingCard>
+            ))}
+          </View>
+        )}
 
-            <View style={{ height: getResponsiveValue(120, 160) }} />
-          </ScrollView>
-        </View>
-      </Background>
+        <View style={{ height: getResponsiveValue(120, 160) }} />
+      </ScrollView>
     </LinearGradient>
   );
 };
 
 /*********************
- * Styles
+ * Enhanced Styles
  *********************/
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  sparkle: {
-    position: "absolute",
-    borderRadius: 999,
-    backgroundColor: "#fff",
-  },
-  settingsBtn: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    zIndex: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  settingsBtnTablet: {
-    top: 50,
-    left: 40,
+  root: {
+    flex: 1,
   },
   scroll: {
-    paddingTop: 100,
+    paddingTop: 80,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
   scrollTablet: {
-    paddingTop: 120,
+    paddingTop: 100,
     paddingHorizontal: 40,
     paddingBottom: 60,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#fff",
-    alignSelf: "center",
+  headerContainer: {
+    alignItems: "center",
     marginBottom: 24,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   titleTablet: {
     fontSize: 48,
-    marginBottom: 32,
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#E0B0FF",
+    textAlign: "center",
+    marginBottom: 20,
+    fontWeight: "500",
+  },
+  filtersContainer: {
+    marginBottom: 24,
+  },
+  yearFilterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    gap: 12,
+  },
+  filterLabel: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   monthBarContainer: {
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    marginBottom: 24,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   monthBarContainerTablet: {
     borderRadius: 28,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    marginBottom: 32,
   },
   monthBar: {
     flexDirection: "row",
@@ -406,50 +506,137 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   monthChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     marginRight: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
   monthChipTablet: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginRight: 12,
   },
-  monthChipActive: { backgroundColor: "rgba(177, 63, 179, 0.8)" },
-  monthChipText: { fontSize: 12, color: "#a7a7a7" },
-  monthChipTextTablet: { fontSize: 16 },
-  monthChipTextActive: { color: "#fff" },
-  empty: { color: "#d4d4d8", textAlign: "center", marginTop: 60 },
-  emptyTablet: { fontSize: 18, marginTop: 80 },
+  monthChipActive: {
+    backgroundColor: "rgba(224,176,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(224,176,255,0.4)",
+  },
+  monthChipText: {
+    fontSize: 14,
+    color: "#B0B0B0",
+    fontWeight: "600",
+  },
+  monthChipTextTablet: {
+    fontSize: 16,
+  },
+  monthChipTextActive: {
+    color: "#E0B0FF",
+    fontWeight: "700",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 60,
+  },
+  loadingText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    marginTop: 16,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    color: "#E0B0FF",
+    textAlign: "center",
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  emptyTextTablet: {
+    fontSize: 20,
+    marginTop: 20,
+  },
+  emptySubtext: {
+    color: "#B0B0B0",
+    textAlign: "center",
+    marginTop: 8,
+    fontSize: 14,
+  },
+  comicsContainer: {
+    gap: 16,
+  },
   card: {
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderRadius: 28,
-    padding: 23,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  cardTablet: {
+    padding: 28,
+    borderRadius: 32,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    gap: 12,
+  },
   dateBadge: {
-    backgroundColor: "",
+    backgroundColor: "rgba(224,176,255,0.1)",
     borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(224,176,255,0.3)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   dateBadgeTablet: {
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
-  dateText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  dateTextTablet: { fontSize: 14 },
-  cardTitle: { flex: 1, color: "#fff", marginLeft: 12, fontWeight: "600" },
-  cardTitleTablet: { fontSize: 16, marginLeft: 16 },
-  /* preview */
+  dateText: {
+    color: "#E0B0FF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  dateTextTablet: {
+    fontSize: 14,
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  cardTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  cardTitleTablet: {
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  styleText: {
+    color: "#B0B0B0",
+    fontSize: 12,
+    fontWeight: "500",
+  },
   previewContainer: {
     borderRadius: 20,
     padding: 16,
@@ -462,23 +649,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   panelContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
+    width: 140,
+    height: 140,
+    borderRadius: 16,
     overflow: "hidden",
     position: "relative",
-    // Shadow for iOS
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    // Shadow for Android
-    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   panelImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 12,
+    borderRadius: 16,
   },
   imageOverlay: {
     position: "absolute",
@@ -486,31 +671,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    borderRadius: 16,
   },
-  navBar: {
-    position: "absolute",
-    bottom: 20,
-    left: "5%",
-    right: "5%",
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "rgba(13,10,60,0.8)",
-    borderWidth: 1,
-    borderColor: "rgba(251, 251, 251, 0.2)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  navBarTablet: {
-    bottom: 40,
-    left: "10%",
-    right: "10%",
-    height: 90,
-    borderRadius: 45,
-  },
-  navBtn: { padding: 8, borderRadius: 12 },
 });
 
 export default TimelineScreen;

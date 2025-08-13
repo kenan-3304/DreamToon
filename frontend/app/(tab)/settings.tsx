@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,17 +7,28 @@ import {
   ScrollView,
   Alert,
   Modal,
-  Linking, // <-- Add Linking import
+  Linking,
   TextInput,
-  Platform, // <-- Add Platform import
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
 import { Avatar } from "../../components/Avatar";
-import { rgbaArrayToRGBAColor } from "react-native-reanimated/lib/typescript/Colors";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  Easing,
+  runOnJS,
+} from "react-native-reanimated";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
@@ -25,8 +36,31 @@ const SettingsScreen: React.FC = () => {
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [newName, setNewName] = useState(profile?.name || "");
   const [savingName, setSavingName] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Animation values
+  const modalScale = useSharedValue(0);
+  const modalOpacity = useSharedValue(0);
+  const avatarScale = useSharedValue(1);
+
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
 
   const handleLogout = async () => {
+    triggerHaptic("medium");
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -34,11 +68,14 @@ const SettingsScreen: React.FC = () => {
         style: "destructive",
         onPress: async () => {
           try {
+            setIsLoading(true);
             await logout();
             router.replace("/(auth)/AuthScreen");
           } catch (error) {
             console.error("Logout error:", error);
             Alert.alert("Error", "Failed to logout. Please try again.");
+          } finally {
+            setIsLoading(false);
           }
         },
       },
@@ -46,16 +83,18 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
+    triggerHaptic("heavy");
     Alert.alert(
       "Delete Account",
-      "Are you sure? This action cannot be undone.",
+      "This action cannot be undone. All your comics and data will be permanently deleted.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: "Delete Forever",
           style: "destructive",
           onPress: async () => {
             try {
+              setIsLoading(true);
               if (!user?.id) {
                 Alert.alert(
                   "Error",
@@ -64,7 +103,6 @@ const SettingsScreen: React.FC = () => {
                 return;
               }
 
-              // Call your backend function here
               const { data, error } = await supabase.functions.invoke(
                 "delete_user",
                 {
@@ -79,7 +117,6 @@ const SettingsScreen: React.FC = () => {
                   error.message || "Failed to delete account."
                 );
               } else {
-                // Success - logout and redirect
                 await logout();
                 router.replace("/(auth)/AuthScreen");
               }
@@ -89,6 +126,8 @@ const SettingsScreen: React.FC = () => {
                 "Error",
                 "Failed to delete account. Please try again."
               );
+            } finally {
+              setIsLoading(false);
             }
           },
         },
@@ -97,195 +136,264 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleManageSubscription = () => {
+    triggerHaptic("light");
     Linking.openURL("https://apps.apple.com/account/subscriptions");
+  };
+
+  const handleOptionPress = (onPress: () => void, isDestructive = false) => {
+    triggerHaptic(isDestructive ? "medium" : "light");
+    onPress();
+  };
+
+  const openEditNameModal = () => {
+    setNewName(profile?.name || "");
+    setShowEditNameModal(true);
+    modalScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+    modalOpacity.value = withTiming(1, { duration: 200 });
+  };
+
+  const closeEditNameModal = () => {
+    modalScale.value = withSpring(0, { damping: 15, stiffness: 100 });
+    modalOpacity.value = withTiming(0, { duration: 200 }, () => {
+      runOnJS(setShowEditNameModal)(false);
+    });
   };
 
   const settingsOptions = [
     {
-      icon: <Ionicons name="person" size={24} color="#00EAFF" />,
+      icon: <Ionicons name="person" size={24} color="#E0B0FF" />,
       title: "Profile",
       subtitle: profile?.name || "Update your profile",
-      onPress: () => {
-        setNewName(profile?.name || "");
-        setShowEditNameModal(true);
-      },
+      onPress: () => handleOptionPress(openEditNameModal),
+      color: "#E0B0FF",
     },
     {
-      icon: <Ionicons name="brush" size={24} color="#00EAFF" />,
+      icon: <Ionicons name="brush" size={24} color="#4ECDC4" />,
       title: "Comic Avatar",
       subtitle: profile?.display_avatar_path
-        ? "Update your comic avatar"
+        ? "Update and view your comic avatar"
         : "Create your comic avatar",
-      onPress: () => {
-        router.push({ pathname: "/(tab)/AvatarStudioScreen" });
-      },
+      onPress: () =>
+        handleOptionPress(() =>
+          router.push({ pathname: "/(tab)/AvatarStudioScreen" })
+        ),
+      color: "#4ECDC4",
     },
     {
-      icon: <Ionicons name="card" size={24} color="#00EAFF" />, // Use a card icon for subscription
+      icon: <Ionicons name="card" size={24} color="#7F9CF5" />,
       title: "Manage Subscription",
       subtitle: "View or cancel your subscription",
-      onPress: handleManageSubscription,
+      onPress: () => handleOptionPress(handleManageSubscription),
+      color: "#7F9CF5",
     },
     {
-      icon: <Ionicons name="information-circle" size={24} color="#00EAFF" />,
+      icon: <Ionicons name="information-circle" size={24} color="#FFD93D" />,
       title: "About",
       subtitle: "App version and info",
-      onPress: () => {
-        Alert.alert(
-          "DreamToon",
-          "Version 1.0.1\n\nTurn your dreams into comics!"
-        );
-      },
+      onPress: () =>
+        handleOptionPress(() => {
+          Alert.alert(
+            "DreamToon",
+            "Version 1.0.1\n\nTurn your dreams into comics!\n\nCreated with ❤️ for dreamers everywhere."
+          );
+        }),
+      color: "#FFD93D",
     },
     {
-      icon: <Ionicons name="trash" size={24} color="#FF4444" />,
+      icon: <Ionicons name="trash" size={24} color="#FF6B6B" />,
       title: "Delete Account",
       subtitle: "Permanently remove your account",
-      onPress: handleDeleteAccount,
+      onPress: () => handleOptionPress(handleDeleteAccount, true),
+      color: "#FF6B6B",
+      isDestructive: true,
     },
   ];
 
+  const modalAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: modalScale.value }],
+    opacity: modalOpacity.value,
+  }));
+
+  const avatarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: avatarScale.value }],
+  }));
+
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
-      {/* Add this spacer */}
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#E0B0FF" />
+          <Text style={styles.loadingText}>Processing...</Text>
+        </View>
+      )}
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Info Section */}
+        {/* Enhanced User Info Section */}
         <View style={styles.userSection}>
-          <View style={styles.userAvatar}>
+          <Animated.View style={[styles.userAvatar, avatarAnimatedStyle]}>
             {profile?.display_avatar_path ? (
               <Avatar avatarUrl={profile.display_avatar_path} size={130} />
             ) : (
-              <Ionicons name="person" size={60} color="#00EAFF" />
+              <View style={styles.defaultAvatar}>
+                <Ionicons name="person" size={60} color="#E0B0FF" />
+              </View>
             )}
-          </View>
+          </Animated.View>
           <Text style={styles.userName}>{profile?.name || "Dreamer"}</Text>
           <Text style={styles.userEmail}>{user?.email || ""}</Text>
+          <View style={styles.subscriptionBadge}>
+            <Ionicons
+              name={
+                profile?.subscription_status === "free"
+                  ? "star-outline"
+                  : "star"
+              }
+              size={16}
+              color={
+                profile?.subscription_status === "free" ? "#FFD93D" : "#FFD93D"
+              }
+            />
+            <Text style={styles.subscriptionText}>
+              {profile?.subscription_status === "free"
+                ? "Free Plan"
+                : "Premium Plan"}
+            </Text>
+          </View>
         </View>
 
-        {/* Settings Options */}
+        {/* Enhanced Settings Options */}
         <View style={styles.optionsContainer}>
           {settingsOptions.map((option, index) => (
-            <Pressable
+            <AnimatedPressable
               key={index}
-              style={styles.optionItem}
+              style={[
+                styles.optionItem,
+                option.isDestructive && styles.destructiveOption,
+              ]}
               onPress={option.onPress}
+              onPressIn={() => {
+                avatarScale.value = withSpring(0.95, {
+                  damping: 15,
+                  stiffness: 100,
+                });
+              }}
+              onPressOut={() => {
+                avatarScale.value = withSpring(1, {
+                  damping: 15,
+                  stiffness: 100,
+                });
+              }}
             >
-              <View style={styles.optionIcon}>{option.icon}</View>
+              <View
+                style={[
+                  styles.optionIcon,
+                  { backgroundColor: `${option.color}20` },
+                ]}
+              >
+                {option.icon}
+              </View>
               <View style={styles.optionContent}>
                 <Text style={styles.optionTitle}>{option.title}</Text>
                 <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
               </View>
-            </Pressable>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </AnimatedPressable>
           ))}
         </View>
 
-        {/* Logout Button */}
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out" size={24} color="#FF4444" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </Pressable>
-      </ScrollView>
-
-      {/* Edit Name Modal */}
-      <Modal
-        visible={showEditNameModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowEditNameModal(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
+        {/* Enhanced Logout Button */}
+        <AnimatedPressable
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          onPressIn={() => {
+            avatarScale.value = withSpring(0.95, {
+              damping: 15,
+              stiffness: 100,
+            });
+          }}
+          onPressOut={() => {
+            avatarScale.value = withSpring(1, { damping: 15, stiffness: 100 });
           }}
         >
-          <View
-            style={{
-              backgroundColor: "#1a1333",
-              borderRadius: 20,
-              padding: 24,
-              width: "85%",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 20,
-                fontWeight: "700",
-                marginBottom: 16,
-              }}
-            >
-              Edit Name
-            </Text>
+          <Ionicons name="log-out" size={24} color="#FF6B6B" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </AnimatedPressable>
+      </ScrollView>
+
+      {/* Enhanced Edit Name Modal */}
+      <Modal
+        visible={showEditNameModal}
+        animationType="none"
+        transparent
+        onRequestClose={closeEditNameModal}
+      >
+        <Animated.View style={[styles.modalOverlay, modalAnimatedStyle]}>
+          <Animated.View style={[styles.modalContent, modalAnimatedStyle]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Name</Text>
+              <Pressable
+                style={styles.modalCloseButton}
+                onPress={closeEditNameModal}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </Pressable>
+            </View>
+
             <TextInput
               value={newName}
               onChangeText={setNewName}
               placeholder="Enter your name"
-              placeholderTextColor="#aaa"
-              style={{
-                width: "100%",
-                backgroundColor: "#2a2250",
-                color: "#fff",
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 16,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: "#8D79F0",
-              }}
+              placeholderTextColor="#666"
+              style={styles.nameInput}
+              autoFocus
+              maxLength={30}
             />
-            <View style={{ flexDirection: "row", gap: 12 }}>
+
+            <View style={styles.modalButtons}>
               <Pressable
-                style={{
-                  backgroundColor: "#8D79F0",
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  paddingHorizontal: 24,
-                  marginRight: 8,
-                  opacity: savingName ? 0.7 : 1,
-                }}
-                disabled={savingName}
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={closeEditNameModal}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  styles.saveButton,
+                  (!newName.trim() || savingName) && styles.disabledButton,
+                ]}
+                disabled={!newName.trim() || savingName}
                 onPress={async () => {
                   if (!newName.trim()) return;
                   setSavingName(true);
                   try {
                     await updateProfile({ name: newName.trim() });
-                    setShowEditNameModal(false);
+                    closeEditNameModal();
+                    triggerHaptic("light");
                   } catch (e) {
-                    Alert.alert("Error", "Failed to update name.");
+                    Alert.alert(
+                      "Error",
+                      "Failed to update name. Please try again."
+                    );
                   } finally {
                     setSavingName(false);
                   }
                 }}
               >
-                <Text
-                  style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
-                >
-                  Save
-                </Text>
-              </Pressable>
-              <Pressable
-                style={{
-                  backgroundColor: "#333",
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  paddingHorizontal: 24,
-                }}
-                onPress={() => setShowEditNameModal(false)}
-              >
-                <Text
-                  style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
-                >
-                  Cancel
-                </Text>
+                {savingName ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
     </LinearGradient>
   );
@@ -294,37 +402,29 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60, // Add fixed top padding
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    alignItems: "center",
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    zIndex: 1000,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    flex: 1,
-    textAlign: "center",
-    // marginLeft: 20, // Remove marginLeft for true centering
+  loadingText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    marginTop: 10,
+    fontWeight: "600",
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 1, // Add fixed top padding
+    paddingTop: 20,
   },
   userSection: {
     alignItems: "center",
@@ -334,37 +434,58 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   userAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(0,234,255,0.1)",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(224,176,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: "#00EAFF",
-    // Shadow for iOS
-    shadowColor: "rgb(0, 0, 0)",
+    marginBottom: 20,
+    borderWidth: 3,
+    borderColor: "#E0B0FF",
+    shadowColor: "#E0B0FF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    // Shadow for Android
-    elevation: 8,
+    shadowRadius: 15,
+    elevation: 10,
   },
-  avatarImage: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+  defaultAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(224,176,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   userName: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: 28,
+    fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 5,
+    marginBottom: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   userEmail: {
     fontSize: 16,
-    color: "#a7a7a7",
+    color: "#B0B0B0",
+    marginBottom: 15,
+  },
+  subscriptionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,217,61,0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,217,61,0.3)",
+  },
+  subscriptionText: {
+    color: "#FFD93D",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
   },
   optionsContainer: {
     marginBottom: 30,
@@ -372,84 +493,148 @@ const styles = StyleSheet.create({
   optionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 15,
+    paddingVertical: 18,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    marginBottom: 10,
+    borderRadius: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#8D79F0",
-    backgroundColor: "rgba(90, 44, 150, 0.31)",
-    // Shadow for iOS
-    shadowColor: "rgba(91, 55, 223, 0.31)",
-    shadowOffset: { width: 1, height: -12 },
-    shadowOpacity: 1,
-    shadowRadius: 17.7,
-    // Shadow for Android
-    elevation: 8,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    shadowColor: "rgba(0,0,0,0.3)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  destructiveOption: {
+    borderColor: "rgba(255,107,107,0.3)",
+    backgroundColor: "rgba(255,107,107,0.05)",
   },
   optionIcon: {
     width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 15,
   },
   optionContent: {
     flex: 1,
-    marginLeft: 10,
   },
   optionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: "#FFFFFF",
-    marginBottom: 2,
+    marginBottom: 4,
   },
   optionSubtitle: {
     fontSize: 14,
-    color: "#a7a7a7",
+    color: "#B0B0B0",
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 15,
-    backgroundColor: "rgba(255,68,68,0.1)",
-    borderRadius: 15,
+    paddingVertical: 18,
+    backgroundColor: "rgba(255,107,107,0.1)",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,68,68,0.3)",
+    borderColor: "rgba(255,107,107,0.3)",
     marginBottom: 40,
+    shadowColor: "rgba(255,107,107,0.3)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   logoutText: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#FF4444",
+    color: "#FF6B6B",
     marginLeft: 10,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "#0D0A3C",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#1a1333",
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 15,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    justifyContent: "space-between",
+    marginBottom: 20,
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
+  modalTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  nameInput: {
+    width: "100%",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    color: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginLeft: 20,
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  saveButton: {
+    backgroundColor: "#E0B0FF",
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  cancelButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  saveButtonText: {
+    color: "#000",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
 

@@ -1,28 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
-  Button,
   ActivityIndicator,
   Modal,
   Alert,
   StyleSheet,
   Pressable,
+  Dimensions,
+  Platform,
 } from "react-native";
 import { useUser } from "../../context/UserContext";
 import { avatarUtils } from "../../utils/avatarUtils";
 import { Avatar } from "../../components/Avatar";
 import { StyleSelector } from "../../components/StyleSelector";
 import * as ImagePicker from "expo-image-picker";
-// --- ADD: Import necessary components for styling ---
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ShinyGradientButton } from "@/components/ShinyGradientButton";
+import * as Haptics from "expo-haptics";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  Easing,
+  interpolate,
+  runOnJS,
+} from "react-native-reanimated";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isTablet = () => {
+  const aspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH;
+  return SCREEN_WIDTH >= 768 && aspectRatio <= 1.6;
+};
+const isIPad = Platform.OS === "ios" && isTablet();
+const getResponsiveValue = (phone: number, tablet: number) =>
+  isIPad ? tablet : phone;
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function AvatarStudioScreen() {
-  const router = useRouter(); // --- ADD: Router for navigation ---
+  const router = useRouter();
   const { profile, refetchProfileAndData, updateProfile } = useUser();
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -34,13 +56,44 @@ export default function AvatarStudioScreen() {
   const [isPolling, setIsPolling] = useState(false);
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
 
+  // Animation values
+  const headerScale = useSharedValue(1);
+  const createButtonScale = useSharedValue(1);
+  const createButtonRotation = useSharedValue(0);
+  const collectionOpacity = useSharedValue(0);
+  const collectionScale = useSharedValue(0.9);
+
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
+
+  const isCooldownActive = () => {
+    if (!profile?.last_avatar_created_at) return false;
+    const lastDate = new Date(profile.last_avatar_created_at);
+    const now = new Date();
+    const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+    return diffHours < 24 * 7;
+  };
+
   useEffect(() => {
     avatarUtils
       .getMyAvatarsWithSignedUrls()
       .then((data) => {
         setAvatars(
           (data || [])
-            .filter((item) => item.path) // remove nulls
+            .filter((item) => item.path)
             .map(({ path, signedUrl }) => ({ path: path as string, signedUrl }))
         );
       })
@@ -49,30 +102,38 @@ export default function AvatarStudioScreen() {
       })
       .finally(() => {
         setLoading(false);
+        // Animate collection entrance
+        collectionOpacity.value = withTiming(1, { duration: 800 });
+        collectionScale.value = withSpring(1, { damping: 15, stiffness: 100 });
       });
   }, []);
 
-  // --- This entire useEffect hook manages the polling process ---
+  // Animate create button
+  useEffect(() => {
+    // Removed spinning animation for better UX
+  }, []);
+
   useEffect(() => {
     if (!pollingJobId) return;
 
     setIsPolling(true);
 
-    // Set up a timer to check the status every 5 seconds
     const interval = setInterval(async () => {
       try {
         const status = await avatarUtils.checkAvatarStatus(pollingJobId);
 
-        // If the job is done (successfully or with an error), stop polling.
         if (status === "complete" || status === "error") {
           clearInterval(interval);
           setIsPolling(false);
           setPollingJobId(null);
 
           if (status === "complete") {
-            Alert.alert("Success!", "Your new avatar is ready.");
+            triggerHaptic("medium");
+            Alert.alert(
+              "🎉 Success!",
+              "Your new avatar is ready to join the collection!"
+            );
 
-            // --- CHANGE: Using Promise.all for more efficient data refreshing ---
             await Promise.all([
               avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
                 setAvatars(
@@ -84,9 +145,8 @@ export default function AvatarStudioScreen() {
                     }))
                 );
               }),
-              refetchProfileAndData(), // Refreshes profile and cooldown timer
+              refetchProfileAndData(),
             ]);
-            // --- END CHANGE ---
           } else {
             Alert.alert("Error", "Avatar generation failed. Please try again.");
           }
@@ -99,20 +159,10 @@ export default function AvatarStudioScreen() {
       }
     }, 5000);
 
-    // Clean up the timer if the user navigates away from the screen
     return () => clearInterval(interval);
   }, [pollingJobId]);
 
-  const isCooldownActive = () => {
-    if (!profile?.last_avatar_created_at) return false;
-    const lastDate = new Date(profile.last_avatar_created_at);
-    const now = new Date();
-    const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
-    return diffHours < 24 * 7;
-  };
-
   const getCooldownText = () => {
-    // ... (your existing cooldown text logic is correct) ...
     if (!profile?.last_avatar_created_at) return "";
     const lastDate = new Date(profile.last_avatar_created_at);
     const releaseDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -127,11 +177,11 @@ export default function AvatarStudioScreen() {
 
   const handleCreateFlow = async (style: { name: string; prompt: string }) => {
     setShowStyleSelector(false);
+    triggerHaptic("medium");
 
-    // Prompt user: Camera or Gallery
-    Alert.alert("Choose Photo", "How would you like to get your photo?", [
+    Alert.alert("📸 Choose Photo", "How would you like to get your photo?", [
       {
-        text: "Take Photo",
+        text: "📱 Take Photo",
         onPress: async () => {
           try {
             const { status } =
@@ -158,7 +208,7 @@ export default function AvatarStudioScreen() {
         },
       },
       {
-        text: "Choose from Gallery",
+        text: "🖼️ Choose from Gallery",
         onPress: async () => {
           try {
             const { status } =
@@ -188,25 +238,26 @@ export default function AvatarStudioScreen() {
     ]);
   };
 
-  // Helper to handle avatar creation and gallery refresh
   const createAvatarWithImage = async (
     imageUri: string,
     style: { name: string; prompt: string }
   ) => {
     setIsCreating(true);
-    //check subscription status
+    triggerHaptic("heavy");
+
     if (profile?.subscription_status === "free") {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });
       return;
     }
+
     try {
       const response = await avatarUtils.createAvatar(imageUri, style);
       if (response && response.job_id) {
         setPollingJobId(response.job_id);
       } else {
-        throw new Error("Failed to initialize the avatart generation job.");
+        throw new Error("Failed to initialize the avatar generation job.");
       }
     } catch (e: any) {
       Alert.alert(
@@ -218,29 +269,23 @@ export default function AvatarStudioScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
-        <ActivityIndicator size="large" color="#00EAFF" />
-      </LinearGradient>
-    );
-  }
-
   const handleAvatarPress = (item: { path: string; signedUrl: string }) => {
-    Alert.alert("Manage Avatar", "What would you like to do?", [
+    triggerHaptic("light");
+    Alert.alert("🎭 Manage Avatar", "What would you like to do?", [
       {
-        text: "Set as Display Picture",
+        text: "⭐ Set as Display Picture",
         onPress: async () => {
           try {
             await updateProfile({ display_avatar_path: item.path });
-            Alert.alert("Success", "Your profile picture has been updated!");
+            triggerHaptic("medium");
+            Alert.alert("✨ Success", "Your profile picture has been updated!");
           } catch (error) {
             Alert.alert("Error", "Could not update your profile picture.");
           }
         },
       },
       {
-        text: "Delete",
+        text: "🗑️ Delete",
         style: "destructive",
         onPress: () =>
           Alert.alert("Are you sure?", "This action cannot be undone.", [
@@ -254,6 +299,7 @@ export default function AvatarStudioScreen() {
                   setAvatars((prev) =>
                     prev.filter((a) => a.path !== item.path)
                   );
+                  triggerHaptic("medium");
                 } catch (error: any) {
                   Alert.alert("Error", error.message);
                 }
@@ -265,63 +311,150 @@ export default function AvatarStudioScreen() {
     ]);
   };
 
+  const handleCreatePress = () => {
+    triggerHaptic("medium");
+    createButtonScale.value = withSpring(0.95, { damping: 15, stiffness: 100 });
+    setTimeout(() => {
+      createButtonScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+      setShowStyleSelector(true);
+    }, 150);
+  };
+
+  const animatedHeaderStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: headerScale.value }],
+  }));
+
+  const animatedCreateButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: createButtonScale.value }],
+  }));
+
+  const animatedCollectionStyle = useAnimatedStyle(() => ({
+    opacity: collectionOpacity.value,
+    transform: [{ scale: collectionScale.value }],
+  }));
+
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+        locations={[0, 0.4, 0.8, 1]}
+        style={styles.container}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E0B0FF" />
+          <Text style={styles.loadingText}>
+            Loading your avatar collection...
+          </Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
-      {/* --- ADD: Header for navigation --- */}
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
+      {/* Enhanced Header */}
+      <Animated.View style={[styles.header, animatedHeaderStyle]}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => {
+            triggerHaptic("light");
+            router.back();
+          }}
+        >
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.headerTitle}>Avatar Studio</Text>
-        <View style={{ width: 40 }} />
-      </View>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>🎭 Avatar Studio</Text>
+          <Text style={styles.headerSubtitle}>
+            Collect your dream characters
+          </Text>
+        </View>
+        <View style={styles.headerStats}>
+          <Text style={styles.avatarCount}>{avatars.length}</Text>
+          <Text style={styles.avatarLabel}>avatars</Text>
+        </View>
+      </Animated.View>
 
-      <FlatList
-        data={avatars}
-        ListHeaderComponent={
-          <Text style={styles.galleryTitle}>Your Collection</Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.avatarWrapper}
-            onPress={() => handleAvatarPress(item)}
-          >
-            <Avatar avatarUrl={item.signedUrl} size={100} />
-            {profile?.display_avatar_path === item.path && (
-              <View style={styles.selectedIndicator}>
-                <Ionicons name="checkmark-circle" size={24} color="#00EAFF" />
-              </View>
-            )}
-          </Pressable>
-        )}
-        keyExtractor={(item) => item.path} // Using path for a stable key
-        numColumns={3}
-        contentContainerStyle={styles.galleryContainer}
-        ListFooterComponent={
-          <View style={styles.buttonContainer}>
-            {/* Update the button's loading state logic --- */}
-            {isCreating || isPolling ? (
-              <View style={{ alignItems: "center" }}>
-                <ActivityIndicator color="#FFFFFF" size="large" />
-                <Text style={styles.cooldownText}>
-                  {isPolling
-                    ? "Generating your avatar..."
-                    : "Sending to studio..."}
-                </Text>
-              </View>
-            ) : isCooldownActive() ? (
-              <Text style={styles.cooldownText}>{getCooldownText()}</Text>
-            ) : (
-              <ShinyGradientButton
-                onPress={() => setShowStyleSelector(true)}
-                disabled={loading}
-              >
-                Create New Avatar
-              </ShinyGradientButton>
-            )}
+      {/* Enhanced Collection */}
+      <Animated.View
+        style={[styles.collectionContainer, animatedCollectionStyle]}
+      >
+        <Text style={styles.collectionTitle}>Your Collection</Text>
+
+        {avatars.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="person-circle-outline" size={80} color="#E0B0FF" />
+            <Text style={styles.emptyTitle}>No avatars yet!</Text>
+            <Text style={styles.emptySubtitle}>
+              Create your first avatar to start your collection
+            </Text>
           </View>
-        }
-      />
+        ) : (
+          <FlatList
+            data={avatars}
+            renderItem={({ item, index }) => (
+              <AnimatedPressable
+                style={[styles.avatarWrapper, { animationDelay: index * 100 }]}
+                onPress={() => handleAvatarPress(item)}
+                onPressIn={() => {
+                  triggerHaptic("light");
+                }}
+              >
+                <View style={styles.avatarContainer}>
+                  <Avatar
+                    avatarUrl={item.signedUrl}
+                    size={getResponsiveValue(100, 140)}
+                  />
+                  {profile?.display_avatar_path === item.path && (
+                    <View style={styles.selectedIndicator}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color="#E0B0FF"
+                      />
+                    </View>
+                  )}
+                </View>
+              </AnimatedPressable>
+            )}
+            keyExtractor={(item) => item.path}
+            numColumns={3}
+            contentContainerStyle={styles.galleryContainer}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </Animated.View>
+
+      {/* Enhanced Create Button */}
+      <View style={styles.buttonContainer}>
+        {isCreating || isPolling ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color="#E0B0FF" size="large" />
+            <Text style={styles.loadingStateText}>
+              {isPolling
+                ? "🎨 Creating your avatar..."
+                : "📤 Sending to studio..."}
+            </Text>
+          </View>
+        ) : isCooldownActive() ? (
+          <View style={styles.cooldownContainer}>
+            <Ionicons name="time-outline" size={24} color="#E0B0FF" />
+            <Text style={styles.cooldownText}>{getCooldownText()}</Text>
+          </View>
+        ) : (
+          <AnimatedPressable
+            style={[styles.createButton, animatedCreateButtonStyle]}
+            onPress={handleCreatePress}
+          >
+            <Ionicons name="add-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.createButtonText}>Create New Avatar</Text>
+          </AnimatedPressable>
+        )}
+      </View>
 
       <Modal
         visible={showStyleSelector}
@@ -332,7 +465,10 @@ export default function AvatarStudioScreen() {
           <StyleSelector
             onStyleSelect={handleCreateFlow}
             mode="creation"
-            onClose={() => setShowStyleSelector(false)}
+            onClose={() => {
+              triggerHaptic("light");
+              setShowStyleSelector(false);
+            }}
           />
         </View>
       </Modal>
@@ -340,11 +476,20 @@ export default function AvatarStudioScreen() {
   );
 }
 
-// --- ADD: StyleSheet for a clean look ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    marginTop: 16,
+    fontWeight: "600",
   },
   header: {
     flexDirection: "row",
@@ -354,85 +499,154 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#FFFFFF",
-    flex: 1,
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  galleryTitle: {
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#E0B0FF",
+    textAlign: "center",
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  headerStats: {
+    alignItems: "center",
+  },
+  avatarCount: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#E0B0FF",
+  },
+  avatarLabel: {
+    fontSize: 12,
+    color: "#B0B0B0",
+    fontWeight: "500",
+  },
+  collectionContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  collectionTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#FFFFFF",
     textAlign: "center",
     marginBottom: 20,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#E0B0FF",
+    textAlign: "center",
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: "#B0B0B0",
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 22,
+  },
   galleryContainer: {
-    paddingHorizontal: 10,
+    paddingBottom: 20,
   },
   avatarWrapper: {
     flex: 1,
     alignItems: "center",
-    margin: 10,
+    margin: 8,
   },
-  buttonContainer: {
-    margin: 20,
-    marginTop: 40,
+  avatarContainer: {
+    position: "relative",
     alignItems: "center",
   },
-  cooldownText: {
-    color: "#a7a7a7",
-    fontSize: 16,
-    textAlign: "center",
+
+  selectedIndicator: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    borderRadius: 12,
+    padding: 2,
+  },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    alignItems: "center",
   },
   createButton: {
-    backgroundColor: "#00EAFF",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(224,176,255,0.2)",
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: 30,
+    borderWidth: 2,
+    borderColor: "rgba(224,176,255,0.4)",
+    shadowColor: "#E0B0FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    gap: 12,
   },
   createButtonText: {
-    color: "#1a1333",
-    fontSize: 16,
+    color: "#FFFFFF",
+    fontSize: 18,
     fontWeight: "700",
+  },
+  loadingState: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  loadingStateText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    marginTop: 12,
+    fontWeight: "600",
+  },
+  cooldownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(224,176,255,0.1)",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(224,176,255,0.3)",
+    gap: 8,
+  },
+  cooldownText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   modalView: {
     flex: 1,
     backgroundColor: "transparent",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: 20,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    flex: 1,
-    textAlign: "center",
-  },
-  selectedIndicator: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 12,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   ScrollView,
   Platform,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -21,6 +22,7 @@ import { useUser } from "../../context/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
+import * as Haptics from "expo-haptics";
 import Background from "../../components/ui/Background";
 import { supabase } from "../../utils/supabase";
 
@@ -50,6 +52,25 @@ export default function ComicResultScreen() {
 
   const [panelUrls, setPanelUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [comicTitle, setComicTitle] = useState<string>("Your Dream Comic");
+  const [creationDate, setCreationDate] = useState<string>("");
+
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const fetchComicData = async () => {
@@ -65,17 +86,25 @@ export default function ComicResultScreen() {
 
       // Fetch the full comic data using the ID
       try {
+        setError(null);
         const res = await fetch(
           `https://dreamtoon.onrender.com/comic-status/${id}`
         );
         const data = await res.json();
         if (data.status === "complete") {
           setPanelUrls(data.panel_urls);
+          if (data.title) setComicTitle(data.title);
+          if (data.created_at) {
+            const date = new Date(data.created_at);
+            setCreationDate(date.toLocaleDateString());
+          }
         } else {
-          Alert.alert("Error", "Could not load the full comic.");
+          setError("Could not load the comic. Please try again.");
         }
       } catch (e) {
-        Alert.alert("Error", "Failed to connect to the server.");
+        setError(
+          "Failed to connect to the server. Please check your connection."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -100,42 +129,76 @@ export default function ComicResultScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedPanelIndex, setSelectedPanelIndex] = useState(0);
 
-  /*──────── Floating animation ────────*/
+  /*──────── Enhanced floating animation ────────*/
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
+        Animated.parallel([
+          Animated.timing(floatAnim, {
+            toValue: 1,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1.02,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     ).start();
   }, []);
+
   const translateY = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -10],
+    outputRange: [0, -15],
   });
 
   /*──────── Navigation helpers ────────*/
-  const discard = () => router.push("/(tab)/");
-  const handleBack = () => router.push("/(tab)/timeline");
+  const discard = () => {
+    triggerHaptic("light");
+    router.back();
+  };
 
-  /*──────── Share / Download ────────*/
+  const handleBack = () => {
+    triggerHaptic("light");
+    router.push("/(tab)/timeline");
+  };
+
+  /*──────── Enhanced Share / Download ────────*/
   const handleShare = async () => {
-    if (!panelUrls.length) return Alert.alert("No comic to share");
+    if (!panelUrls.length) {
+      Alert.alert("No comic to share");
+      return;
+    }
+
+    triggerHaptic("medium");
+
     try {
+      // Share all panels as a collection
+      const shareMessage = `Check out my dream comic "${comicTitle}"! Created with DreamToon.`;
       await Share.share({
-        message: "Check out my dream comic!",
-        url: panelUrls[0],
+        message: shareMessage,
+        url: panelUrls[0], // Primary image
       });
     } catch {
       Alert.alert("Error", "Failed to share the comic");
@@ -143,52 +206,101 @@ export default function ComicResultScreen() {
   };
 
   const handleDownload = async () => {
-    if (!panelUrls.length) return Alert.alert("No comic to download");
+    if (!panelUrls.length) {
+      Alert.alert("No comic to download");
+      return;
+    }
+
+    triggerHaptic("medium");
+
     const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== "granted")
-      return Alert.alert("Permission", "Please allow access to save images");
-    const fileUri = `${FileSystem.documentDirectory}dream_${Date.now()}.jpg`;
-    const dl = await FileSystem.downloadAsync(panelUrls[0], fileUri);
-    if (dl.status === 200) {
-      await MediaLibrary.saveToLibraryAsync(dl.uri);
-      Alert.alert("Saved", "Comic panel saved to Photos");
+    if (status !== "granted") {
+      Alert.alert("Permission", "Please allow access to save images");
+      return;
+    }
+
+    try {
+      // Download all panels
+      const downloadPromises = panelUrls.map(async (url, index) => {
+        const fileUri = `${
+          FileSystem.documentDirectory
+        }dream_${Date.now()}_panel_${index + 1}.jpg`;
+        const dl = await FileSystem.downloadAsync(url, fileUri);
+        if (dl.status === 200) {
+          await MediaLibrary.saveToLibraryAsync(dl.uri);
+        }
+        return dl.status === 200;
+      });
+
+      const results = await Promise.all(downloadPromises);
+      const successCount = results.filter(Boolean).length;
+
+      if (successCount > 0) {
+        Alert.alert(
+          "Saved",
+          `Successfully saved ${successCount} comic panel${
+            successCount > 1 ? "s" : ""
+          } to Photos`
+        );
+      } else {
+        Alert.alert("Error", "Failed to save comic panels");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to download comic panels");
     }
   };
 
   const deleteComic = async () => {
-    Alert.alert("Delete", "Are you sure you want to delete this comic?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const deleteResponse = await fetch(
-            "https://dreamtoon.onrender.com/delete-comic/",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${session?.access_token}`,
-              },
-              body: JSON.stringify({
-                dream_id: id,
-              }),
+    triggerHaptic("heavy");
+
+    Alert.alert(
+      "Delete Comic",
+      "Are you sure you want to delete this comic? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const deleteResponse = await fetch(
+                "https://dreamtoon.onrender.com/delete-comic/",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${session?.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    dream_id: id,
+                  }),
+                }
+              );
+
+              if (!deleteResponse.ok) {
+                const errorBody = await deleteResponse.json();
+                console.error("--- BACKEND ERROR ---", errorBody);
+                throw new Error(
+                  `Delete comic failed: ${
+                    errorBody.detail || "Unknown server error"
+                  }`
+                );
+              }
+
+              triggerHaptic("medium");
+              router.replace("/(tab)/timeline");
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete comic. Please try again.");
             }
-          );
-
-          if (!deleteResponse.ok) {
-            const errorBody = await deleteResponse.json();
-            console.error("--- BACKEND ERROR ---", errorBody);
-            throw new Error(
-              `Delete comic failed: ${
-                errorBody.detail || "Unknown server error"
-              }`
-            );
-          }
-
-          router.replace("/(tab)/timeline");
+          },
         },
-      },
-    ]);
+      ]
+    );
+  };
+
+  const handlePanelPress = (index: number) => {
+    triggerHaptic("light");
+    setSelectedPanelIndex(index);
+    setIsModalVisible(true);
   };
 
   /*──────── Render ────────*/
@@ -198,8 +310,77 @@ export default function ComicResultScreen() {
     return SCREEN_HEIGHT * 0.65;
   };
 
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+        locations={[0, 0.4, 0.8, 1]}
+        style={styles.container}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E0B0FF" />
+          <Text style={styles.loadingText}>Loading your dream comic...</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (error) {
+    return (
+      <LinearGradient
+        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+        locations={[0, 0.4, 0.8, 1]}
+        style={styles.container}
+      >
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#FF6B6B" />
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => {
+              setIsLoading(true);
+              setError(null);
+              // Retry fetch
+              const fetchComicData = async () => {
+                try {
+                  const res = await fetch(
+                    `https://dreamtoon.onrender.com/comic-status/${id}`
+                  );
+                  const data = await res.json();
+                  if (data.status === "complete") {
+                    setPanelUrls(data.panel_urls);
+                    if (data.title) setComicTitle(data.title);
+                    if (data.created_at) {
+                      const date = new Date(data.created_at);
+                      setCreationDate(date.toLocaleDateString());
+                    }
+                  } else {
+                    setError("Could not load the comic. Please try again.");
+                  }
+                } catch (e) {
+                  setError(
+                    "Failed to connect to the server. Please check your connection."
+                  );
+                } finally {
+                  setIsLoading(false);
+                }
+              };
+              fetchComicData();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </Pressable>
+        </View>
+      </LinearGradient>
+    );
+  }
+
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
       {/* Header */}
       <View style={[styles.header, isIPad && styles.headerTablet]}>
         <Pressable style={styles.backButton} onPress={handleBack}>
@@ -211,16 +392,25 @@ export default function ComicResultScreen() {
         </Pressable>
       </View>
 
-      {/* Title */}
-      <Text style={[styles.titleText, isIPad && styles.titleTextTablet]}>
-        Your Comic
-      </Text>
+      {/* Enhanced Title Section */}
+      <View style={styles.titleSection}>
+        <Text style={[styles.titleText, isIPad && styles.titleTextTablet]}>
+          {comicTitle}
+        </Text>
+        {creationDate && (
+          <Text style={styles.dateText}>Created on {creationDate}</Text>
+        )}
+      </View>
 
       {/* Comic grid */}
       <View
         style={[styles.comicContainer, isIPad && styles.comicContainerTablet]}
       >
-        <Animated.View style={{ transform: [{ translateY }] }}>
+        <Animated.View
+          style={{
+            transform: [{ translateY }, { scale: scaleAnim }],
+          }}
+        >
           <View
             style={[
               styles.boardWrapper,
@@ -231,10 +421,7 @@ export default function ComicResultScreen() {
               <Pressable
                 key={p.id}
                 style={[styles.panel, { width: panelSize }]}
-                onPress={() => {
-                  setSelectedPanelIndex(idx);
-                  setIsModalVisible(true);
-                }}
+                onPress={() => handlePanelPress(idx)}
               >
                 <Image source={p.uri} style={styles.panelImg} />
               </Pressable>
@@ -243,12 +430,12 @@ export default function ComicResultScreen() {
         </Animated.View>
       </View>
 
-      {/* Actions */}
+      {/* Enhanced Actions */}
       <View style={[styles.actionsRow, isIPad && styles.actionsRowTablet]}>
         {(
           [
-            { icon: "share", onPress: handleShare, color: "#9B5DE5" },
-            { icon: "download", onPress: handleDownload, color: "#7F9CF5" },
+            { icon: "share", onPress: handleShare, color: "#7F9CF5" },
+            { icon: "download", onPress: handleDownload, color: "#4ECDC4" },
             {
               icon: "trash",
               onPress: deleteComic,
@@ -278,7 +465,7 @@ export default function ComicResultScreen() {
         ))}
       </View>
 
-      {/* Modal viewer */}
+      {/* Enhanced Modal viewer */}
       <Modal
         visible={isModalVisible}
         animationType="fade"
@@ -286,33 +473,45 @@ export default function ComicResultScreen() {
       >
         <LinearGradient
           colors={[
-            "rgba(13,10,60,0.3)",
-            "rgba(13,10,60,0.1)",
-            "rgba(0,0,0,0.1)",
+            "rgba(13,10,60,0.95)",
+            "rgba(13,10,60,0.8)",
+            "rgba(0,0,0,0.9)",
           ]}
           style={styles.modalContainer}
         >
-          <Pressable
-            style={[styles.modalCloseBtn, isIPad && styles.modalCloseBtnTablet]}
-            onPress={() => setIsModalVisible(false)}
-          >
-            <Ionicons
-              name="close"
-              size={getResponsiveValue(28, 40)}
-              color="#fff"
-            />
-          </Pressable>
+          <View style={styles.modalHeader}>
+            <Pressable
+              style={[
+                styles.modalCloseBtn,
+                isIPad && styles.modalCloseBtnTablet,
+              ]}
+              onPress={() => {
+                triggerHaptic("light");
+                setIsModalVisible(false);
+              }}
+            >
+              <Ionicons
+                name="close"
+                size={getResponsiveValue(28, 40)}
+                color="#fff"
+              />
+            </Pressable>
+            <Text style={styles.modalTitle}>
+              Panel {selectedPanelIndex + 1} of {PANELS.length}
+            </Text>
+          </View>
+
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) =>
-              setSelectedPanelIndex(
-                Math.round(
-                  e.nativeEvent.contentOffset.x / Dimensions.get("window").width
-                )
-              )
-            }
+            onMomentumScrollEnd={(e) => {
+              const newIndex = Math.round(
+                e.nativeEvent.contentOffset.x / Dimensions.get("window").width
+              );
+              setSelectedPanelIndex(newIndex);
+              triggerHaptic("light");
+            }}
             contentOffset={{
               x: selectedPanelIndex * Dimensions.get("window").width,
               y: 0,
@@ -323,10 +522,24 @@ export default function ComicResultScreen() {
                 <Image
                   source={p.uri}
                   style={[styles.swipeImage, isIPad && styles.swipeImageTablet]}
+                  resizeMode="contain"
                 />
               </View>
             ))}
           </ScrollView>
+
+          {/* Panel indicators */}
+          <View style={styles.panelIndicators}>
+            {PANELS.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.indicator,
+                  i === selectedPanelIndex && styles.activeIndicator,
+                ]}
+              />
+            ))}
+          </View>
         </LinearGradient>
       </Modal>
     </LinearGradient>
@@ -383,7 +596,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     paddingHorizontal: 20,
-    paddingTop: 80, // Add top padding to avoid overlap with header
+    paddingTop: 20, // Reduced top padding
     alignItems: "center",
     marginBottom: 120,
   },
@@ -439,6 +652,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2A223A",
   },
   panelImg: { flex: 1, width: "100%", height: "100%" },
+
   /* Action row */
   actionsRow: {
     position: "absolute",
@@ -471,7 +685,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
   },
   /* Modal */
-  modalContainer: { flex: 1 },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalHeader: {
+    width: "100%",
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    alignItems: "center",
+  },
   modalCloseBtn: {
     position: "absolute",
     top: 50,
@@ -490,6 +714,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: 10,
   },
   swipePanel: {
     width: Dimensions.get("window").width,
@@ -510,5 +740,67 @@ const styles = StyleSheet.create({
   titleTextTablet: {
     fontSize: 28,
     marginBottom: 24,
+  },
+  dateText: {
+    color: "#B0B0B0",
+    fontSize: 14,
+    marginTop: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#E0B0FF",
+    fontSize: 18,
+    marginTop: 20,
+    fontWeight: "600",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "#FF6B6B",
+    fontSize: 18,
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#FF4EE0",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  panelIndicators: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  indicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginHorizontal: 5,
+  },
+  activeIndicator: {
+    backgroundColor: "#FF4EE0",
+    width: 15,
+    height: 15,
+  },
+  titleSection: {
+    alignItems: "center",
+    marginTop: 60,
+    marginBottom: 10,
   },
 });
