@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ShinyGradientButton } from "@/components/ShinyGradientButton";
 import * as Haptics from "expo-haptics";
+import paywallActive from "@/context/PaywallContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -245,7 +246,7 @@ export default function AvatarStudioScreen() {
     setIsCreating(true);
     triggerHaptic("heavy");
 
-    if (profile?.subscription_status === "free") {
+    if (profile?.subscription_status === "free" && paywallActive) {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });

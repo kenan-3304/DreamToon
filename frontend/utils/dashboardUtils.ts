@@ -1,4 +1,5 @@
 import { Alert } from "react-native";
+import paywallActive from "@/context/PaywallContext";
 
 function isNotToday(lastCreated: string | Date) {
   const today = new Date();
@@ -18,7 +19,7 @@ export const dashboardUtils = {
     router: any,
     updateProfile: (data: any) => void
   ): Promise<boolean> {
-    if (profile?.subscription_status === "free") {
+    if (profile?.subscription_status === "free" && paywallActive) {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });

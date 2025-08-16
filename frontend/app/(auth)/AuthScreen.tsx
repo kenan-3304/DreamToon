@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,22 +8,36 @@ import {
   Easing,
   Alert,
   Image,
-  Platform, // Import Platform API
+  Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import SocialLoginButton from "../../components/SocialLoginButton";
 import useAuth from "../../hooks/useAuth";
-import { FontAwesome } from "@expo/vector-icons"; // Import an icon for Apple
+import { Ionicons } from "@expo/vector-icons";
 import googleIcon from "../../assets/images/google.png";
 import appleIcon from "../../assets/images/apple_icon.png";
 import { supabase } from "../../utils/supabase";
+import * as Haptics from "expo-haptics";
+import { useUser } from "@/context/UserContext";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isTablet = () => {
+  const aspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH;
+  return SCREEN_WIDTH >= 768 && aspectRatio <= 1.6;
+};
+const isIPad = Platform.OS === "ios" && isTablet();
+const getResponsiveValue = (phone: number, tablet: number) =>
+  isIPad ? tablet : phone;
 
 const AuthScreen: React.FC = () => {
   const router = useRouter();
+  const { mode = "signup" } = useLocalSearchParams<{ mode?: string }>();
   const [email, setEmail] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -31,11 +45,27 @@ const AuthScreen: React.FC = () => {
   const { signInWithApple, signUpWithEmailOtp, signInWithGoogle, loading } =
     useAuth();
 
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 400,
-      easing: Easing.out(Easing.exp),
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
@@ -53,20 +83,15 @@ const AuthScreen: React.FC = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("subscription_status")
+        .select("subscription_status, display_avatar_path, onboarding_complete")
         .eq("id", user.id)
         .single();
 
-      // PGRST116 means no profile was found, which is expected for a new user.
-      if (profileError && profileError.code !== "PGRST116") {
-        throw profileError;
-      }
-
       // If no profile exists, they're a new user - send to create toon screen
-      if (!profile) {
+      if (!profile || !profile.onboarding_complete) {
         router.replace("/(tab)/CreateToonScreen");
       } else {
-        router.replace("/(tab)/");
+        router.replace("/(tab)");
       }
     } catch (error: any) {
       Alert.alert("Error", `Failed to process sign-in: ${error.message}`);
@@ -77,6 +102,7 @@ const AuthScreen: React.FC = () => {
    * Handles the Apple Sign-In flow.
    */
   const handleAppleSignIn = async () => {
+    triggerHaptic("medium");
     try {
       await signInWithApple();
       await handleSuccessfulSignIn();
@@ -93,12 +119,13 @@ const AuthScreen: React.FC = () => {
    * Handles the Google Sign-In flow.
    */
   const handleGoogleSignIn = async () => {
+    triggerHaptic("medium");
     try {
       await signInWithGoogle();
       await handleSuccessfulSignIn();
     } catch (error: any) {
       // Do not show an alert if the user simply cancelled the flow.
-      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+      if (error.code !== "SIGN_IN_CANCELLED") {
         Alert.alert("Sign-In Error", error.message);
       }
     }
@@ -112,6 +139,7 @@ const AuthScreen: React.FC = () => {
       Alert.alert("Error", "Please enter your email address.");
       return;
     }
+    triggerHaptic("medium");
     try {
       await signUpWithEmailOtp(email);
       router.push({
@@ -124,70 +152,130 @@ const AuthScreen: React.FC = () => {
     }
   };
 
+  const handleBack = () => {
+    triggerHaptic("light");
+    router.back();
+  };
+
+  const isSignUp = mode === "signup";
+
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-          <View style={styles.bodyWrapper}>
-            <Text style={styles.heading}>Welcome</Text>
-            <Text style={styles.tagline}>Get your dream comic in seconds</Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableWithoutFeedback onPress={handleBack}>
+              <View style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
 
-            {/* --- PRIMARY ACTION: APPLE SIGN-IN (iOS only) --- */}
-            {Platform.OS === "ios" && (
-              <View style={{ width: "100%", marginBottom: -4 }}>
+          <View style={styles.bodyWrapper}>
+            {/* Enhanced Header */}
+            <View style={styles.headerSection}>
+              <Ionicons
+                name="moon"
+                size={getResponsiveValue(48, 64)}
+                color="#E0B0FF"
+              />
+              <Text style={styles.heading}>
+                {isSignUp ? "Join DreamToon" : "Welcome Back"}
+              </Text>
+              <Text style={styles.tagline}>
+                {isSignUp
+                  ? "Start creating your dream comics today"
+                  : "Continue your dream journey"}
+              </Text>
+            </View>
+
+            {/* Email Section - Moved to top for better keyboard handling */}
+            <View style={styles.emailSection}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#E0B0FF" />
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email address"
+                  placeholderTextColor="#8B8B8B"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.textInput}
+                />
+              </View>
+
+              <View style={styles.emailButtonWrapper}>
+                <ShinyGradientButton
+                  onPress={handleContinueWithEmail}
+                  disabled={loading || !email.trim()}
+                  size="large"
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    `Continue with Email`
+                  )}
+                </ShinyGradientButton>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social Login Buttons */}
+            <View style={styles.socialSection}>
+              {/* Apple Sign-In (iOS only) */}
+              {Platform.OS === "ios" && (
+                <View style={styles.socialButtonWrapper}>
+                  <SocialLoginButton
+                    icon={
+                      <Image
+                        source={appleIcon}
+                        style={styles.appleIcon}
+                        resizeMode="contain"
+                      />
+                    }
+                    text="Continue with Apple"
+                    onPress={handleAppleSignIn}
+                    disabled={loading}
+                  />
+                </View>
+              )}
+
+              {/* Google Sign-In */}
+              <View style={styles.socialButtonWrapper}>
                 <SocialLoginButton
                   icon={
                     <Image
-                      source={appleIcon}
-                      style={{ width: 40, height: 40, marginRight: 12 }}
+                      source={googleIcon}
+                      style={styles.googleIcon}
                       resizeMode="contain"
                     />
                   }
-                  text="Continue with Apple"
-                  onPress={handleAppleSignIn}
+                  text="Continue with Google"
+                  onPress={handleGoogleSignIn}
                   disabled={loading}
                 />
               </View>
-            )}
-
-            {/* --- GOOGLE SIGN-IN --- */}
-            <View style={{ width: "100%", marginBottom: 32 }}>
-              <SocialLoginButton
-                icon={
-                  <Image
-                    source={googleIcon}
-                    style={{ width: 22, height: 22, marginRight: 12 }}
-                    resizeMode="contain"
-                  />
-                }
-                text="Continue with Google"
-                onPress={handleGoogleSignIn}
-                disabled={loading}
-              />
             </View>
+          </View>
 
-            <Text style={styles.separatorText}>━━━━━━━━━ or ━━━━━━━━━</Text>
-
-            {/* --- SECONDARY ACTION: EMAIL OTP --- */}
-            <View style={styles.inputCard}>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email address"
-                placeholderTextColor="#8B8B8B"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.textInput}
-              />
-            </View>
-            <View style={{ width: "100%", marginTop: 24 }}>
-              <ShinyGradientButton
-                onPress={handleContinueWithEmail}
-                disabled={loading}
-              >
-                Continue with Email
-              </ShinyGradientButton>
-            </View>
+          {/* Footer - Moved outside bodyWrapper to stay at bottom */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              {isSignUp
+                ? "By continuing, you agree to our Terms of Service and Privacy Policy"
+                : "Secure sign-in with your preferred method"}
+            </Text>
           </View>
         </Animated.View>
       </TouchableWithoutFeedback>
@@ -198,48 +286,122 @@ const AuthScreen: React.FC = () => {
 export default AuthScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: getResponsiveValue(60, 80),
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
   bodyWrapper: {
     flex: 1,
+    paddingHorizontal: getResponsiveValue(24, 40),
+    paddingTop: getResponsiveValue(20, 40),
+    paddingBottom: getResponsiveValue(20, 30),
+  },
+  headerSection: {
     alignItems: "center",
-    paddingHorizontal: 40,
-    justifyContent: "flex-start",
-    paddingTop: 100,
+    marginBottom: getResponsiveValue(40, 60),
   },
   heading: {
-    fontSize: 44,
+    fontSize: getResponsiveValue(32, 44),
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "center",
-    marginBottom: 16,
+    marginTop: 16,
+    marginBottom: 12,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   tagline: {
-    fontSize: 18,
-    color: "#8B8B8B",
-    marginBottom: 40,
+    fontSize: getResponsiveValue(16, 20),
+    color: "#E0B0FF",
     textAlign: "center",
+    lineHeight: getResponsiveValue(24, 28),
+    fontWeight: "500",
   },
-  separatorText: {
-    color: "#8B8B8B",
-    fontSize: 16,
-    marginBottom: 20,
+  socialSection: {
+    marginBottom: getResponsiveValue(32, 48),
   },
-  inputCard: {
+  socialButtonWrapper: {
     width: "100%",
+    marginBottom: 16,
+  },
+  appleIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: getResponsiveValue(32, 48),
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  dividerText: {
+    color: "#B0B0B0",
+    fontSize: 14,
+    fontWeight: "600",
+    marginHorizontal: 16,
+  },
+  emailSection: {
+    marginBottom: getResponsiveValue(32, 48),
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 10,
-    paddingHorizontal: 20,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 24,
   },
   textInput: {
-    width: "100%",
-    height: 60,
-    fontSize: 18,
+    flex: 1,
+    height: 56,
+    fontSize: 16,
     fontWeight: "500",
     color: "#FFFFFF",
+    marginLeft: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.15)",
+  emailButtonWrapper: {
     width: "100%",
+  },
+  footer: {
+    alignItems: "center",
+    paddingHorizontal: getResponsiveValue(24, 40),
+    paddingBottom: getResponsiveValue(40, 60),
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#B0B0B0",
+    textAlign: "center",
+    lineHeight: 18,
+    fontWeight: "400",
   },
 });

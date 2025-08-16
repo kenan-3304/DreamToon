@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,14 +6,26 @@ import {
   TextInput,
   Pressable,
   Alert,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons"; // Assuming you use expo icons
+import { Ionicons } from "@expo/vector-icons";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import useAuth from "../../hooks/useAuth";
-import { supabase } from "../../utils/supabase"; // Make sure this import is present
+import { supabase } from "../../utils/supabase";
 import paywallActive from "@/context/PaywallContext";
+import * as Haptics from "expo-haptics";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const isTablet = () => {
+  const aspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH;
+  return SCREEN_WIDTH >= 768 && aspectRatio <= 1.6;
+};
+const isIPad = Platform.OS === "ios" && isTablet();
+const getResponsiveValue = (phone: number, tablet: number) =>
+  isIPad ? tablet : phone;
 
 const VerifyOtpScreen: React.FC = () => {
   const router = useRouter();
@@ -22,6 +34,22 @@ const VerifyOtpScreen: React.FC = () => {
 
   const [code, setCode] = useState(new Array(6).fill(""));
   const inputs = useRef<Array<TextInput | null>>([]);
+
+  // Enhanced haptic feedback
+  const triggerHaptic = useCallback(
+    (type: "light" | "medium" | "heavy" = "light") => {
+      if (Platform.OS === "ios") {
+        const hapticType =
+          type === "light"
+            ? Haptics.ImpactFeedbackStyle.Light
+            : type === "medium"
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Heavy;
+        Haptics.impactAsync(hapticType);
+      }
+    },
+    []
+  );
 
   const handleInputChange = (text: string, index: number) => {
     const newCode = [...code];
@@ -47,6 +75,7 @@ const VerifyOtpScreen: React.FC = () => {
       Alert.alert("Error", "Please enter the complete 6-digit code.");
       return;
     }
+    triggerHaptic("medium");
     try {
       if (!email) throw new Error("Email not found");
       await verifyOtp(email, otp);
@@ -67,42 +96,64 @@ const VerifyOtpScreen: React.FC = () => {
       }
 
       // Step 4: Navigate based on subscription status.
-      if (
-        !profile ||
-        (profile.subscription_status === "free" && paywallActive)
-      ) {
+      if (!profile) {
+        router.replace("/(tab)/CreateToonScreen");
+      } else if (profile.subscription_status === "free" && paywallActive) {
         router.replace("/(modals)/PaywallScreen");
       } else {
-        router.replace("/(tab)/index");
+        router.replace("/(tab)");
       }
     } catch (error: any) {
       Alert.alert("Verification Failed", error.message);
     }
   };
 
+  const handleBack = () => {
+    triggerHaptic("light");
+    router.back();
+  };
+
+  const handleClose = () => {
+    triggerHaptic("light");
+    router.replace("/(auth)/AuthScreen");
+  };
+
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="white" />
+        <Pressable onPress={handleBack} style={styles.headerButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
-        <Pressable onPress={() => router.replace("/(auth)/AuthScreen")}>
-          <Ionicons name="close" size={24} color="white" />
+        <Pressable onPress={handleClose} style={styles.headerButton}>
+          <Ionicons name="close" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Verify Code</Text>
-        <Text style={styles.subtitle}>
-          Enter the 6-digit code we sent to{" "}
-          <Text style={styles.emailText}>{email}</Text>
-        </Text>
+        <View style={styles.headerSection}>
+          <Ionicons
+            name="checkmark-circle"
+            size={getResponsiveValue(48, 64)}
+            color="#E0B0FF"
+          />
+          <Text style={styles.title}>Verify Code</Text>
+          <Text style={styles.subtitle}>
+            Enter the 6-digit code we sent to{" "}
+            <Text style={styles.emailText}>{email}</Text>
+          </Text>
+        </View>
 
         <View style={styles.codeInputContainer}>
           {code.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputs.current[index] = ref)}
+              ref={(ref) => {
+                inputs.current[index] = ref;
+              }}
               style={styles.codeInput}
               keyboardType="number-pad"
               maxLength={1}
@@ -118,6 +169,7 @@ const VerifyOtpScreen: React.FC = () => {
           <Text style={styles.resendText}>Code expired? </Text>
           <Pressable
             onPress={() => {
+              triggerHaptic("light");
               /* Add resend logic here */
             }}
           >
@@ -125,9 +177,13 @@ const VerifyOtpScreen: React.FC = () => {
           </Pressable>
         </View>
 
-        <View style={{ width: "100%", marginTop: 40 }}>
-          <ShinyGradientButton onPress={handleContinue} disabled={loading}>
-            CONTINUE
+        <View style={styles.buttonContainer}>
+          <ShinyGradientButton
+            onPress={handleContinue}
+            disabled={loading}
+            size="large"
+          >
+            Verify & Continue
           </ShinyGradientButton>
         </View>
       </View>
@@ -142,58 +198,85 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: 60,
+    paddingTop: getResponsiveValue(60, 80),
     paddingHorizontal: 20,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   content: {
     flex: 1,
     alignItems: "center",
-    paddingHorizontal: 40,
-    paddingTop: 80,
+    paddingHorizontal: getResponsiveValue(24, 40),
+    paddingTop: getResponsiveValue(40, 60),
+  },
+  headerSection: {
+    alignItems: "center",
+    marginBottom: getResponsiveValue(40, 60),
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
+    fontSize: getResponsiveValue(32, 44),
+    fontWeight: "800",
     color: "#FFFFFF",
-    marginBottom: 16,
+    marginTop: 16,
+    marginBottom: 12,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#A7A7A7",
+    fontSize: getResponsiveValue(16, 20),
+    color: "#E0B0FF",
     textAlign: "center",
-    marginBottom: 40,
+    lineHeight: getResponsiveValue(24, 28),
+    fontWeight: "500",
   },
   emailText: {
     color: "#FFFFFF",
+    fontWeight: "600",
   },
   codeInputContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    marginBottom: 24,
+    marginBottom: getResponsiveValue(32, 48),
   },
   codeInput: {
-    width: 48,
-    height: 60,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 12,
+    width: getResponsiveValue(48, 64),
+    height: getResponsiveValue(60, 80),
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: getResponsiveValue(24, 32),
     textAlign: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255,255,255,0.1)",
+    fontWeight: "600",
   },
   resendContainer: {
     flexDirection: "row",
+    marginBottom: getResponsiveValue(40, 60),
   },
   resendText: {
-    color: "#A7A7A7",
+    color: "#B0B0B0",
     fontSize: 14,
   },
   resendLink: {
-    color: "#FFFFFF",
+    color: "#E0B0FF",
     fontSize: 14,
+    fontWeight: "600",
     textDecorationLine: "underline",
+  },
+  buttonContainer: {
+    width: "100%",
   },
 });
 

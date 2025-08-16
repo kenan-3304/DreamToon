@@ -20,6 +20,7 @@ interface Profile {
   last_avatar_created_at?: string;
   display_avatar_path?: string;
   daily_creation_count?: number;
+  onboarding_complete?: boolean;
   last_creation_date?: Date;
 }
 
