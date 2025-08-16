@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons"; // Assuming you use expo icons
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import useAuth from "../../hooks/useAuth";
 import { supabase } from "../../utils/supabase"; // Make sure this import is present
+import paywallActive from "@/context/PaywallContext";
 
 const VerifyOtpScreen: React.FC = () => {
   const router = useRouter();
@@ -66,7 +67,10 @@ const VerifyOtpScreen: React.FC = () => {
       }
 
       // Step 4: Navigate based on subscription status.
-      if (!profile || profile.subscription_status === "free") {
+      if (
+        !profile ||
+        (profile.subscription_status === "free" && paywallActive)
+      ) {
         router.replace("/(modals)/PaywallScreen");
       } else {
         router.replace("/(tab)/index");

@@ -179,9 +179,9 @@ export default function AvatarStudioScreen() {
     setShowStyleSelector(false);
     triggerHaptic("medium");
 
-    Alert.alert("📸 Choose Photo", "How would you like to get your photo?", [
+    Alert.alert("Choose Photo", "How would you like to get your photo?", [
       {
-        text: "📱 Take Photo",
+        text: "Take Photo",
         onPress: async () => {
           try {
             const { status } =
@@ -208,7 +208,7 @@ export default function AvatarStudioScreen() {
         },
       },
       {
-        text: "🖼️ Choose from Gallery",
+        text: "Choose from Gallery",
         onPress: async () => {
           try {
             const { status } =
@@ -273,7 +273,7 @@ export default function AvatarStudioScreen() {
     triggerHaptic("light");
     Alert.alert("🎭 Manage Avatar", "What would you like to do?", [
       {
-        text: "⭐ Set as Display Picture",
+        text: "Set as Display Picture",
         onPress: async () => {
           try {
             await updateProfile({ display_avatar_path: item.path });
@@ -285,7 +285,7 @@ export default function AvatarStudioScreen() {
         },
       },
       {
-        text: "🗑️ Delete",
+        text: "Delete",
         style: "destructive",
         onPress: () =>
           Alert.alert("Are you sure?", "This action cannot be undone.", [

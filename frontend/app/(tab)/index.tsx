@@ -488,7 +488,7 @@ const EnhancedDashboardScreen: React.FC = () => {
           <Ionicons
             name="mic-outline"
             size={getResponsiveValue(60, 80)}
-            color="#8663DF"
+            color="rgba(192, 170, 216, 0.98)"
           />
         </AnimatedView>
       </TouchableOpacity>
@@ -623,9 +623,9 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: getResponsiveValue(60, 90),
-    backgroundColor: "rgba(134, 99, 223, 0.2)",
+    backgroundColor: "rgba(192, 171, 244, 0.2)",
     borderWidth: 3,
-    borderColor: "rgba(134, 99, 223, 0.6)",
+    borderColor: "rgba(185, 166, 231, 0.6)",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#8663DF",
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: getResponsiveValue(60, 90),
-    backgroundColor: "rgba(134, 99, 223, 0.3)",
+    backgroundColor: "rgba(161, 136, 225, 0.3)",
     shadowColor: "#8663DF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: getResponsiveValue(60, 90),
     borderWidth: 2,
-    borderColor: "rgba(134, 99, 223, 0.5)",
+    borderColor: "rgba(179, 158, 231, 0.5)",
   },
   headerBtn: { position: "absolute", top: 50, left: 20, zIndex: 10 },
   greetingWrapper: { marginTop: 60 },

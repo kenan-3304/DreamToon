@@ -90,7 +90,11 @@ const ProcessingScreen: React.FC = () => {
   }, [dream_id]);
 
   return (
-    <LinearGradient colors={["#492D81", "#000"]} style={styles.container}>
+    <LinearGradient
+      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
+      locations={[0, 0.4, 0.8, 1]}
+      style={styles.container}
+    >
       {/* ---- TOP CONTAINER (STABLE) ---- */}
       {/* This section holds the content that should NOT move. */}
       {/* It takes up the top 55% of the screen and aligns its content to the bottom. */}

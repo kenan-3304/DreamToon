@@ -4,6 +4,7 @@ import { Session } from "@supabase/supabase-js";
 import { Stack } from "expo-router";
 import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
+import paywallActive from "../context/PaywallContext";
 
 // Create a context to hold the session information
 const AuthContext = React.createContext<{
@@ -32,10 +33,12 @@ function SessionProvider(props: React.PropsWithChildren) {
 
   useEffect(() => {
     // Configure RevenueCat
-    if (Platform.OS === "ios") {
-      const revenuecatKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY;
-      if (!revenuecatKey) throw new Error("RevenueCat Apple key is not set!");
-      Purchases.configure({ apiKey: revenuecatKey });
+    if (paywallActive) {
+      if (Platform.OS === "ios") {
+        const revenuecatKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY;
+        if (!revenuecatKey) throw new Error("RevenueCat Apple key is not set!");
+        Purchases.configure({ apiKey: revenuecatKey });
+      }
     }
 
     // Fetch the initial session
