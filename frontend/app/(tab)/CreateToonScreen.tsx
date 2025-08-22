@@ -21,6 +21,7 @@ import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
 import * as Haptics from "expo-haptics";
 import paywallActive from "@/context/PaywallContext";
+import { ImageBackground } from "react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const isTablet = () => {
@@ -304,21 +305,25 @@ const CreateToonScreen: React.FC = () => {
                 name: "Ghibli",
                 prompt:
                   "Create a stylized character drawing inspired by the art style of Studio Ghibli. Use soft, hand-painted watercolor textures with a lush natural background and gentle sunlight. The character should evoke a warm, nostalgic feeling, with expressive features and a sense of childlike wonder. The input image provides reference for mood, pose, and hair silhouette, not for realism.",
+                image: require("../../assets/images/studio_ghibli.png"),
               },
               {
                 name: "Adventure Time",
                 prompt:
                   "Create a cartoon-style character drawing in the art style of Adventure Time: simple, rounded character design, noodle limbs, dot eyes, vibrant flat colors, thick outlines, and a candy-colored background. The input image provides general reference for mood, lighting, and character silhouette, but should not be interpreted literally or photorealistically",
+                image: require("../../assets/images/adventure_time.png"),
               },
               {
                 name: "DC Comics",
                 prompt:
                   "Create a stylized superhero character in the aesthetic of modern DC Comics. Use bold anatomy, dynamic posing, dramatic lighting, and detailed ink lines with cross-hatching. The character should have a gritty, high-contrast graphic novel look, and a cinematic and serious tone. Use the input image only as loose reference for posture and mood — do not replicate the person.",
+                image: require("../../assets/images/dc.jpg"),
               },
               {
                 name: "Simpsons",
                 prompt:
                   "Create a stylized cartoon character in the art style of The Simpsons. Use flat colors, yellow skin tone, oversized round eyes, and simple linework with bold outlines. Place the character in a satirical, suburban setting. Use the input image as loose reference for pose and general hairstyle, but avoid realism or facial replication.",
+                image: require("../../assets/images/simpsons.png"),
               },
             ].map((style) => (
               <Pressable
@@ -329,18 +334,33 @@ const CreateToonScreen: React.FC = () => {
                 ]}
                 onPress={() => handleStyleSelection(style)}
               >
-                <Text
-                  style={[
-                    styles.styleCardText,
-                    selectedStyle?.name === style.name &&
-                      styles.styleCardTextActive,
-                  ]}
+                <ImageBackground
+                  source={style.image}
+                  style={styles.styleCardImage}
+                  resizeMode="cover"
                 >
-                  {style.name}
-                </Text>
-                {selectedStyle?.name === style.name && (
-                  <Ionicons name="checkmark-circle" size={20} color="#E0B0FF" />
-                )}
+                  <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.8)"]}
+                    style={styles.styleCardGradient}
+                  >
+                    <Text
+                      style={[
+                        styles.styleCardText,
+                        selectedStyle?.name === style.name &&
+                          styles.styleCardTextActive,
+                      ]}
+                    >
+                      {style.name}
+                    </Text>
+                    {selectedStyle?.name === style.name && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#E0B0FF"
+                      />
+                    )}
+                  </LinearGradient>
+                </ImageBackground>
               </Pressable>
             ))}
           </View>
@@ -498,25 +518,33 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   styleCard: {
-    width: getResponsiveValue(120, 160),
-    height: getResponsiveValue(80, 100),
-    backgroundColor: "rgba(255,255,255,0.08)",
+    width: getResponsiveValue(160, 200),
+    height: getResponsiveValue(120, 150),
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    overflow: "hidden",
+    margin: 4,
+  },
+  styleCardImage: {
+    flex: 1,
+  },
+  styleCardGradient: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 12,
   },
   styleCardActive: {
-    backgroundColor: "rgba(224,176,255,0.2)",
-    borderColor: "rgba(224,176,255,0.4)",
+    borderColor: "rgba(224,176,255,0.8)",
+    borderWidth: 3,
   },
   styleCardText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   styleCardTextActive: {
     color: "#E0B0FF",

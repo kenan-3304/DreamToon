@@ -18,6 +18,7 @@ import { StyleSelector } from "../../components/StyleSelector";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ShinyGradientButton } from "@/components/ShinyGradientButton";
 import * as Haptics from "expo-haptics";
@@ -56,6 +57,14 @@ export default function AvatarStudioScreen() {
 
   const [isPolling, setIsPolling] = useState(false);
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
+
+  // Refresh profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh profile data to ensure avatar and timer are up to date
+      refetchProfileAndData();
+    }, [refetchProfileAndData])
+  );
 
   // Animation values
   const headerScale = useSharedValue(1);

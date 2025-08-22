@@ -169,7 +169,7 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
               {!isUnlocked && (
                 <View style={styles.lockContainer}>
                   <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
-                  <Text style={styles.lockText}>Unlock to use</Text>
+                  <Text style={styles.lockText}>Create avatar to unlock</Text>
                 </View>
               )}
             </View>
@@ -179,6 +179,9 @@ export const StyleSelector: React.FC<StyleSelectorProps> = ({
             <View style={styles.lockedOverlay}>
               <Ionicons name="lock-closed" size={40} color="#FFFFFF" />
               <Text style={styles.lockedText}>Locked</Text>
+              <Text style={styles.lockedSubtext}>
+                Create avatar in this style first
+              </Text>
             </View>
           )}
         </ImageBackground>
@@ -349,5 +352,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     marginTop: 8,
+  },
+  lockedSubtext: {
+    color: "#E0B0FF",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 4,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

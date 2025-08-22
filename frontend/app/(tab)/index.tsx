@@ -24,12 +24,12 @@ import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../../utils/supabase";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import Background from "@/components/ui/Background";
 import { ShinyGradientButton } from "../../components/ShinyGradientButton";
 import { StyleSelector } from "../../components/StyleSelector";
 import { useUser } from "../../context/UserContext";
 import { dashboardUtils } from "@/utils/dashboardUtils";
-import FloatingParticles from "../../components/FloatingParticles";
 
 import Animated, {
   useSharedValue,
@@ -58,7 +58,7 @@ type AppMode = "idle" | "typing" | "recording" | "review" | "style-selection";
 
 const EnhancedDashboardScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, session, updateProfile } = useUser();
+  const { profile, session, updateProfile, refetchProfileAndData } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
   const [dreamText, setDreamText] = useState("");
@@ -72,6 +72,14 @@ const EnhancedDashboardScreen: React.FC = () => {
   const [containerCenter, setContainerCenter] = useState({ x: 0, y: 0 });
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [previousMode, setPreviousMode] = useState<AppMode>("idle");
+
+  // Refresh profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh profile data to ensure avatar and timer are up to date
+      refetchProfileAndData();
+    }, [refetchProfileAndData])
+  );
 
   // Enhanced animation values
   const dashboardOpacity = useSharedValue(1);
@@ -442,7 +450,6 @@ const EnhancedDashboardScreen: React.FC = () => {
       locations={[0, 0.4, 0.8, 1]}
       style={styles.container}
     >
-      <FloatingParticles />
       <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
         <AnimatedView style={[styles.greetingWrapper, greetingAnimatedStyle]}>
           <Text style={styles.greetingText}>{greeting},</Text>
@@ -505,7 +512,10 @@ const EnhancedDashboardScreen: React.FC = () => {
       </Pressable>
 
       {mode === "typing" && (
-        <View style={styles.inputModeWrapper}>
+        <Pressable
+          style={styles.inputModeWrapper}
+          onPress={() => Keyboard.dismiss()}
+        >
           <Pressable style={styles.headerBtn} onPress={handleFullReset}>
             <Ionicons
               name="close"
@@ -513,8 +523,9 @@ const EnhancedDashboardScreen: React.FC = () => {
               color="#FFFFFF"
             />
           </Pressable>
-          <View
+          <Pressable
             style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
+            onPress={(e) => e.stopPropagation()}
           >
             <TextInput
               ref={inputRef}
@@ -548,8 +559,8 @@ const EnhancedDashboardScreen: React.FC = () => {
                 </ShinyGradientButton>
               )}
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       )}
 
       {mode === "style-selection" && (

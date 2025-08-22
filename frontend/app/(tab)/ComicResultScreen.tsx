@@ -332,44 +332,67 @@ export default function ComicResultScreen() {
         locations={[0, 0.4, 0.8, 1]}
         style={styles.container}
       >
+        {/* Header with back button */}
+        <View style={[styles.header, isIPad && styles.headerTablet]}>
+          <Pressable style={styles.backButton} onPress={handleBack}>
+            <Ionicons
+              name="arrow-back"
+              size={getResponsiveValue(24, 36)}
+              color="#fff"
+            />
+          </Pressable>
+        </View>
+
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#FF6B6B" />
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => {
-              setIsLoading(true);
-              setError(null);
-              // Retry fetch
-              const fetchComicData = async () => {
-                try {
-                  const res = await fetch(
-                    `https://dreamtoon.onrender.com/comic-status/${id}`
-                  );
-                  const data = await res.json();
-                  if (data.status === "complete") {
-                    setPanelUrls(data.panel_urls);
-                    if (data.title) setComicTitle(data.title);
-                    if (data.created_at) {
-                      const date = new Date(data.created_at);
-                      setCreationDate(date.toLocaleDateString());
+          <View style={styles.errorButtons}>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => {
+                setIsLoading(true);
+                setError(null);
+                // Retry fetch
+                const fetchComicData = async () => {
+                  try {
+                    const res = await fetch(
+                      `https://dreamtoon.onrender.com/comic-status/${id}`
+                    );
+                    const data = await res.json();
+                    if (data.status === "complete") {
+                      setPanelUrls(data.panel_urls);
+                      if (data.title) setComicTitle(data.title);
+                      if (data.created_at) {
+                        const date = new Date(data.created_at);
+                        setCreationDate(date.toLocaleDateString());
+                      }
+                    } else {
+                      setError("Could not load the comic. Please try again.");
                     }
-                  } else {
-                    setError("Could not load the comic. Please try again.");
+                  } catch (e) {
+                    setError(
+                      "Failed to connect to the server. Please check your connection."
+                    );
+                  } finally {
+                    setIsLoading(false);
                   }
-                } catch (e) {
-                  setError(
-                    "Failed to connect to the server. Please check your connection."
-                  );
-                } finally {
-                  setIsLoading(false);
-                }
-              };
-              fetchComicData();
-            }}
-          >
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </Pressable>
+                };
+                fetchComicData();
+              }}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => {
+                triggerHaptic("light");
+                router.back();
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Go Back</Text>
+            </Pressable>
+          </View>
         </View>
       </LinearGradient>
     );
@@ -777,6 +800,24 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   retryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  errorButtons: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 10,
+  },
+  cancelButton: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  cancelButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",

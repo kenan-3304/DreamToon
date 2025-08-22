@@ -191,10 +191,19 @@ export const TimelineScreen: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.detail || "Failed to fetch comics from server."
-        );
+        // Check if response is JSON before trying to parse it
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.detail || "Failed to fetch comics from server."
+          );
+        } else {
+          // Handle HTML error responses
+          throw new Error(
+            `Server error: ${response.status} ${response.statusText}`
+          );
+        }
       }
 
       const comicsFromServer: ComicEntry[] = await response.json();
