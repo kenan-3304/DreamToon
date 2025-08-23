@@ -5,17 +5,21 @@ import base64
 import requests
 import json
 import time
+import asyncio
 from redis import Redis
 from rq import Queue
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 from .api_clients import transcribe_audio
 from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description
 from .db_client import supabase
 from .worker import run_comic_generation_worker
 from .schema import DeleteAvatarRequest, AvatarRequest
+
+# Simple in-memory cache for comics
+comics_cache: Dict[str, Dict[str, Any]] = {}
 
 app = FastAPI()
 
@@ -123,15 +127,27 @@ async def generate_comic(
 
     style_description = style_name_to_description(style_name)
 
-    q.enqueue(
-        'backend.api.worker.run_comic_generation_worker',
-        dream_id,
-        user.id,
-        story_text,
-        num_panels,
-        style_description,
-        avatar_b64
-    )
+    # Add timeout to prevent worker hanging
+    try:
+        # Invalidate cache for this user
+        cache_key = f"comics_{user.id}"
+        if cache_key in comics_cache:
+            del comics_cache[cache_key]
+        
+        q.enqueue(
+            'backend.api.worker.run_comic_generation_worker',
+            dream_id,
+            user.id,
+            story_text,
+            num_panels,
+            style_description,
+            avatar_b64,
+            job_timeout=300  # 5 minute timeout
+        )
+    except Exception as e:
+        print(f"Failed to enqueue job: {e}")
+        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        raise HTTPException(status_code=500, detail="Failed to start comic generation")
 
     return {"dream_id": dream_id}
 
@@ -236,39 +252,58 @@ async def get_all_comics(authorization: str = Header(None)):
         Returns:
             comic_data (list): a list of urls.
         """
-    print("--- GET /comics/ endpoint was hit ---")
-    user = authenticateUser(authorization)
-    
-    #---------delete old comics----------#
-
     try:
-        supabase.from_("comics").delete().match({
-            "user_id": user.id,
-            "status": "error"
-        }).execute()
-        print(f"Cleaned up failed comics for user {user.id}")
-    except Exception as e:
-        # If cleanup fails, just log it and continue. It's not a critical error.
-        print(f"Could not clean up failed comics: {e}")
-
-
-    # Fetch comics from the database
-    comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
-    comics_data = comics_response.data
+        print("--- GET /comics/ endpoint was hit ---")
+        user = authenticateUser(authorization)
+        
+        # Check cache first (cache for 30 seconds)
+        cache_key = f"comics_{user.id}"
+        current_time = time.time()
+        
+        if cache_key in comics_cache:
+            cached_data = comics_cache[cache_key]
+            if current_time - cached_data["timestamp"] < 30:  # 30 second cache
+                print(f"--- Returning cached comics for user {user.id} ---")
+                return cached_data["data"]
     
-    # This check prevents the server from crashing if no comics are found
-    if comics_data:
-        for comic in comics_data:
-            image_paths = comic.get("image_urls")
-            if image_paths and len(image_paths) > 0:
-                thumbnail_path = image_paths[0]
-                signed_url_response = supabase.storage.from_('comics').create_signed_url(thumbnail_path, expires_in=300)
-                comic["image_urls"] = [signed_url_response['signedURL']]
-            else:
-                comic["image_urls"] = []
+        #---------delete old comics----------#
+        try:
+            supabase.from_("comics").delete().match({
+                "user_id": user.id,
+                "status": "error"
+            }).execute()
+            print(f"Cleaned up failed comics for user {user.id}")
+        except Exception as e:
+            # If cleanup fails, just log it and continue. It's not a critical error.
+            print(f"Could not clean up failed comics: {e}")
 
-    # This ensures you always return a list, even if it's empty
-    return comics_data or []
+        # Fetch comics from the database
+        comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
+        comics_data = comics_response.data
+        
+        # This check prevents the server from crashing if no comics are found
+        if comics_data:
+            for comic in comics_data:
+                image_paths = comic.get("image_urls")
+                if image_paths and len(image_paths) > 0:
+                    thumbnail_path = image_paths[0]
+                    signed_url_response = supabase.storage.from_('comics').create_signed_url(thumbnail_path, expires_in=300)
+                    comic["image_urls"] = [signed_url_response['signedURL']]
+                else:
+                    comic["image_urls"] = []
+
+        # Cache the result
+        result_data = comics_data or []
+        comics_cache[cache_key] = {
+            "data": result_data,
+            "timestamp": current_time
+        }
+        
+        # This ensures you always return a list, even if it's empty
+        return result_data
+    except Exception as e:
+        print(f"Error in get_all_comics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch comics: {str(e)}")
 
 
 #Deletion of an avatar flow
@@ -314,6 +349,16 @@ async def delete_comic(dream_id: str, authorization: str = Header(None)):
     return {"status": "success"}
         
 
+
+@app.get("/health/")
+async def health_check():
+    """Simple health check endpoint."""
+    try:
+        # Test Redis connection
+        redis_conn.ping()
+        return {"status": "healthy", "redis": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
 @app.get("/debug-worker/")
 async def debug_worker():

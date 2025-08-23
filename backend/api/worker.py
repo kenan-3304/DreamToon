@@ -4,6 +4,7 @@ import concurrent.futures
 import time
 import base64
 import os
+import gc
 from .db_client import supabase
 from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image
 from .prompt_builder import build_image_prompt
@@ -59,7 +60,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         panel_tasks = [(i, p, user_id, dream_id, avatar_b64) for i, p in enumerate(panels)]
         image_paths = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             results = executor.map(generate_single_panel, panel_tasks)
             image_paths = list(results)
 
@@ -70,11 +71,26 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
             "panel_count": len(panels)
         }).eq("id", dream_id).execute()
         
+        # Invalidate cache for this user to ensure fresh data
+        from .main import comics_cache
+        cache_key = f"comics_{user_id}"
+        if cache_key in comics_cache:
+            del comics_cache[cache_key]
+        
+        # Force garbage collection to free memory
+        gc.collect()
+        
         print(f"[{dream_id}] Worker finished successfully.")
 
     except Exception as e:
         print(f"[{dream_id}] An error occurred: {e}")
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        try:
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        except Exception as db_error:
+            print(f"[{dream_id}] Failed to update error status: {db_error}")
+        finally:
+            # Force garbage collection on error
+            gc.collect()
 
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
