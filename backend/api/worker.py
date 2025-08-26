@@ -21,7 +21,7 @@ def generate_single_panel(panel_info: tuple):
 
     try:
         # Check if panel is valid
-        if not panel or not isinstance(panel, str):
+        if not panel:
             print(f"[{dream_id}] Invalid panel data for Panel {i+1}: {panel}")
             return None
             
