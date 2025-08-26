@@ -15,13 +15,23 @@ def generate_single_panel(panel_info: tuple):
     i, panel, user_id, dream_id, avatar, seed = panel_info
     print(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
     print(f"[{dream_id}] Panel {i+1} info:")
-    print(f"[{dream_id}] - panel description: {panel[:100]}...")
+    print(f"[{dream_id}] - panel type: {type(panel)}")
+    print(f"[{dream_id}] - panel value: {panel}")
+    if isinstance(panel, str):
+        print(f"[{dream_id}] - panel description: {panel[:100]}...")
+    else:
+        print(f"[{dream_id}] - panel is not a string: {panel}")
     print(f"[{dream_id}] - user_id: {user_id}")
     print(f"[{dream_id}] - dream_id: {dream_id}")
     print(f"[{dream_id}] - avatar length: {len(avatar) if avatar else 'None'}")
     print(f"[{dream_id}] - seed: {seed}")
 
     try:
+        # Check if panel is valid
+        if not panel or not isinstance(panel, str):
+            print(f"[{dream_id}] Invalid panel data for Panel {i+1}: {panel}")
+            return None
+            
         # Here you would build your final prompt and call the services
         print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
         final_prompt = build_image_prompt(panel)
@@ -85,6 +95,9 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
             return
 
         print(f"[{dream_id}] Successfully got {len(panels)} panels")
+        print(f"[{dream_id}] Panel data structure:")
+        for i, panel in enumerate(panels):
+            print(f"[{dream_id}] Panel {i+1}: type={type(panel)}, value={panel}")
 
         title = panel_data.get("title", "Untitled Dream")
         if not title:
