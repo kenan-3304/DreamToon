@@ -118,7 +118,8 @@ def generate_image_flux_ultra(prompt_text, avatar, seed=None):
 
     try:
         # The polling logic is the same as before
-        response = requests.post(flux_url, headers=headers, json=payload)
+        response = requests.post(flux_url, headers=headers, json=payload, timeout=15)
+        print("have some type ofg return after the response call")
         response.raise_for_status()
         request_data = response.json()
         
@@ -161,9 +162,15 @@ def generate_image_flux_ultra(prompt_text, avatar, seed=None):
         print("FLUX Ultra job timed out.")
         return None
 
-    except requests.exceptions.RequestException as e:
-        print(f"An API error occurred with FLUX Ultra: {e}")
+    except requests.exceptions.HTTPError as e:
+        print(f"!!! HTTP Error from FLUX API: {e}")
+        print(f"!!! Status Code: {e.response.status_code}")
+        print(f"!!! Response Body: {e.response.text}")
         return None
+    except requests.exceptions.RequestException as e:
+        print(f"An API network error occurred with FLUX Ultra: {e}")
+        return None
+
 
 def transcribe_audio(audio_bytes):
     audio_file = BytesIO(audio_bytes)
