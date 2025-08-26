@@ -21,9 +21,6 @@ def generate_single_panel(panel_info: tuple):
 
     try:
         # Check if panel is valid
-        if not panel:
-            print(f"[{dream_id}] Invalid panel data for Panel {i+1}: {panel}")
-            return None
             
         # Here you would build your final prompt and call the services
         print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
