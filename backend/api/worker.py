@@ -17,14 +17,7 @@ def generate_single_panel(panel_info: tuple):
     print(f"[{dream_id}] Panel {i+1} info:")
     print(f"[{dream_id}] - panel type: {type(panel)}")
     print(f"[{dream_id}] - panel value: {panel}")
-    if isinstance(panel, str):
-        print(f"[{dream_id}] - panel description: {panel[:100]}...")
-    else:
-        print(f"[{dream_id}] - panel is not a string: {panel}")
-    print(f"[{dream_id}] - user_id: {user_id}")
-    print(f"[{dream_id}] - dream_id: {dream_id}")
-    print(f"[{dream_id}] - avatar length: {len(avatar) if avatar else 'None'}")
-    print(f"[{dream_id}] - seed: {seed}")
+
 
     try:
         # Check if panel is valid
