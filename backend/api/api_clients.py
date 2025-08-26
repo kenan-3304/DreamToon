@@ -2,6 +2,7 @@ import json
 import os
 import base64
 import requests
+import time
 from openai import OpenAI
 from .prompt_builder import build_initial_prompt
 from io import BytesIO
@@ -78,6 +79,79 @@ def generate_image(prompt_text, avatar):
             return None
     except Exception as e:
         print(f"An API error occurred: {e}")
+        return None
+
+
+def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
+
+    # Install `requests` (e.g. `pip install requests`) and `Pillow` (e.g. `pip install Pillow`), then run:
+    print("generating with flux ultra")
+    BFL_API_KEY = os.getenv("BFL_API_KEY")
+
+    if not BFL_API_KEY:
+        print("ERROR couldnt find api key")
+        return None
+    
+    flux_url = "https://api.bfl.ai/v1/flux-pro-1.1-ultra"
+
+    headers = {
+        'accept': 'application/json',
+        'x-key': BFL_API_KEY,
+        'Content-Type': 'application/json',
+    }
+
+    payload = {
+        'prompt': prompt_text,
+        'image_prompt': avatar, # Use the explicit parameter for the avatar
+        'image_prompt_strength': 0.7, # A good starting point, tune between 0.0 and 1.0
+        'seed': seed, # Pass the seed for consistency
+        'width': 1024, # Or your desired dimensions
+        'height': 1024,
+        'safety_tolerance': 6
+    }
+
+
+
+    try:
+        # The polling logic is the same as before
+        response = requests.post(flux_url, headers=headers, json=payload)
+        response.raise_for_status()
+        request_data = response.json()
+        
+        polling_url = request_data.get("polling_url")
+        if not polling_url:
+            print(f"Failed to start FLUX Ultra job. Response: {request_data}")
+            return None
+
+        print(f"FLUX Ultra job started. Polling at: {polling_url}")
+
+        max_attempts = 120 # Increased timeout for potentially larger images
+        for _ in range(max_attempts):
+            time.sleep(0.5)
+            result_response = requests.get(polling_url, headers=headers)
+            result_data = result_response.json()
+
+            status = result_data.get('status')
+            if status == 'Ready':
+                signed_url = result_data.get('result', {}).get('sample')
+                if not signed_url:
+                    print("FLUX Ultra job ready, but no image URL found.")
+                    return None
+                
+                print("FLUX Ultra image ready. Downloading...")
+                image_response = requests.get(signed_url)
+                image_response.raise_for_status()
+                return image_response.content
+
+            elif status in ['Error', 'Failed']:
+                print(f"FLUX Ultra generation failed: {result_data}")
+                return None
+        
+        print("FLUX Ultra job timed out.")
+        return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"An API error occurred with FLUX Ultra: {e}")
         return None
 
 def transcribe_audio(audio_bytes):

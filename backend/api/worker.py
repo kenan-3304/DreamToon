@@ -4,22 +4,26 @@ import concurrent.futures
 import time
 import base64
 import os
-import gc
+import random
 from .db_client import supabase
-from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image
+from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra
 from .prompt_builder import build_image_prompt
 
 # --- This is a helper function to generate a single panel ---
 def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
-    i, panel, user_id, dream_id, avatar = panel_info
+    i, panel, user_id, dream_id, avatar, seed = panel_info
     print(f"[{dream_id}] Thread started for Panel {i+1}...")
 
 
 
     # Here you would build your final prompt and call the services
     final_prompt = build_image_prompt(panel)
-    image_bytes = generate_image(final_prompt, avatar)
+    image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
+
+    if not image_bytes:
+        print(f"[{dream_id}] Failed to generate image for Panel {i+1}. Skipping.")
+        return None
     
     # Upload to Supabase Storage
     panel_path = f"{user_id}/{dream_id}/{i+1}.png"
@@ -34,6 +38,8 @@ def generate_single_panel(panel_info: tuple):
 def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
     try:
         print(f"[{dream_id}] Worker started for user {user_id}.")
+
+        comic_seed = random.randint(0, 2**32 - 1)
 
         panel_data = get_panel_descriptions(story, num_panels, style_description)
 
@@ -57,10 +63,10 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         supabase.from_("comics").update({"title": title}).eq("id", dream_id).execute()
 
         #--------set up and start parallel flow-------#
-        panel_tasks = [(i, p, user_id, dream_id, avatar_b64) for i, p in enumerate(panels)]
+        panel_tasks = [(i, p, user_id, dream_id, avatar_b64, comic_seed) for i, p in enumerate(panels)]
         image_paths = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             results = executor.map(generate_single_panel, panel_tasks)
             image_paths = list(results)
 
@@ -71,26 +77,11 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
             "panel_count": len(panels)
         }).eq("id", dream_id).execute()
         
-        # Invalidate cache for this user to ensure fresh data
-        from .main import comics_cache
-        cache_key = f"comics_{user_id}"
-        if cache_key in comics_cache:
-            del comics_cache[cache_key]
-        
-        # Force garbage collection to free memory
-        gc.collect()
-        
         print(f"[{dream_id}] Worker finished successfully.")
 
     except Exception as e:
         print(f"[{dream_id}] An error occurred: {e}")
-        try:
-            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        except Exception as db_error:
-            print(f"[{dream_id}] Failed to update error status: {db_error}")
-        finally:
-            # Force garbage collection on error
-            gc.collect()
+        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
 
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
