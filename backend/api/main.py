@@ -115,13 +115,13 @@ async def generate_comic(
 
     #---------Check Moderation----------#
     # we have to check ovbious moderation issues
-    print("Step 1: Checking story for content policy compliance...")
-    is_safe, reason = is_content_safe_for_comic(story_text)
-    if not is_safe:
-        print(f"Error: Story is not compliant. Reason: {reason}")
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        # Return an error response
-        raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
+    # print("Step 1: Checking story for content policy compliance...")
+    # is_safe, reason = is_content_safe_for_comic(story_text)
+    # if not is_safe:
+    #     print(f"Error: Story is not compliant. Reason: {reason}")
+    #     supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+    #     # Return an error response
+    #     raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
 
     #-------send full prompt for multi-thread approach---------#
 
