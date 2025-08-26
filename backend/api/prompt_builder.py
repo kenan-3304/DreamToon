@@ -41,13 +41,22 @@ Your final output MUST be a single JSON object conforming to the following schem
 ```json
 {{
   "title": "A concise, 1-3 word title for the comic.",
-  "key_characters":
+  "key_characters": [
+    {{
+      "description": "A generic description of the main character.",
+      "character_notes": ["{style_name}", "main character"]
     }}
   ],
-  "panels":
+  "panels": [
+    {{
+      "composition": "Detailed description of the camera shot, character placement, and framing.",
+      "action_and_emotion": "Description of what the characters are doing and feeling.",
+      "setting_and_lighting": "Description of the environment, time of day, and lighting conditions.",
+      "character_notes": ["{style_name}", "main character"]
     }}
   ]
 }}
+
 ```
 
 **Field Instructions & The `character_notes` Protocol:**
