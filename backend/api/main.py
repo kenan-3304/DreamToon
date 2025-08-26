@@ -134,7 +134,16 @@ async def generate_comic(
         if cache_key in comics_cache:
             del comics_cache[cache_key]
         
-        q.enqueue(
+        print(f"[{dream_id}] Enqueuing comic generation job...")
+        print(f"[{dream_id}] Job parameters:")
+        print(f"[{dream_id}] - dream_id: {dream_id}")
+        print(f"[{dream_id}] - user.id: {user.id}")
+        print(f"[{dream_id}] - story_text length: {len(story_text)}")
+        print(f"[{dream_id}] - num_panels: {num_panels}")
+        print(f"[{dream_id}] - style_description: {style_description[:50]}...")
+        print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
+        
+        job = q.enqueue(
             'backend.api.worker.run_comic_generation_worker',
             dream_id,
             user.id,
@@ -144,8 +153,16 @@ async def generate_comic(
             avatar_b64,
             job_timeout=300  # 5 minute timeout
         )
+        
+        print(f"[{dream_id}] Job enqueued successfully with ID: {job.id}")
+        print(f"[{dream_id}] Job status: {job.get_status()}")
+        
     except Exception as e:
-        print(f"Failed to enqueue job: {e}")
+        print(f"[{dream_id}] Failed to enqueue job: {e}")
+        print(f"[{dream_id}] Error type: {type(e)}")
+        import traceback
+        print(f"[{dream_id}] Full traceback:")
+        traceback.print_exc()
         supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
         raise HTTPException(status_code=500, detail="Failed to start comic generation")
 
@@ -366,3 +383,24 @@ async def debug_worker():
     print("--- Enqueuing DEBUG worker ---")
     q.enqueue('backend.api.worker.run_debug_worker')
     return {"status": "Debug job enqueued. Check your worker logs."}
+
+@app.get("/test-comic-worker/")
+async def test_comic_worker():
+    """Test endpoint to verify comic worker is working."""
+    print("--- Testing comic worker ---")
+    try:
+        job = q.enqueue(
+            'backend.api.worker.run_comic_generation_worker',
+            "test-dream-id",
+            "test-user-id", 
+            "A simple test story",
+            2,
+            "test style description",
+            None,  # no avatar for test
+            job_timeout=60
+        )
+        print(f"Test job enqueued with ID: {job.id}")
+        return {"status": "Test job enqueued", "job_id": job.id}
+    except Exception as e:
+        print(f"Test job failed: {e}")
+        return {"status": "Test job failed", "error": str(e)}

@@ -85,7 +85,11 @@ def generate_image(prompt_text, avatar):
 def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
 
     # Install `requests` (e.g. `pip install requests`) and `Pillow` (e.g. `pip install Pillow`), then run:
-    print("generating with flux ultra")
+    print("=== FLUX ULTRA GENERATION STARTED ===")
+    print(f"Prompt length: {len(prompt_text)}")
+    print(f"Avatar provided: {avatar is not None}")
+    print(f"Seed: {seed}")
+    
     BFL_API_KEY = os.getenv("BFL_API_KEY")
 
     if not BFL_API_KEY:
@@ -110,13 +114,15 @@ def generate_image_flux_ultra(prompt_text, avatar, seed=None):
         'safety_tolerance': 6
     }
 
-
+    print(f"Sending request to FLUX Ultra API...")
 
     try:
         # The polling logic is the same as before
         response = requests.post(flux_url, headers=headers, json=payload)
         response.raise_for_status()
         request_data = response.json()
+        
+        print(f"FLUX Ultra initial response: {request_data}")
         
         polling_url = request_data.get("polling_url")
         if not polling_url:
@@ -126,12 +132,14 @@ def generate_image_flux_ultra(prompt_text, avatar, seed=None):
         print(f"FLUX Ultra job started. Polling at: {polling_url}")
 
         max_attempts = 120 # Increased timeout for potentially larger images
-        for _ in range(max_attempts):
+        for attempt in range(max_attempts):
             time.sleep(0.5)
             result_response = requests.get(polling_url, headers=headers)
             result_data = result_response.json()
 
             status = result_data.get('status')
+            print(f"FLUX Ultra polling attempt {attempt + 1}: status = {status}")
+            
             if status == 'Ready':
                 signed_url = result_data.get('result', {}).get('sample')
                 if not signed_url:
@@ -141,7 +149,10 @@ def generate_image_flux_ultra(prompt_text, avatar, seed=None):
                 print("FLUX Ultra image ready. Downloading...")
                 image_response = requests.get(signed_url)
                 image_response.raise_for_status()
-                return image_response.content
+                image_content = image_response.content
+                print(f"FLUX Ultra image downloaded successfully, size: {len(image_content)} bytes")
+                print("=== FLUX ULTRA GENERATION COMPLETED ===")
+                return image_content
 
             elif status in ['Error', 'Failed']:
                 print(f"FLUX Ultra generation failed: {result_data}")
