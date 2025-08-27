@@ -3,7 +3,6 @@ from .api_clients import get_moderation
 from .db_client import supabase
 from fastapi import HTTPException, Header
 
-
 def encode_image_to_base64(image_path):
     """Encodes a local image file into a base64 string."""
     try:
@@ -81,3 +80,6 @@ def style_name_to_description(style_name):
         "DC Comics": "A modern DC Comics aesthetic with a gritty, graphic novel look. It features bold anatomy, dynamic poses, dramatic lighting, and detailed ink lines with cross-hatching for a high-contrast feel."
     }
     return description.get(style_name, "A distinct art style.")
+
+def is_open_ai():
+    return True

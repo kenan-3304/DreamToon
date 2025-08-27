@@ -8,6 +8,7 @@ import random
 from .db_client import supabase
 from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra
 from .prompt_builder import build_image_prompt
+from .helper import is_open_ai
 
 # --- This is a helper function to generate a single panel ---
 def generate_single_panel(panel_info: tuple):
@@ -28,7 +29,12 @@ def generate_single_panel(panel_info: tuple):
         print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
         
         print(f"[{dream_id}] Calling generate_image_flux_ultra for Panel {i+1}...")
-        image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
+
+        if (is_open_ai()):
+            image_bytes = generate_image(final_prompt, avatar)
+        else:
+            image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
+        
         print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
 
         if not image_bytes:
