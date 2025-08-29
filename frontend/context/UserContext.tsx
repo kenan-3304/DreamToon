@@ -3,11 +3,14 @@ import React, {
   useState,
   useEffect,
   useContext,
+  useRef,
   ReactNode,
 } from "react";
 import { supabase } from "../utils/supabase";
 import { Session, User } from "@supabase/supabase-js";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, AppState, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { avatarUtils } from "@/utils/avatarUtils";
 
 //sets up the profile interface
 interface Profile {
@@ -33,6 +36,12 @@ interface UserContextType {
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   refetchProfileAndData: () => void;
+  pendingComics: string[];
+  addPendingComic: (dreamId: string) => Promise<void>;
+  removePendingComic: (dreamId: string) => Promise<void>;
+  pendingAvatars: string[];
+  addPendingAvatar: (jobId: string) => Promise<void>;
+  removePendingAvatar: (jobId: string) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -45,6 +54,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [unlockedStyles, setUnlockedStyles] = useState<string[]>([]);
+  const [pendingComics, setPendingComics] = useState<string[]>([]);
+  const [pendingAvatars, setPendingAvatars] = useState<string[]>([]);
+
+  const pollingIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    //Try to look for pending comics from storage
+    const loadPendingJobs = async () => {
+      try {
+        const storedComic = await AsyncStorage.getItem("pendingComics");
+        if (storedComic !== null) {
+          setPendingComics(JSON.parse(storedComic));
+        }
+
+        const storedAvatars = await AsyncStorage.getItem("pendingAvatars");
+        if (storedAvatars !== null) {
+          setPendingAvatars(JSON.parse(storedAvatars));
+        }
+      } catch (e) {
+        console.error("Failed to load pending comic from storage", e);
+      }
+    };
+    loadPendingJobs();
+  }, []);
 
   //handle auth changes and initial load
   useEffect(() => {
@@ -62,7 +95,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           setProfile(null);
           setUnlockedStyles([]);
         }
-        setLoading(false); // <-- MOVE THIS HERE
+        setLoading(false);
       }
     );
 
@@ -143,6 +176,150 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     await supabase.auth.signOut();
   };
 
+  const addPendingComic = async (dreamId: string) => {
+    try {
+      const updatedComics = [...pendingComics, dreamId];
+      setPendingComics(updatedComics);
+      await AsyncStorage.setItem(
+        "pendingComics",
+        JSON.stringify(updatedComics)
+      );
+    } catch (e) {
+      console.error("Failed to save pending comic to storage", e);
+    }
+  };
+
+  const removePendingComic = async (dreamId: string) => {
+    try {
+      const updatedComics = pendingComics.filter((id) => id !== dreamId);
+      setPendingComics(updatedComics);
+      await AsyncStorage.setItem(
+        "pendingComics",
+        JSON.stringify(updatedComics)
+      );
+    } catch (e) {
+      console.error("Failed to remove pending comic form storage", e);
+    }
+  };
+
+  const addPendingAvatar = async (jobId: string) => {
+    try {
+      const updatedAvatars = [...pendingAvatars, jobId];
+      setPendingAvatars(updatedAvatars);
+
+      await AsyncStorage.setItem(
+        "pendingAvatars",
+        JSON.stringify(updatedAvatars)
+      );
+    } catch (e) {
+      console.error("Failed to save pending avatar to storage", e);
+    }
+  };
+
+  const removePendingAvatar = async (jobId: string) => {
+    try {
+      setPendingAvatars((prev) => {
+        const updatedAvatars = prev.filter((id) => id !== jobId);
+        AsyncStorage.setItem("pendingAvatars", JSON.stringify(updatedAvatars));
+        return updatedAvatars;
+      });
+    } catch (e) {
+      console.error("Failed to remove pending avatar from storage", e);
+    }
+  };
+
+  useEffect(() => {
+    const checkAllPendingJobs = async () => {
+      if (pendingComics.length === 0 && pendingAvatars.length === 0) {
+        stopPolling();
+        return;
+      }
+      if (pendingComics.length > 0) {
+        for (const dreamId of pendingComics) {
+          try {
+            const res = await fetch(
+              `https://dreamtoon.onrender.com/comic-status/${dreamId}`
+            );
+            const data = await res.json();
+            if (data.status === "complete" || data.status === "error") {
+              console.log(
+                `Comic ${dreamId} finished with status: ${data.status}`
+              );
+              removePendingComic(dreamId);
+            }
+          } catch (error) {
+            console.error(`Failed to poll for comic ${dreamId}:`, error);
+          }
+        }
+      }
+
+      // Check Avatars
+      if (pendingAvatars.length > 0) {
+        console.log(`Polling for ${pendingAvatars.length} avatars...`);
+        for (const jobId of pendingAvatars) {
+          try {
+            const status = await avatarUtils.checkAvatarStatus(jobId);
+            if (status === "complete" || status === "error") {
+              console.log(
+                `Avatar job ${jobId} finished with status: ${status}`
+              );
+              removePendingAvatar(jobId);
+              if (status === "complete") {
+                Alert.alert(
+                  "🎉 Success!",
+                  "Your new avatar is ready and has been added to your collection."
+                );
+                if (user) {
+                  fetchProfile(user); // Refresh data to show new avatar everywhere
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to poll for avatar ${jobId}:`, error);
+          }
+        }
+      }
+    };
+
+    const stopPolling = () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollingIntervalRef.current) return;
+
+      checkAllPendingJobs();
+      pollingIntervalRef.current = setInterval(checkAllPendingJobs, 15000);
+    };
+
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === "active") {
+        if (pendingComics.length > 0 || pendingAvatars.length > 0) {
+          startPolling();
+        }
+      } else {
+        stopPolling();
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+
+    if (pendingComics.length > 0 || pendingAvatars) {
+      startPolling();
+    }
+
+    return () => {
+      subscription.remove;
+      stopPolling();
+    };
+  }, [pendingComics, pendingAvatars]);
+
   const value = {
     session,
     user,
@@ -156,6 +333,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         fetchProfile(user);
       }
     },
+    pendingComics,
+    addPendingComic,
+    removePendingComic,
+    pendingAvatars,
+    addPendingAvatar,
+    removePendingAvatar,
   };
 
   //loading screen while initial session is being fetched

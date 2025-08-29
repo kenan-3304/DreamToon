@@ -1,9 +1,17 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Alert, Animated } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Animated,
+  Pressable,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "../../context/UserContext";
 import LottieView from "lottie-react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const dreamFacts = [
   "You forget about 90% of your dreams within 10 minutes of waking up.",
@@ -53,41 +61,6 @@ const ProcessingScreen: React.FC = () => {
   }, [fadeAnim]);
 
   // Effect for checking comic status (remains the same)
-  useEffect(() => {
-    if (!dream_id) return;
-    const statusInterval = setInterval(async () => {
-      try {
-        const res = await fetch(
-          `https://dreamtoon.onrender.com/comic-status/${dream_id}`
-        );
-        const data = await res.json();
-
-        if (data.status === "complete") {
-          clearInterval(statusInterval);
-          await updateProfile({ last_creation_date: new Date() });
-          await updateProfile({
-            daily_creation_count: (profile?.daily_creation_count || 0) + 1,
-          });
-
-          router.replace({
-            pathname: "/(tab)/ComicResultScreen",
-            params: { urls: JSON.stringify(data.panel_urls) },
-          });
-        } else if (data.status === "error") {
-          clearInterval(statusInterval);
-          Alert.alert("Error", "Comic generation failed.");
-          router.replace("/(tab)/");
-        }
-      } catch (error) {
-        console.error("Failed to fetch comic status:", error);
-        clearInterval(statusInterval);
-        Alert.alert("Error", "Could not connect to the server.");
-        router.replace("/(tab)/");
-      }
-    }, 3000);
-
-    return () => clearInterval(statusInterval);
-  }, [dream_id]);
 
   return (
     <LinearGradient
@@ -98,6 +71,9 @@ const ProcessingScreen: React.FC = () => {
       {/* ---- TOP CONTAINER (STABLE) ---- */}
       {/* This section holds the content that should NOT move. */}
       {/* It takes up the top 55% of the screen and aligns its content to the bottom. */}
+      <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={32} color={"white"} />
+      </Pressable>
       <View style={styles.topContainer}>
         <LottieView
           source={require("../../assets/loading-animation.json")}
@@ -106,6 +82,10 @@ const ProcessingScreen: React.FC = () => {
           loop
         />
         <Text style={styles.title}>Creating Your Comic</Text>
+        <Text style={styles.infoText}>
+          You can safely leave this screen or close the app. We'll send you a
+          notification when it's ready!
+        </Text>
       </View>
 
       {/* ---- BOTTOM CONTAINER (DYNAMIC) ---- */}
@@ -148,6 +128,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: "center",
   },
+
+  infoText: {
+    fontSize: 14,
+    color: "#c1c1c1",
+    textAlign: "center",
+    marginTop: 12,
+  },
+
   subtitle: {
     fontSize: 16,
     color: "#a7a7a7",
@@ -155,6 +143,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     // minHeight is no longer needed with this layout!
+  },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 10,
   },
 });
 

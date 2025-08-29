@@ -34,7 +34,7 @@ const getResponsiveValue = (phone: number, tablet: number) =>
 
 const CreateToonScreen: React.FC = () => {
   const router = useRouter();
-  const { updateProfile } = useUser();
+  const { updateProfile, addPendingAvatar } = useUser();
   const [uploadedUri, setUploadedUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -145,50 +145,64 @@ const CreateToonScreen: React.FC = () => {
         selectedStyle
       );
       if (response && response.job_id) {
+        await addPendingAvatar(response.job_id);
+        await updateProfile({ onboarding_complete: true });
+
+        Alert.alert(
+          "Creation Started!",
+          "Your first avatar is being created in the background. We'll let you know when its ready. Welcom to DreamToon!",
+          [
+            {
+              text: "Start Dreaming",
+              onPress: () => router.replace("/(tab)"),
+            },
+          ]
+        );
+
         // Poll for completion
-        let attempts = 0;
-        const maxAttempts = 60; // 5 minutes max
+        // let attempts = 0;
+        // const maxAttempts = 60; // 5 minutes max
 
-        const pollStatus = async () => {
-          try {
-            const status = await avatarUtils.checkAvatarStatus(response.job_id);
+        // const pollStatus = async () => {
+        //   try {
+        //     const status = await avatarUtils.checkAvatarStatus(response.job_id);
 
-            if (status === "complete") {
-              // Get the created avatar and set as display avatar
-              const avatars = await avatarUtils.getMyAvatarsWithSignedUrls();
-              if (avatars.length > 0) {
-                await updateProfile({
-                  display_avatar_path: avatars[0].path,
-                  onboarding_complete: true,
-                });
-              }
+        //     if (status === "complete") {
+        //       // Get the created avatar and set as display avatar
+        //       const avatars = await avatarUtils.getMyAvatarsWithSignedUrls();
+        //       if (avatars.length > 0) {
+        //         await updateProfile({
+        //           display_avatar_path: avatars[0].path,
+        //           onboarding_complete: true,
+        //         });
+        //       }
 
-              triggerHaptic("medium");
-              Alert.alert(
-                "🎉 Success!",
-                "Your avatar has been created! Welcome to DreamToon!",
-                [
-                  {
-                    text: "Start Dreaming",
-                    onPress: () => router.replace("/(tab)"),
-                  },
-                ]
-              );
-            } else if (status === "error") {
-              throw new Error("Avatar generation failed");
-            } else if (attempts < maxAttempts) {
-              attempts++;
-              setTimeout(pollStatus, 5000); // Poll every 5 seconds
-            } else {
-              throw new Error("Avatar generation timed out");
-            }
-          } catch (error) {
-            setIsCreating(false);
-            Alert.alert("Error", "Failed to create avatar. Please try again.");
-          }
-        };
+        //       triggerHaptic("medium");
+        //       Alert.alert(
+        //         "🎉 Success!",
+        //         "Your avatar has been created! Welcome to DreamToon!",
+        //         [
+        //           {
+        //             text: "Start Dreaming",
+        //             onPress: () => router.replace("/(tab)"),
+        //           },
+        //         ]
+        //       );
+        //     } else if (status === "error") {
+        //       throw new Error("Avatar generation failed");
+        //     } else if (attempts < maxAttempts) {
+        //       attempts++;
+        //       setTimeout(pollStatus, 5000); // Poll every 5 seconds
+        //     } else {
+        //       throw new Error("Avatar generation timed out");
+        //     }
+        //   } catch (error) {
+        //     setIsCreating(false);
+        //     Alert.alert("Error", "Failed to create avatar. Please try again.");
+        //   }
+        // };
 
-        pollStatus();
+        // pollStatus();
       } else {
         throw new Error("Failed to initialize avatar generation");
       }
@@ -198,6 +212,8 @@ const CreateToonScreen: React.FC = () => {
         "Creation Failed",
         error.message || "An unexpected error occurred."
       );
+    } finally {
+      setIsCreating(false);
     }
   };
 

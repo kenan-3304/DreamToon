@@ -58,7 +58,13 @@ type AppMode = "idle" | "typing" | "recording" | "review" | "style-selection";
 
 const EnhancedDashboardScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, session, updateProfile, refetchProfileAndData } = useUser();
+  const {
+    profile,
+    session,
+    updateProfile,
+    refetchProfileAndData,
+    addPendingComic,
+  } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
   const [dreamText, setDreamText] = useState("");
@@ -72,13 +78,18 @@ const EnhancedDashboardScreen: React.FC = () => {
   const [containerCenter, setContainerCenter] = useState({ x: 0, y: 0 });
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [previousMode, setPreviousMode] = useState<AppMode>("idle");
+  const [lastProfileRefresh, setLastProfileRefresh] = useState(0);
 
-  // Refresh profile data when screen comes into focus
+  // Refresh profile data when screen comes into focus (with debouncing)
   useFocusEffect(
     useCallback(() => {
-      // Refresh profile data to ensure avatar and timer are up to date
-      refetchProfileAndData();
-    }, [refetchProfileAndData])
+      // Only refresh if it's been more than 30 seconds since last refresh
+      const now = Date.now();
+      if (now - lastProfileRefresh > 60000) {
+        setLastProfileRefresh(now);
+        refetchProfileAndData();
+      }
+    }, [refetchProfileAndData, lastProfileRefresh])
   );
 
   // Enhanced animation values
@@ -369,6 +380,8 @@ const EnhancedDashboardScreen: React.FC = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Failed to start comic");
 
+      await addPendingComic(data.dream_id);
+
       router.push({
         pathname: "/(tab)/ProcessingScreen",
         params: { dream_id: data.dream_id },
@@ -426,6 +439,8 @@ const EnhancedDashboardScreen: React.FC = () => {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Failed to start comic");
+
+      await addPendingComic(data.dream_id);
 
       router.push({
         pathname: "/(tab)/ProcessingScreen",

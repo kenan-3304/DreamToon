@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,9 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 
+import * as Notifications from "expo-notifications";
+import { ensureNotificationPermissions } from "../../utils/permissions";
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SettingsScreen: React.FC = () => {
@@ -37,6 +40,17 @@ const SettingsScreen: React.FC = () => {
   const [newName, setNewName] = useState(profile?.name || "");
   const [savingName, setSavingName] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [notificationStatus, setNotificationStatus] =
+    useState<Notifications.PermissionStatus | null>(null);
+
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
+
+  const checkNotificationStatus = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotificationStatus(status);
+  };
 
   // Animation values
   const modalScale = useSharedValue(0);
@@ -140,6 +154,12 @@ const SettingsScreen: React.FC = () => {
     Linking.openURL("https://apps.apple.com/account/subscriptions");
   };
 
+  const handleNotificationsPress = async () => {
+    await ensureNotificationPermissions();
+    // Re-check the status to update the UI after the user interacts with the prompt
+    checkNotificationStatus();
+  };
+
   const handleOptionPress = (onPress: () => void, isDestructive = false) => {
     triggerHaptic(isDestructive ? "medium" : "light");
     onPress();
@@ -185,6 +205,16 @@ const SettingsScreen: React.FC = () => {
       subtitle: "View or cancel your subscription",
       onPress: () => handleOptionPress(handleManageSubscription),
       color: "#7F9CF5",
+    },
+    {
+      icon: <Ionicons name="notifications" size={24} color="#34D399" />,
+      title: "Notifications",
+      subtitle:
+        notificationStatus === "granted"
+          ? "Enabled"
+          : "Disabled, tap to enable",
+      onPress: () => handleOptionPress(handleNotificationsPress),
+      color: "#34D399",
     },
     {
       icon: <Ionicons name="information-circle" size={24} color="#FFD93D" />,
@@ -425,6 +455,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 100, // Add bottom padding to ensure logout button is visible
   },
   userSection: {
     alignItems: "center",
@@ -540,7 +571,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255,107,107,0.3)",
-    marginBottom: 40,
+    marginBottom: 80, // Increased from 40 to 80 for more space
     shadowColor: "rgba(255,107,107,0.3)",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,

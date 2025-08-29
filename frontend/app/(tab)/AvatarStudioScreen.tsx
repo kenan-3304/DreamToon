@@ -47,7 +47,13 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function AvatarStudioScreen() {
   const router = useRouter();
-  const { profile, refetchProfileAndData, updateProfile } = useUser();
+  const {
+    profile,
+    refetchProfileAndData,
+    updateProfile,
+    addPendingAvatar,
+    pendingAvatars,
+  } = useUser();
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
@@ -55,8 +61,8 @@ export default function AvatarStudioScreen() {
     []
   );
 
-  const [isPolling, setIsPolling] = useState(false);
-  const [pollingJobId, setPollingJobId] = useState<string | null>(null);
+  // const [isPolling, setIsPolling] = useState(false);
+  // const [pollingJobId, setPollingJobId] = useState<string | null>(null);
 
   // Refresh profile data when screen comes into focus
   useFocusEffect(
@@ -116,61 +122,61 @@ export default function AvatarStudioScreen() {
         collectionOpacity.value = withTiming(1, { duration: 800 });
         collectionScale.value = withSpring(1, { damping: 15, stiffness: 100 });
       });
-  }, []);
+  }, [profile]);
 
   // Animate create button
   useEffect(() => {
     // Removed spinning animation for better UX
   }, []);
 
-  useEffect(() => {
-    if (!pollingJobId) return;
+  // useEffect(() => {
+  //   if (!pollingJobId) return;
 
-    setIsPolling(true);
+  //   setIsPolling(true);
 
-    const interval = setInterval(async () => {
-      try {
-        const status = await avatarUtils.checkAvatarStatus(pollingJobId);
+  //   const interval = setInterval(async () => {
+  //     try {
+  //       const status = await avatarUtils.checkAvatarStatus(pollingJobId);
 
-        if (status === "complete" || status === "error") {
-          clearInterval(interval);
-          setIsPolling(false);
-          setPollingJobId(null);
+  //       if (status === "complete" || status === "error") {
+  //         clearInterval(interval);
+  //         setIsPolling(false);
+  //         setPollingJobId(null);
 
-          if (status === "complete") {
-            triggerHaptic("medium");
-            Alert.alert(
-              "🎉 Success!",
-              "Your new avatar is ready to join the collection!"
-            );
+  //         if (status === "complete") {
+  //           triggerHaptic("medium");
+  //           Alert.alert(
+  //             "🎉 Success!",
+  //             "Your new avatar is ready to join the collection!"
+  //           );
 
-            await Promise.all([
-              avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
-                setAvatars(
-                  (data || [])
-                    .filter((item) => item.path)
-                    .map(({ path, signedUrl }) => ({
-                      path: path as string,
-                      signedUrl,
-                    }))
-                );
-              }),
-              refetchProfileAndData(),
-            ]);
-          } else {
-            Alert.alert("Error", "Avatar generation failed. Please try again.");
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-        clearInterval(interval);
-        setIsPolling(false);
-        setPollingJobId(null);
-      }
-    }, 5000);
+  //           await Promise.all([
+  //             avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
+  //               setAvatars(
+  //                 (data || [])
+  //                   .filter((item) => item.path)
+  //                   .map(({ path, signedUrl }) => ({
+  //                     path: path as string,
+  //                     signedUrl,
+  //                   }))
+  //               );
+  //             }),
+  //             refetchProfileAndData(),
+  //           ]);
+  //         } else {
+  //           Alert.alert("Error", "Avatar generation failed. Please try again.");
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Polling error:", error);
+  //       clearInterval(interval);
+  //       setIsPolling(false);
+  //       setPollingJobId(null);
+  //     }
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, [pollingJobId]);
+  //   return () => clearInterval(interval);
+  // }, [pollingJobId]);
 
   const getCooldownText = () => {
     if (!profile?.last_avatar_created_at) return "";
@@ -259,13 +265,19 @@ export default function AvatarStudioScreen() {
       router.push({
         pathname: "/(modals)/PaywallScreen",
       });
+      setIsCreating(false);
       return;
     }
 
     try {
       const response = await avatarUtils.createAvatar(imageUri, style);
       if (response && response.job_id) {
-        setPollingJobId(response.job_id);
+        await addPendingAvatar(response.job_id);
+        Alert.alert(
+          "Creation in Progress",
+          "Your new avatar is being created in the background. We'll alert you when it's ready!"
+        );
+        //setPollingJobId(response.job_id);
       } else {
         throw new Error("Failed to initialize the avatar generation job.");
       }
@@ -360,6 +372,9 @@ export default function AvatarStudioScreen() {
     );
   }
 
+  const isProcessingAvatars = pendingAvatars.length > 0;
+  const maxConcurrentCreations = 1;
+
   return (
     <LinearGradient
       colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
@@ -441,24 +456,34 @@ export default function AvatarStudioScreen() {
 
       {/* Enhanced Create Button */}
       <View style={styles.buttonContainer}>
-        {isCreating || isPolling ? (
+        {/* MODIFIED: Updated button logic for clearer states */}
+        {isCreating ? (
+          // State 1: Actively picking photo/style
+          <View style={styles.loadingState}>
+            <ActivityIndicator color="#E0B0FF" size="large" />
+            <Text style={styles.loadingStateText}>Sending to studio...</Text>
+          </View>
+        ) : isProcessingAvatars ? (
+          // State 2: Job is processing in the background
           <View style={styles.loadingState}>
             <ActivityIndicator color="#E0B0FF" size="large" />
             <Text style={styles.loadingStateText}>
-              {isPolling
-                ? "🎨 Creating your avatar..."
-                : "📤 Sending to studio..."}
+              {`Creating ${pendingAvatars.length} avatar(s)...`}
             </Text>
           </View>
         ) : isCooldownActive() ? (
+          // State 3: Last creation was recent, now in cooldown
           <View style={styles.cooldownContainer}>
             <Ionicons name="time-outline" size={24} color="#E0B0FF" />
             <Text style={styles.cooldownText}>{getCooldownText()}</Text>
           </View>
         ) : (
+          // State 4: Ready to create
           <AnimatedPressable
             style={[styles.createButton, animatedCreateButtonStyle]}
             onPress={handleCreatePress}
+            // Future-proofing for tiers: disable if processing queue is full
+            disabled={pendingAvatars.length >= maxConcurrentCreations}
           >
             <Ionicons name="add-circle" size={24} color="#FFFFFF" />
             <Text style={styles.createButtonText}>Create New Avatar</Text>
@@ -593,6 +618,13 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     alignItems: "center",
+  },
+  processingText: {
+    color: "#E0B0FF",
+    fontSize: 14,
+    marginTop: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   selectedIndicator: {

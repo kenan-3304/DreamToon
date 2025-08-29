@@ -145,6 +145,7 @@ export const TimelineScreen: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
   const years = Array.from(
     new Set(comics.map((c) => new Date(c.created_at).getFullYear()))
@@ -166,9 +167,16 @@ export const TimelineScreen: React.FC = () => {
     []
   );
 
-  /*──────── Fetch comics – ENHANCED LOGIC ────────*/
+  /*──────── Fetch comics – ENHANCED LOGIC WITH DEBOUNCING ────────*/
   const fetchComics = async (isRefresh = false) => {
     if (!profile) return;
+
+    // Debounce: prevent multiple rapid calls (5 second cooldown)
+    const now = Date.now();
+    if (!isRefresh && now - lastFetchTime < 5000) {
+      console.log("Skipping fetch - too soon since last request");
+      return;
+    }
 
     if (isRefresh) {
       setRefreshing(true);
@@ -177,6 +185,7 @@ export const TimelineScreen: React.FC = () => {
     }
 
     try {
+      setLastFetchTime(now);
       const {
         data: { session },
       } = await supabase.auth.getSession();
