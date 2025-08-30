@@ -245,6 +245,73 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
               console.log(
                 `Comic ${dreamId} finished with status: ${data.status}`
               );
+
+              // Handle error status with enhanced error messages
+              if (data.status === "error") {
+                let errorTitle = "Comic Generation Failed";
+                let errorMessage =
+                  "Something went wrong while creating your comic. Please try again.";
+
+                // Check if we have enhanced error information
+                if (data.error_type && data.error_message) {
+                  switch (data.error_type) {
+                    case "moderation":
+                      errorTitle = "Content Policy Violation";
+                      errorMessage =
+                        "Your dream contains content that doesn't meet our community guidelines. Please revise your story and try again.";
+                      break;
+                    case "avatar":
+                      errorTitle = "Avatar Issue";
+                      errorMessage =
+                        "We couldn't find your avatar for this style. Please create a new avatar first.";
+                      break;
+                    case "audio":
+                      errorTitle = "Audio Processing Issue";
+                      errorMessage =
+                        "We couldn't understand your audio recording. Please try speaking more clearly or use text input instead.";
+                      break;
+                    case "network":
+                      errorTitle = "Connection Problem";
+                      errorMessage =
+                        "We're having trouble connecting to our servers. Please check your internet connection and try again.";
+                      break;
+                    case "image_generation_error":
+                    case "generation":
+                      errorTitle = "Image Generation Failed";
+                      errorMessage =
+                        "We couldn't generate your comic images. This might be due to high server load. Please try again in a few minutes.";
+                      break;
+                    case "llm_error":
+                      errorTitle = "Story Processing Failed";
+                      errorMessage =
+                        "We couldn't process your story. Please try again with a different story.";
+                      break;
+                    case "storage_error":
+                      errorTitle = "Storage Issue";
+                      errorMessage =
+                        "We couldn't save your comic. Please try again.";
+                      break;
+                    case "database_error":
+                      errorTitle = "Server Error";
+                      errorMessage =
+                        "We're experiencing technical difficulties. Please try again later.";
+                      break;
+                    case "server":
+                      errorTitle = "Server Busy";
+                      errorMessage =
+                        "Our servers are currently busy. Please wait a moment and try again.";
+                      break;
+                    default:
+                      errorTitle = "Comic Generation Failed";
+                      errorMessage =
+                        data.error_message ||
+                        "Something went wrong while creating your comic. Please try again.";
+                  }
+                }
+
+                Alert.alert(errorTitle, errorMessage);
+              }
+
               removePendingComic(dreamId);
             }
           } catch (error) {
@@ -272,6 +339,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (user) {
                   fetchProfile(user); // Refresh data to show new avatar everywhere
                 }
+              } else if (status === "error") {
+                Alert.alert(
+                  "Avatar Creation Failed",
+                  "We couldn't create your avatar. Please try again."
+                );
               }
             }
           } catch (error) {

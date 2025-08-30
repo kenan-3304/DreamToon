@@ -147,11 +147,42 @@ export const avatarUtils = {
     if (!fastApiResponse.ok) {
       const errorBody = await fastApiResponse.json();
       console.error("--- BACKEND ERROR ---", errorBody);
-      throw new Error(
-        `Avatar generation failed: ${
-          errorBody.detail || "Unknown server error"
-        }`
-      );
+
+      // Handle enhanced error responses
+      if (errorBody.detail && typeof errorBody.detail === "object") {
+        const errorDetail = errorBody.detail;
+        let errorMessage = errorDetail.message || "Avatar generation failed";
+
+        // Add specific error context based on error type
+        switch (errorDetail.error_type) {
+          case "image_generation_error":
+            errorMessage =
+              "We couldn't generate your avatar image. This might be due to high server load. Please try again in a few minutes.";
+            break;
+          case "storage_error":
+            errorMessage = "We couldn't save your avatar. Please try again.";
+            break;
+          case "network_error":
+            errorMessage =
+              "We're having trouble connecting to our servers. Please check your internet connection and try again.";
+            break;
+          case "server":
+            errorMessage =
+              "Our servers are currently busy. Please wait a moment and try again.";
+            break;
+          default:
+            errorMessage = errorDetail.message || "Avatar generation failed";
+        }
+
+        throw new Error(errorMessage);
+      } else {
+        // Fallback to old error format
+        throw new Error(
+          `Avatar generation failed: ${
+            errorBody.detail || "Unknown server error"
+          }`
+        );
+      }
     }
 
     // No need to handle the response body, the backend did everything.
@@ -162,20 +193,51 @@ export const avatarUtils = {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not Authorized");
+    if (!session) throw new Error("User is not logged in");
 
     const response = await fetch(
       `https://dreamtoon.onrender.com/avatar-status/${jobId}`,
       {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       }
     );
 
-    if (!response) {
-      throw new Error("Failed to fetch status");
+    if (!response.ok) {
+      throw new Error("Failed to check avatar status");
     }
 
     const data = await response.json();
+
+    // If there's an error, throw it with enhanced error information
+    if (data.status === "error" && data.error_type && data.error_message) {
+      let errorMessage = data.error_message;
+
+      // Enhance error message based on error type
+      switch (data.error_type) {
+        case "image_generation_error":
+          errorMessage =
+            "We couldn't generate your avatar image. This might be due to high server load. Please try again in a few minutes.";
+          break;
+        case "storage_error":
+          errorMessage = "We couldn't save your avatar. Please try again.";
+          break;
+        case "network_error":
+          errorMessage =
+            "We're having trouble connecting to our servers. Please check your internet connection and try again.";
+          break;
+        case "server":
+          errorMessage =
+            "Our servers are currently busy. Please wait a moment and try again.";
+          break;
+        default:
+          errorMessage = data.error_message;
+      }
+
+      throw new Error(errorMessage);
+    }
+
     return data.status;
   },
 

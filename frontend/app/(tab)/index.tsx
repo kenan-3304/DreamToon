@@ -378,7 +378,24 @@ const EnhancedDashboardScreen: React.FC = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Failed to start comic");
+      if (!response.ok) {
+        // Handle enhanced error responses
+        if (data.detail && typeof data.detail === "object") {
+          // New error format with categorization
+          const errorDetail = data.detail;
+          throw new Error(
+            JSON.stringify({
+              type: errorDetail.error_type || "unknown",
+              title: errorDetail.title || "Upload Failed",
+              message: errorDetail.message || "An unexpected error occurred.",
+              details: errorDetail.details || errorDetail.message,
+            })
+          );
+        } else {
+          // Fallback to old error format
+          throw new Error(data.detail || "Failed to start comic");
+        }
+      }
 
       await addPendingComic(data.dream_id);
 
@@ -387,11 +404,26 @@ const EnhancedDashboardScreen: React.FC = () => {
         params: { dream_id: data.dream_id },
       });
     } catch (e: any) {
-      console.error("counldnt upload the text", e.message);
-      Alert.alert(
-        "Upload Failed",
-        e.message || "An unexpected error occurred."
-      );
+      console.error("Couldn't upload the text", e.message);
+
+      // Parse enhanced error messages
+      let errorTitle = "Upload Failed";
+      let errorMessage = "An unexpected error occurred.";
+
+      try {
+        const errorData = JSON.parse(e.message);
+        if (errorData.type && errorData.title && errorData.message) {
+          errorTitle = errorData.title;
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = e.message;
+        }
+      } catch {
+        // If parsing fails, use the original error message
+        errorMessage = e.message;
+      }
+
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
       setDreamText("");
@@ -438,7 +470,24 @@ const EnhancedDashboardScreen: React.FC = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Failed to start comic");
+      if (!response.ok) {
+        // Handle enhanced error responses
+        if (data.detail && typeof data.detail === "object") {
+          // New error format with categorization
+          const errorDetail = data.detail;
+          throw new Error(
+            JSON.stringify({
+              type: errorDetail.error_type || "unknown",
+              title: errorDetail.title || "Upload Failed",
+              message: errorDetail.message || "An unexpected error occurred.",
+              details: errorDetail.details || errorDetail.message,
+            })
+          );
+        } else {
+          // Fallback to old error format
+          throw new Error(data.detail || "Failed to start comic");
+        }
+      }
 
       await addPendingComic(data.dream_id);
 
@@ -447,11 +496,26 @@ const EnhancedDashboardScreen: React.FC = () => {
         params: { dream_id: data.dream_id },
       });
     } catch (e: any) {
-      console.error("counldnt upload the recording", e);
-      Alert.alert(
-        "Upload Failed",
-        e.message || "An unexpected error occurred."
-      );
+      console.error("Couldn't upload the recording", e);
+
+      // Parse enhanced error messages
+      let errorTitle = "Upload Failed";
+      let errorMessage = "An unexpected error occurred.";
+
+      try {
+        const errorData = JSON.parse(e.message);
+        if (errorData.type && errorData.title && errorData.message) {
+          errorTitle = errorData.title;
+          errorMessage = errorData.message;
+        } else {
+          errorMessage = e.message;
+        }
+      } catch {
+        // If parsing fails, use the original error message
+        errorMessage = e.message;
+      }
+
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
       setRecordingUri(null);
