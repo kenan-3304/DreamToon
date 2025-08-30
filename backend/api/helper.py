@@ -83,3 +83,70 @@ def style_name_to_description(style_name):
 
 def is_open_ai():
     return True
+
+def handle_comic_generation_error(e: Exception, dream_id: str = None) -> Dict[str, str]:
+    """Categorize errors and return user-friendly messages"""
+    
+    error_message = str(e)
+    
+    # Content moderation errors
+    if "Content moderation failed" in error_message:
+        return {
+            "error_type": "moderation",
+            "title": "Content Policy Violation",
+            "message": "Your dream contains content that doesn't meet our community guidelines. Please revise your story and try again.",
+            "details": error_message
+        }
+    
+    # Avatar-related errors
+    if "No avatar found" in error_message or "Failed to download avatar" in error_message:
+        return {
+            "error_type": "avatar",
+            "title": "Avatar Issue",
+            "message": "We couldn't find your avatar for this style. Please create a new avatar first.",
+            "details": error_message
+        }
+    
+    # Audio transcription errors
+    if "transcription" in error_message.lower() or "whisper" in error_message.lower():
+        return {
+            "error_type": "audio",
+            "title": "Audio Processing Issue",
+            "message": "We couldn't understand your audio recording. Please try speaking more clearly or use text input instead.",
+            "details": error_message
+        }
+    
+    # Network/API errors
+    if "timeout" in error_message.lower() or "connection" in error_message.lower():
+        return {
+            "error_type": "network",
+            "title": "Connection Problem",
+            "message": "We're having trouble connecting to our servers. Please check your internet connection and try again.",
+            "details": error_message
+        }
+    
+    # Image generation errors
+    if "image generation" in error_message.lower() or "flux" in error_message.lower():
+        return {
+            "error_type": "generation",
+            "title": "Image Generation Failed",
+            "message": "We couldn't generate your comic images. This might be due to high server load. Please try again in a few minutes.",
+            "details": error_message
+        }
+    
+    # Redis/Queue errors
+    if "redis" in error_message.lower() or "queue" in error_message.lower():
+        return {
+            "error_type": "server",
+            "title": "Server Busy",
+            "message": "Our servers are currently busy. Please wait a moment and try again.",
+            "details": error_message
+        }
+    
+    # Default error
+    return {
+        "error_type": "unknown",
+        "title": "Something Went Wrong",
+        "message": "An unexpected error occurred. Please try again.",
+        "details": error_message
+    }
