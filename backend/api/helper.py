@@ -2,6 +2,7 @@ import base64
 from .api_clients import get_moderation
 from .db_client import supabase
 from fastapi import HTTPException, Header
+from typing import Dict
 
 def encode_image_to_base64(image_path):
     """Encodes a local image file into a base64 string."""
