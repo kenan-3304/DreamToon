@@ -10,6 +10,44 @@ from .api_clients import get_panel_descriptions, generate_image, generate_avatar
 from .prompt_builder import build_image_prompt
 from .helper import is_open_ai
 
+# Enhanced error handling for worker
+class WorkerError(Exception):
+    def __init__(self, error_type: str, message: str, details: str = None):
+        self.error_type = error_type
+        self.message = message
+        self.details = details
+        super().__init__(message)
+
+def categorize_worker_error(e: Exception, context: str = "") -> str:
+    """Categorize worker errors for better error handling"""
+    error_message = str(e).lower()
+    
+    # LLM/Story generation errors
+    if "gpt" in error_message or "openai" in error_message or "llm" in error_message:
+        return "llm_error"
+    
+    # Image generation errors
+    if "flux" in error_message or "image generation" in error_message or "dall-e" in error_message:
+        return "image_generation_error"
+    
+    # Network/API errors
+    if "timeout" in error_message or "connection" in error_message or "network" in error_message:
+        return "network_error"
+    
+    # Storage errors
+    if "storage" in error_message or "upload" in error_message or "supabase" in error_message:
+        return "storage_error"
+    
+    # Database errors
+    if "database" in error_message or "sql" in error_message:
+        return "database_error"
+    
+    # Content/validation errors
+    if "content" in error_message or "validation" in error_message or "moderation" in error_message:
+        return "content_error"
+    
+    return "unknown_error"
+
 # --- This is a helper function to generate a single panel ---
 def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
@@ -38,20 +76,32 @@ def generate_single_panel(panel_info: tuple):
         print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
 
         if not image_bytes:
-            print(f"[{dream_id}] Failed to generate image for Panel {i+1}. Skipping.")
-            return None
+            raise WorkerError(
+                "image_generation_error",
+                f"Failed to generate image for Panel {i+1}"
+            )
 
         print(f"[{dream_id}] Image generated successfully for Panel {i+1}, size: {len(image_bytes)} bytes")
         
         # Upload to Supabase Storage
         panel_path = f"{user_id}/{dream_id}/{i+1}.png"
         print(f"[{dream_id}] Uploading Panel {i+1} to path: {panel_path}")
-        supabase.storage.from_("comics").upload(panel_path, image_bytes, {"content-type": "image/png"})
-        print(f"[{dream_id}] Panel {i+1} uploaded successfully")
+        
+        try:
+            supabase.storage.from_("comics").upload(panel_path, image_bytes, {"content-type": "image/png"})
+            print(f"[{dream_id}] Panel {i+1} uploaded successfully")
+        except Exception as upload_error:
+            raise WorkerError(
+                "storage_error",
+                f"Failed to upload Panel {i+1}: {upload_error}"
+            )
         
         print(f"[{dream_id}] ===== PANEL {i+1} THREAD COMPLETED =====")
         return panel_path
         
+    except WorkerError:
+        # Re-raise WorkerError as-is
+        raise
     except Exception as e:
         print(f"[{dream_id}] ===== PANEL {i+1} THREAD FAILED =====")
         print(f"[{dream_id}] Error in Panel {i+1}: {e}")
@@ -59,7 +109,10 @@ def generate_single_panel(panel_info: tuple):
         import traceback
         print(f"[{dream_id}] Full traceback for Panel {i+1}:")
         traceback.print_exc()
-        return None
+        
+        # Convert to WorkerError with categorization
+        error_type = categorize_worker_error(e, f"Panel {i+1}")
+        raise WorkerError(error_type, f"Panel {i+1} generation failed: {e}")
 
 
 # --- This is the main worker function ---
@@ -75,20 +128,26 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         print(f"[{dream_id}] Worker started for user {user_id}.")
 
         print(f"[{dream_id}] Calling get_panel_descriptions...")
-        panel_data = get_panel_descriptions(story, num_panels, style_description)
-        print(f"[{dream_id}] get_panel_descriptions returned: {panel_data}")
+        try:
+            panel_data = get_panel_descriptions(story, num_panels, style_description)
+            print(f"[{dream_id}] get_panel_descriptions returned: {panel_data}")
+        except Exception as e:
+            raise WorkerError(
+                "llm_error",
+                f"Failed to generate story panels: {e}"
+            )
 
         # ------handle errors-------#
         if panel_data.get("status") == "error":
-            print(f"Error from LLM: {panel_data.get('message')}")
-            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-            return
+            error_msg = panel_data.get('message', 'Unknown LLM error')
+            raise WorkerError("llm_error", f"LLM error: {error_msg}")
 
         panels = panel_data.get("panels")
         if not panels:
-            print("Error: The LLM did not return any panels.")
-            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-            return
+            raise WorkerError(
+                "llm_error",
+                "The AI couldn't generate any story panels. Please try again with a different story."
+            )
 
         print(f"[{dream_id}] Successfully got {len(panels)} panels")
         print(f"[{dream_id}] Panel data structure:")
@@ -101,7 +160,10 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         
         #--------update supabase with new title------------#
         print(f"[{dream_id}] Updating title to: {title}")
-        supabase.from_("comics").update({"title": title}).eq("id", dream_id).execute()
+        try:
+            supabase.from_("comics").update({"title": title}).eq("id", dream_id).execute()
+        except Exception as e:
+            print(f"[{dream_id}] Warning: Failed to update title: {e}")
 
         #--------set up and start parallel flow-------#
         print(f"[{dream_id}] Setting up parallel tasks...")
@@ -125,24 +187,73 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         image_paths = [path for path in image_paths if path is not None]
         print(f"[{dream_id}] Final image_paths count: {len(image_paths)}")
 
+        # Check if we have enough panels
+        if len(image_paths) < len(panels):
+            print(f"[{dream_id}] Warning: Only generated {len(image_paths)} out of {len(panels)} panels")
+            if len(image_paths) == 0:
+                raise WorkerError(
+                    "image_generation_error",
+                    "Failed to generate any comic panels. Please try again."
+                )
+
         #-----update supabase with comics and complete status---------#
         print(f"[{dream_id}] Updating database with completion status...")
-        supabase.from_("comics").update({
-            "status": "complete",
-            "image_urls": image_paths,
-            "panel_count": len(panels)
-        }).eq("id", dream_id).execute()
+        try:
+            supabase.from_("comics").update({
+                "status": "complete",
+                "image_urls": image_paths,
+                "panel_count": len(panels)
+            }).eq("id", dream_id).execute()
+        except Exception as e:
+            raise WorkerError(
+                "database_error",
+                f"Failed to update comic status: {e}"
+            )
         
         print(f"[{dream_id}] ===== WORKER FUNCTION COMPLETED SUCCESSFULLY =====")
 
+    except WorkerError as e:
+        print(f"[{dream_id}] ===== WORKER FUNCTION FAILED WITH CATEGORIZED ERROR =====")
+        print(f"[{dream_id}] Error type: {e.error_type}")
+        print(f"[{dream_id}] Error message: {e.message}")
+        print(f"[{dream_id}] Error details: {e.details}")
+        
+        # Update database with error status and error details
+        try:
+            supabase.from_("comics").update({
+                "status": "error",
+                "error_type": e.error_type,
+                "error_message": e.message
+            }).eq("id", dream_id).execute()
+        except Exception as db_error:
+            print(f"[{dream_id}] Failed to update error status in database: {db_error}")
+        
+        # Re-raise the error for the main API to handle
+        raise e
+        
     except Exception as e:
-        print(f"[{dream_id}] ===== WORKER FUNCTION FAILED =====")
+        print(f"[{dream_id}] ===== WORKER FUNCTION FAILED WITH UNKNOWN ERROR =====")
         print(f"[{dream_id}] An error occurred: {e}")
         print(f"[{dream_id}] Error type: {type(e)}")
         import traceback
         print(f"[{dream_id}] Full traceback:")
         traceback.print_exc()
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        
+        # Categorize the unknown error
+        error_type = categorize_worker_error(e, "Main worker")
+        worker_error = WorkerError(error_type, f"Unexpected error: {e}")
+        
+        # Update database with error status
+        try:
+            supabase.from_("comics").update({
+                "status": "error",
+                "error_type": error_type,
+                "error_message": str(e)
+            }).eq("id", dream_id).execute()
+        except Exception as db_error:
+            print(f"[{dream_id}] Failed to update error status in database: {db_error}")
+        
+        raise worker_error
 
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
@@ -156,39 +267,93 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
     try:
         image_bytes = base64.b64decode(image_b64)
 
-
         # 1. Generate the image using OpenAI
-        generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
-        if not generated_image_bytes:
-            raise Exception("Image generation failed to return data.")
+        try:
+            generated_image_bytes = generate_avatar_from_image(image_bytes, prompt)
+            if not generated_image_bytes:
+                raise WorkerError(
+                    "image_generation_error",
+                    "Image generation failed to return data."
+                )
+        except Exception as e:
+            raise WorkerError(
+                "image_generation_error",
+                f"Failed to generate avatar image: {e}"
+            )
 
         # 2. Upload the new avatar to Supabase Storage
         file_path = f"{user_id}/avatar_{int(time.time())}.png"
         print(f"--- Worker uploading avatar to: {file_path} ---")
-        supabase.storage.from_("avatars").upload(
-            path=file_path,
-            file=generated_image_bytes,
-            file_options={"content-type": "image/png"}
-        )
+        try:
+            supabase.storage.from_("avatars").upload(
+                path=file_path,
+                file=generated_image_bytes,
+                file_options={"content-type": "image/png"}
+            )
+        except Exception as e:
+            raise WorkerError(
+                "storage_error",
+                f"Failed to upload avatar to storage: {e}"
+            )
 
         # 3. Finalize the database records by calling the edge function
         print("--- Worker calling finalize-avatar edge function ---")
-        supabase.functions.invoke(
-            "finalize-avatar",
-            invoke_options={
-                "body": {
-                    "userId": user_id,
-                    "styleName": name,
-                    "avatarPath": file_path,
+        try:
+            supabase.functions.invoke(
+                "finalize-avatar",
+                invoke_options={
+                    "body": {
+                        "userId": user_id,
+                        "styleName": name,
+                        "avatarPath": file_path,
+                    }
                 }
-            }
-        )
+            )
+        except Exception as e:
+            raise WorkerError(
+                "database_error",
+                f"Failed to finalize avatar in database: {e}"
+            )
+            
         supabase.from_("avatar_generations").update({"status": "complete"}).eq("job_id", job_id).execute()
         print(f"--- ✅ Background avatar generation complete for user {user_id} ---")
 
+    except WorkerError as e:
+        print(f"--- ❗️ Background avatar generation failed with categorized error ---")
+        print(f"--- Error type: {e.error_type}")
+        print(f"--- Error message: {e.message}")
+        
+        # Update database with error status
+        try:
+            supabase.from_("avatar_generations").update({
+                "status": "error",
+                "error_type": e.error_type,
+                "error_message": e.message
+            }).eq("job_id", job_id).execute()
+        except Exception as db_error:
+            print(f"--- Failed to update error status in database: {db_error}")
+        
+        # Re-raise the error
+        raise e
+        
     except Exception as e:
-        print(f"--- ❗️ Background avatar generation failed: {e} ---")
-        # Here you could add logic to update a status in your database to 'error'
+        print(f"--- ❗️ Background avatar generation failed with unknown error: {e} ---")
+        
+        # Categorize the unknown error
+        error_type = categorize_worker_error(e, "Avatar generation")
+        worker_error = WorkerError(error_type, f"Unexpected avatar generation error: {e}")
+        
+        # Update database with error status
+        try:
+            supabase.from_("avatar_generations").update({
+                "status": "error",
+                "error_type": error_type,
+                "error_message": str(e)
+            }).eq("job_id", job_id).execute()
+        except Exception as db_error:
+            print(f"--- Failed to update error status in database: {db_error}")
+        
+        raise worker_error
 
 
 def run_debug_worker():

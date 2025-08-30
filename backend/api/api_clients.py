@@ -85,10 +85,6 @@ def generate_image(prompt_text, avatar):
 def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
 
     # Install `requests` (e.g. `pip install requests`) and `Pillow` (e.g. `pip install Pillow`), then run:
-    print("=== FLUX ULTRA GENERATION STARTED ===")
-    print(f"Prompt length: {len(prompt_text)}")
-    print(f"Avatar provided: {avatar is not None}")
-    print(f"Seed: {seed}")
     
     BFL_API_KEY = os.getenv("BFL_API_KEY")
 

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from .api_clients import transcribe_audio
-from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description
+from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description, handle_comic_generation_error
 from .db_client import supabase
 from .worker import run_comic_generation_worker
 from .schema import DeleteAvatarRequest, AvatarRequest
@@ -35,6 +35,17 @@ app.add_middleware(
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
 q = Queue('comics_queue', connection=redis_conn)
+
+
+# Enhanced error handling with specific error types
+class ComicGenerationError(Exception):
+    def __init__(self, error_type: str, message: str, details: str = None):
+        self.error_type = error_type
+        self.message = message
+        self.details = details
+        super().__init__(message)
+
+
 
 
 #Generate comic flow
@@ -60,113 +71,168 @@ async def generate_comic(
         """
     
     user = authenticateUser(authorization)
+    dream_id = None
 
-    print(f"getting avatar for style: {style_name}")
-
-    avatar_response = supabase.from_("avatars") \
-        .select("avatar_path") \
-        .eq("user_id", user.id) \
-        .eq("style", style_name) \
-        .order("created_at", desc=True) \
-        .limit(1) \
-        .single() \
-        .execute()
-
-    if not avatar_response.data or not avatar_response.data.get("avatar_path"):
-        # This could happen if a user somehow has a style unlocked but no avatar for it.
-        raise HTTPException(status_code=404, detail=f"No avatar found for the style '{style_name}'. Please create one first.")
-
-    avatar_path = avatar_response.data["avatar_path"]
-
-    #download the avatar image
     try:
-        image_bytes = supabase.storage.from_("avatars").download(avatar_path)
-    except Exception as e:
-        # file might not exist in storage
-        raise HTTPException(status_code=404, detail=f"Failed to download avatar from storage: {e}")
+        print(f"getting avatar for style: {style_name}")
 
-    # Encode the downloaded image bytes into a Base64 string
-    avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
+        avatar_response = supabase.from_("avatars") \
+            .select("avatar_path") \
+            .eq("user_id", user.id) \
+            .eq("style", style_name) \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .single() \
+            .execute()
 
-    print("--- Starting Comic Generation Process ---")
+        if not avatar_response.data or not avatar_response.data.get("avatar_path"):
+            # This could happen if a user somehow has a style unlocked but no avatar for it.
+            raise ComicGenerationError(
+                "avatar", 
+                f"No avatar found for the style '{style_name}'. Please create one first."
+            )
 
-    #----------Create a DB instance-------------#
-    insert_response = supabase.from_("comics").insert({
-        "user_id": user.id,
-        "style": style_name
-    }).execute()
-    
-    dream_id = insert_response.data[0]['id']
+        avatar_path = avatar_response.data["avatar_path"]
 
+        #download the avatar image
+        try:
+            image_bytes = supabase.storage.from_("avatars").download(avatar_path)
+        except Exception as e:
+            # file might not exist in storage
+            raise ComicGenerationError(
+                "avatar",
+                f"Failed to download avatar from storage: {e}"
+            )
 
-    #----------Send the text or process audio--------------#
-    story_text = ""
-    if story:
-        story_text = story
-    elif audio_file:
-        audio_content = await audio_file.read()
-        story_text = transcribe_audio(audio_content)
-    else:
-        # Update status to error if no input is provided
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        raise HTTPException(status_code=400, detail="Either story text or audio URL must be provided.")
+        # Encode the downloaded image bytes into a Base64 string
+        avatar_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-    supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
+        print("--- Starting Comic Generation Process ---")
 
-    #---------Check Moderation----------#
-    # we have to check ovbious moderation issues
-    print("Step 1: Checking story for content policy compliance...")
-    is_safe, reason = is_content_safe_for_comic(story_text)
-    if not is_safe:
-        print(f"Error: Story is not compliant. Reason: {reason}")
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        # Return an error response
-        raise HTTPException(status_code=400, detail=f"Content moderation failed: {reason}")
-
-    #-------send full prompt for multi-thread approach---------#
-
-    style_description = style_name_to_description(style_name)
-
-    # Add timeout to prevent worker hanging
-    try:
-        # Invalidate cache for this user
-        cache_key = f"comics_{user.id}"
-        if cache_key in comics_cache:
-            del comics_cache[cache_key]
+        #----------Create a DB instance-------------#
+        insert_response = supabase.from_("comics").insert({
+            "user_id": user.id,
+            "style": style_name
+        }).execute()
         
-        print(f"[{dream_id}] Enqueuing comic generation job...")
-        print(f"[{dream_id}] Job parameters:")
-        print(f"[{dream_id}] - dream_id: {dream_id}")
-        print(f"[{dream_id}] - user.id: {user.id}")
-        print(f"[{dream_id}] - story_text length: {len(story_text)}")
-        print(f"[{dream_id}] - num_panels: {num_panels}")
-        print(f"[{dream_id}] - style_description: {style_description[:50]}...")
-        print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
+        dream_id = insert_response.data[0]['id']
+
+
+        #----------Send the text or process audio--------------#
+        story_text = ""
+        if story:
+            story_text = story
+        elif audio_file:
+            try:
+                audio_content = await audio_file.read()
+                story_text = transcribe_audio(audio_content)
+            except Exception as e:
+                raise ComicGenerationError(
+                    "audio",
+                    f"Failed to transcribe audio: {e}"
+                )
+        else:
+            # Update status to error if no input is provided
+            if dream_id:
+                supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+            raise ComicGenerationError(
+                "input",
+                "Either story text or audio file must be provided."
+            )
+
+        supabase.from_("comics").update({"transcript": story_text}).eq("id", dream_id).execute()
+
+        #---------Check Moderation----------#
+        # we have to check ovbious moderation issues
+        print("Step 1: Checking story for content policy compliance...")
+        is_safe, reason = is_content_safe_for_comic(story_text)
+        if not is_safe:
+            print(f"Error: Story is not compliant. Reason: {reason}")
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+            # Return an error response
+            raise ComicGenerationError(
+                "moderation",
+                f"Content moderation failed: {reason}"
+            )
+
+        #-------send full prompt for multi-thread approach---------#
+
+        style_description = style_name_to_description(style_name)
+
+        # Add timeout to prevent worker hanging
+        try:
+            # Invalidate cache for this user
+            cache_key = f"comics_{user.id}"
+            if cache_key in comics_cache:
+                del comics_cache[cache_key]
+            
+            print(f"[{dream_id}] Enqueuing comic generation job...")
+            print(f"[{dream_id}] Job parameters:")
+            print(f"[{dream_id}] - dream_id: {dream_id}")
+            print(f"[{dream_id}] - user.id: {user.id}")
+            print(f"[{dream_id}] - story_text length: {len(story_text)}")
+            print(f"[{dream_id}] - num_panels: {num_panels}")
+            print(f"[{dream_id}] - style_description: {style_description[:50]}...")
+            print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
+            
+            job = q.enqueue(
+                'backend.api.worker.run_comic_generation_worker',
+                dream_id,
+                user.id,
+                story_text,
+                num_panels,
+                style_description,
+                avatar_b64,
+                job_timeout=300  # 5 minute timeout
+            )
+            
+            print(f"[{dream_id}] Job enqueued successfully with ID: {job.id}")
+            print(f"[{dream_id}] Job status: {job.get_status()}")
+            
+        except Exception as e:
+            print(f"[{dream_id}] Failed to enqueue job: {e}")
+            print(f"[{dream_id}] Error type: {type(e)}")
+            import traceback
+            print(f"[{dream_id}] Full traceback:")
+            traceback.print_exc()
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+            raise ComicGenerationError(
+                "server",
+                f"Failed to start comic generation: {e}"
+            )
+
+        return {"dream_id": dream_id}
+
+    except ComicGenerationError as e:
+        # Update database with error status if we have a dream_id
+        if dream_id:
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
         
-        job = q.enqueue(
-            'backend.api.worker.run_comic_generation_worker',
-            dream_id,
-            user.id,
-            story_text,
-            num_panels,
-            style_description,
-            avatar_b64,
-            job_timeout=300  # 5 minute timeout
+        error_info = handle_comic_generation_error(e, dream_id)
+        raise HTTPException(
+            status_code=400, 
+            detail={
+                "error_type": error_info["error_type"],
+                "title": error_info["title"],
+                "message": error_info["message"],
+                "details": error_info["details"]
+            }
         )
-        
-        print(f"[{dream_id}] Job enqueued successfully with ID: {job.id}")
-        print(f"[{dream_id}] Job status: {job.get_status()}")
-        
     except Exception as e:
-        print(f"[{dream_id}] Failed to enqueue job: {e}")
-        print(f"[{dream_id}] Error type: {type(e)}")
-        import traceback
-        print(f"[{dream_id}] Full traceback:")
-        traceback.print_exc()
-        supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
-        raise HTTPException(status_code=500, detail="Failed to start comic generation")
-
-    return {"dream_id": dream_id}
+        # Update database with error status if we have a dream_id
+        if dream_id:
+            supabase.from_("comics").update({"status": "error"}).eq("id", dream_id).execute()
+        
+        error_info = handle_comic_generation_error(e, dream_id)
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error_type": error_info["error_type"],
+                "title": error_info["title"],
+                "message": error_info["message"],
+                "details": error_info["details"]
+            }
+        )
 
 
 
@@ -212,17 +278,40 @@ async def generate_avatar(
 
     except Exception as e:
         print(f"An unexpected error occurred during avatar enqueue: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to start avatar generation process.")
-    
+        
+        # Categorize the error
+        error_info = handle_comic_generation_error(e)  # Reuse the same error handler
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error_type": error_info["error_type"],
+                "title": error_info["title"],
+                "message": error_info["message"],
+                "details": error_info["details"]
+            }
+        )
+
 
 @app.get("/avatar-status/{job_id}")
 async def get_avatar_status(job_id: str, authorization: str = Header(...)):
     user = authenticateUser(authorization)
-    response = supabase.from_("avatar_generations").select("status") \
+    response = supabase.from_("avatar_generations").select("status, error_type, error_message") \
         .eq("job_id", job_id).eq("user_id", user.id).single().execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Job not found.")
-    return {"status": response.data.get("status")}
+    
+    data = response.data
+    status = data.get("status")
+    result = {"status": status}
+    
+    # Include error information if status is error
+    if status == "error":
+        result.update({
+            "error_type": data.get("error_type", "unknown"),
+            "error_message": data.get("error_message", "An unknown error occurred")
+        })
+    
+    return result
 
 
 
@@ -236,7 +325,7 @@ async def get_comic_status(dream_id: str):
         Returns:
             dict: the immediate status and the signed urls if it is done.
         """
-    response = supabase.from_("comics").select("status, image_urls").eq("id", dream_id).single().execute()
+    response = supabase.from_("comics").select("status, image_urls, error_type, error_message").eq("id", dream_id).single().execute()
     
     if not response.data:
         raise HTTPException(status_code=404, detail="Comic not found")
@@ -244,6 +333,7 @@ async def get_comic_status(dream_id: str):
     data = response.data
     status = data.get("status")
     signed_urls = []
+    error_info = {}
 
     # If complete, generate temporary signed URLs from the stored paths
     if status == "complete" and data.get("image_urls"):
@@ -254,8 +344,19 @@ async def get_comic_status(dream_id: str):
             signed_url_response = supabase.storage.from_('comics').create_signed_url(path, expires_in)
             signed_urls.append(signed_url_response['signedURL'])
 
+    # If error, include error information
+    if status == "error":
+        error_info = {
+            "error_type": data.get("error_type", "unknown"),
+            "error_message": data.get("error_message", "An unknown error occurred")
+        }
+
     # Return the signed URLs to the frontend
-    return {"status": status, "panel_urls": signed_urls}
+    return {
+        "status": status, 
+        "panel_urls": signed_urls,
+        **error_info  # Include error info if present
+    }
 
 
 #get the signed id for all comic thumbnails
