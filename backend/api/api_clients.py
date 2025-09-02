@@ -60,7 +60,7 @@ def generate_image_google(prompt_text, avatar):
 
         # The request contains both the text prompt and the avatar image
         response = model.generate_content(
-            [prompt_text, avatar_image_part],
+            [prompt_text],#, avatar_image_part],
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
