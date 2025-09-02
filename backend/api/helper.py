@@ -1,4 +1,6 @@
 import base64
+import cv2
+import numpy as np
 from .api_clients import get_moderation
 from .db_client import supabase
 from fastapi import HTTPException, Header
@@ -151,3 +153,45 @@ def handle_comic_generation_error(e: Exception, dream_id: str = None) -> Dict[st
         "message": "An unexpected error occurred. Please try again.",
         "details": error_message
     }
+
+
+def detect_face_in_image(image_bytes: bytes) -> bool:
+    """
+    Detects if there's at least one face in the uploaded image.
+    
+    Args:
+        image_bytes: Raw image bytes from the uploaded file
+        
+    Returns:
+        bool: True if at least one face is detected, False otherwise
+    """
+    try:
+        # Convert bytes to numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            return False
+            
+        # Convert to grayscale for face detection
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Load the pre-trained Haar cascade classifier for face detection
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        # Detect faces
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(30, 30)
+        )
+        
+        # Return True if at least one face is detected
+        return len(faces) > 0
+        
+    except Exception as e:
+        print(f"Face detection error: {e}")
+        # If face detection fails, we'll allow the image through
+        # This prevents blocking valid images due to technical issues
+        return True

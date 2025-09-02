@@ -6,6 +6,8 @@ import requests
 import json
 import time
 import asyncio
+import cv2
+import numpy as np
 from redis import Redis
 from rq import Queue
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks, UploadFile, File, Form
@@ -13,13 +15,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from .api_clients import transcribe_audio
-from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description, handle_comic_generation_error
+from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description, handle_comic_generation_error, detect_face_in_image
 from .db_client import supabase
 from .worker import run_comic_generation_worker
 from .schema import DeleteAvatarRequest, AvatarRequest
 
 # Simple in-memory cache for comics
 comics_cache: Dict[str, Dict[str, Any]] = {}
+
+
 
 app = FastAPI()
 
@@ -254,6 +258,34 @@ async def generate_avatar(
     
     print("--- Authenticating user for avatar generation ---")
     user = authenticateUser(authorization)
+
+    # Face detection check before processing
+    try:
+        # Decode the base64 image to check for faces
+        image_bytes = base64.b64decode(avatar_request.user_photo_b64)
+        
+        print("--- Checking for face in uploaded image ---")
+        if not detect_face_in_image(image_bytes):
+            print("--- No face detected in image ---")
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_type": "face_detection",
+                    "title": "No Face Detected",
+                    "message": "Please upload a photo with a clear, visible face.",
+                    "details": "The image must contain at least one detectable face to create an avatar."
+                }
+            )
+        print("--- Face detected successfully ---")
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like our face detection error)
+        raise
+    except Exception as e:
+        print(f"Face detection check failed: {e}")
+        # If face detection fails due to technical issues, allow the image through
+        # This prevents blocking valid images due to technical problems
+        pass
 
     # Add the job to the queue and return immediately
     try:

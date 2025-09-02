@@ -56,7 +56,8 @@ def generate_image(prompt_text, avatar):
 
     image_tool = {
         "type": "image_generation",
-        "quality": "medium" # Keeping quality consistent
+        "quality": "medium", # Keeping quality consistent
+        "size": "1024x1024"
     }
 
     try:
