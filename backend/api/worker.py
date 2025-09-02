@@ -65,16 +65,18 @@ def generate_single_panel(panel_info: tuple):
         final_prompt = build_image_prompt(panel)
         print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
         
-        print(f"[{dream_id}] Calling generate_image_flux_ultra for Panel {i+1}...")
+        print(f"[{dream_id}] generating image for Panel {i+1}...")
 
         model = current_model()
 
         if (model == "google"):
-            print("using google")
+            print("using google===========")
             image_bytes = generate_image_google(final_prompt, avatar)
         elif (model == "flux"):
+            print("using flux=============")
             image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
         else:
+            print("using openai=================")
             image_bytes = generate_image(final_prompt, avatar)
 
     
@@ -188,7 +190,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         image_paths = []
         
         print(f"[{dream_id}] Starting ThreadPoolExecutor with max_workers=2...")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             print(f"[{dream_id}] Executor created, submitting tasks...")
             results = executor.map(generate_single_panel, panel_tasks)
             print(f"[{dream_id}] Tasks submitted, collecting results...")

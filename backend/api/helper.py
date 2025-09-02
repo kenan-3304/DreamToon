@@ -85,7 +85,7 @@ def style_name_to_description(style_name):
     return description.get(style_name, "A distinct art style.")
 
 def current_model():
-    return "openai"
+    return "google"
 
 def handle_comic_generation_error(e: Exception, dream_id: str = None) -> Dict[str, str]:
     """Categorize errors and return user-friendly messages"""
