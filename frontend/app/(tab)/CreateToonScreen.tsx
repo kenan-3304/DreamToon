@@ -22,6 +22,7 @@ import { supabase } from "../../utils/supabase";
 import * as Haptics from "expo-haptics";
 import paywallActive from "@/context/PaywallContext";
 import { ImageBackground } from "react-native";
+import { ScreenLayout } from "@/components/ScreenLayout";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const isTablet = () => {
@@ -158,51 +159,6 @@ const CreateToonScreen: React.FC = () => {
             },
           ]
         );
-
-        // Poll for completion
-        // let attempts = 0;
-        // const maxAttempts = 60; // 5 minutes max
-
-        // const pollStatus = async () => {
-        //   try {
-        //     const status = await avatarUtils.checkAvatarStatus(response.job_id);
-
-        //     if (status === "complete") {
-        //       // Get the created avatar and set as display avatar
-        //       const avatars = await avatarUtils.getMyAvatarsWithSignedUrls();
-        //       if (avatars.length > 0) {
-        //         await updateProfile({
-        //           display_avatar_path: avatars[0].path,
-        //           onboarding_complete: true,
-        //         });
-        //       }
-
-        //       triggerHaptic("medium");
-        //       Alert.alert(
-        //         "🎉 Success!",
-        //         "Your avatar has been created! Welcome to DreamToon!",
-        //         [
-        //           {
-        //             text: "Start Dreaming",
-        //             onPress: () => router.replace("/(tab)"),
-        //           },
-        //         ]
-        //       );
-        //     } else if (status === "error") {
-        //       throw new Error("Avatar generation failed");
-        //     } else if (attempts < maxAttempts) {
-        //       attempts++;
-        //       setTimeout(pollStatus, 5000); // Poll every 5 seconds
-        //     } else {
-        //       throw new Error("Avatar generation timed out");
-        //     }
-        //   } catch (error) {
-        //     setIsCreating(false);
-        //     Alert.alert("Error", "Failed to create avatar. Please try again.");
-        //   }
-        // };
-
-        // pollStatus();
       } else {
         throw new Error("Failed to initialize avatar generation");
       }
@@ -245,11 +201,7 @@ const CreateToonScreen: React.FC = () => {
   const canCreate = uploadedUri && selectedStyle && !isCreating;
 
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.container}
-    >
+    <ScreenLayout>
       <ScrollView
         contentContainerStyle={styles.scrollBody}
         keyboardShouldPersistTaps="handled"
@@ -404,7 +356,7 @@ const CreateToonScreen: React.FC = () => {
           </Pressable>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </ScreenLayout>
   );
 };
 

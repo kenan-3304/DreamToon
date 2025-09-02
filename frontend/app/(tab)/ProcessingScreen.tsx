@@ -12,7 +12,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useUser } from "../../context/UserContext";
 import LottieView from "lottie-react-native";
 import { Ionicons } from "@expo/vector-icons";
-
+import { ScreenLayout } from "@/components/ScreenLayout";
 const dreamFacts = [
   "You forget about 90% of your dreams within 10 minutes of waking up.",
   "Anxiety is the most common emotion experienced in dreams.",
@@ -29,7 +29,6 @@ const ProcessingScreen: React.FC = () => {
   const router = useRouter();
   const { dream_id } = useLocalSearchParams();
   const [currentFact, setCurrentFact] = useState(dreamFacts[0]);
-  const { profile, updateProfile } = useUser();
   const factIndexRef = useRef(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -63,11 +62,7 @@ const ProcessingScreen: React.FC = () => {
   // Effect for checking comic status (remains the same)
 
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.container}
-    >
+    <ScreenLayout>
       {/* ---- TOP CONTAINER (STABLE) ---- */}
       {/* This section holds the content that should NOT move. */}
       {/* It takes up the top 55% of the screen and aligns its content to the bottom. */}
@@ -96,7 +91,7 @@ const ProcessingScreen: React.FC = () => {
           <Text style={styles.subtitle}>{currentFact}</Text>
         </Animated.View>
       </View>
-    </LinearGradient>
+    </ScreenLayout>
   );
 };
 

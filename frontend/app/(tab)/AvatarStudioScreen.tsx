@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ShinyGradientButton } from "@/components/ShinyGradientButton";
 import * as Haptics from "expo-haptics";
 import paywallActive from "@/context/PaywallContext";
+import { ScreenLayout } from "@/components/ScreenLayout";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -128,55 +129,6 @@ export default function AvatarStudioScreen() {
   useEffect(() => {
     // Removed spinning animation for better UX
   }, []);
-
-  // useEffect(() => {
-  //   if (!pollingJobId) return;
-
-  //   setIsPolling(true);
-
-  //   const interval = setInterval(async () => {
-  //     try {
-  //       const status = await avatarUtils.checkAvatarStatus(pollingJobId);
-
-  //       if (status === "complete" || status === "error") {
-  //         clearInterval(interval);
-  //         setIsPolling(false);
-  //         setPollingJobId(null);
-
-  //         if (status === "complete") {
-  //           triggerHaptic("medium");
-  //           Alert.alert(
-  //             "🎉 Success!",
-  //             "Your new avatar is ready to join the collection!"
-  //           );
-
-  //           await Promise.all([
-  //             avatarUtils.getMyAvatarsWithSignedUrls().then((data) => {
-  //               setAvatars(
-  //                 (data || [])
-  //                   .filter((item) => item.path)
-  //                   .map(({ path, signedUrl }) => ({
-  //                     path: path as string,
-  //                     signedUrl,
-  //                   }))
-  //               );
-  //             }),
-  //             refetchProfileAndData(),
-  //           ]);
-  //         } else {
-  //           Alert.alert("Error", "Avatar generation failed. Please try again.");
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error("Polling error:", error);
-  //       clearInterval(interval);
-  //       setIsPolling(false);
-  //       setPollingJobId(null);
-  //     }
-  //   }, 5000);
-
-  //   return () => clearInterval(interval);
-  // }, [pollingJobId]);
 
   const getCooldownText = () => {
     if (!profile?.last_avatar_created_at) return "";
@@ -357,18 +309,14 @@ export default function AvatarStudioScreen() {
 
   if (loading) {
     return (
-      <LinearGradient
-        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-        locations={[0, 0.4, 0.8, 1]}
-        style={styles.container}
-      >
+      <ScreenLayout>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E0B0FF" />
           <Text style={styles.loadingText}>
             Loading your avatar collection...
           </Text>
         </View>
-      </LinearGradient>
+      </ScreenLayout>
     );
   }
 
@@ -376,11 +324,7 @@ export default function AvatarStudioScreen() {
   const maxConcurrentCreations = 1;
 
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.container}
-    >
+    <ScreenLayout>
       {/* Enhanced Header */}
       <Animated.View style={[styles.header, animatedHeaderStyle]}>
         <Pressable
@@ -507,7 +451,7 @@ export default function AvatarStudioScreen() {
           />
         </View>
       </Modal>
-    </LinearGradient>
+    </ScreenLayout>
   );
 }
 

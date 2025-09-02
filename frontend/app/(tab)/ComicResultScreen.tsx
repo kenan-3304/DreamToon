@@ -23,8 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import * as Haptics from "expo-haptics";
-import Background from "../../components/ui/Background";
-import { supabase } from "../../utils/supabase";
+import { ScreenLayout } from "@/components/ScreenLayout";
 
 const DEBUG = (process.env.DEBUG ?? "").toLowerCase() === "true";
 
@@ -47,7 +46,7 @@ const getResponsiveValue = (phone: number, tablet: number) =>
 
 export default function ComicResultScreen() {
   const router = useRouter();
-  const { profile, session } = useUser();
+  const { profile, session, getComicById } = useUser();
   const { urls, id } = useLocalSearchParams<{ urls: string; id?: string }>();
 
   const [panelUrls, setPanelUrls] = useState<string[]>([]);
@@ -84,34 +83,50 @@ export default function ComicResultScreen() {
         return;
       }
 
-      // Fetch the full comic data using the ID
-      try {
-        setError(null);
-        const res = await fetch(
-          `https://dreamtoon.onrender.com/comic-status/${id}`
-        );
-        const data = await res.json();
-        if (data.status === "complete") {
-          setPanelUrls(data.panel_urls);
-          if (data.title) setComicTitle(data.title);
-          if (data.created_at) {
-            const date = new Date(data.created_at);
-            setCreationDate(date.toLocaleDateString());
-          }
-        } else {
-          setError("Could not load the comic. Please try again.");
+      setIsLoading(true);
+      setError(null);
+
+      const data = await getComicById(id);
+
+      if (data) {
+        setPanelUrls(data.panel_urls);
+        if (data.title) setComicTitle(data.title);
+        if (data.created_at) {
+          const date = new Date(data.created_at);
+          setCreationDate(date.toLocaleDateString());
         }
-      } catch (e) {
-        setError(
-          "Failed to connect to the server. Please check your connection."
-        );
-      } finally {
-        setIsLoading(false);
+      } else {
+        setError("Could not load the comic. please try again.");
       }
+      // Fetch the full comic data using the ID
+      // try {
+      //   setError(null);
+      //   const res = await fetch(
+      //     `https://dreamtoon.onrender.com/comic-status/${id}`
+      //   );
+      //   const data = await res.json();
+      //   if (data.status === "complete") {
+      //     setPanelUrls(data.panel_urls);
+      //     if (data.title) setComicTitle(data.title);
+      //     if (data.created_at) {
+      //       const date = new Date(data.created_at);
+      //       setCreationDate(date.toLocaleDateString());
+      //     }
+      //   } else {
+      //     setError("Could not load the comic. Please try again.");
+      //   }
+      // } catch (e) {
+      //   setError(
+      //     "Failed to connect to the server. Please check your connection."
+      //   );
+      // } finally {
+      //   setIsLoading(false);
+      // }
+      setIsLoading(false);
     };
 
     fetchComicData();
-  }, [id, urls]);
+  }, [id, getComicById]);
 
   const PANELS = panelUrls.length
     ? panelUrls.map((u, i) => ({ id: i + 1, uri: { uri: u } }))
@@ -312,26 +327,18 @@ export default function ComicResultScreen() {
 
   if (isLoading) {
     return (
-      <LinearGradient
-        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-        locations={[0, 0.4, 0.8, 1]}
-        style={styles.container}
-      >
+      <ScreenLayout>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E0B0FF" />
           <Text style={styles.loadingText}>Loading your dream comic...</Text>
         </View>
-      </LinearGradient>
+      </ScreenLayout>
     );
   }
 
   if (error) {
     return (
-      <LinearGradient
-        colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-        locations={[0, 0.4, 0.8, 1]}
-        style={styles.container}
-      >
+      <ScreenLayout>
         {/* Header with back button */}
         <View style={[styles.header, isIPad && styles.headerTablet]}>
           <Pressable style={styles.backButton} onPress={handleBack}>
@@ -394,16 +401,12 @@ export default function ComicResultScreen() {
             </Pressable>
           </View>
         </View>
-      </LinearGradient>
+      </ScreenLayout>
     );
   }
 
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.container}
-    >
+    <ScreenLayout>
       {/* Header */}
       <View style={[styles.header, isIPad && styles.headerTablet]}>
         <Pressable style={styles.backButton} onPress={handleBack}>
@@ -565,7 +568,7 @@ export default function ComicResultScreen() {
           </View>
         </LinearGradient>
       </Modal>
-    </LinearGradient>
+    </ScreenLayout>
   );
 }
 

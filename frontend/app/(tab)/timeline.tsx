@@ -21,6 +21,7 @@ import SimpleDropdown from "../../components/SimpleDropdown";
 import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import { useUser } from "../../context/UserContext";
+import { ScreenLayout } from "@/components/ScreenLayout";
 
 /*********************
  * Types & constants
@@ -261,11 +262,7 @@ export const TimelineScreen: React.FC = () => {
 
   /*──────── Render ────────*/
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.root}
-    >
+    <ScreenLayout>
       <ScrollView
         contentContainerStyle={[styles.scroll, isIPad && styles.scrollTablet]}
         showsVerticalScrollIndicator={false}
@@ -434,7 +431,7 @@ export const TimelineScreen: React.FC = () => {
 
         <View style={{ height: getResponsiveValue(120, 160) }} />
       </ScrollView>
-    </LinearGradient>
+    </ScreenLayout>
   );
 };
 

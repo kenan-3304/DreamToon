@@ -155,6 +155,11 @@ export const avatarUtils = {
 
         // Add specific error context based on error type
         switch (errorDetail.error_type) {
+          case "face_detection":
+            errorMessage =
+              errorDetail.message ||
+              "No face detected in the image. Please upload a photo with a clear, visible face.";
+            break;
           case "image_generation_error":
             errorMessage =
               "We couldn't generate your avatar image. This might be due to high server load. Please try again in a few minutes.";

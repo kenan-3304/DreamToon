@@ -12,6 +12,9 @@ import * as BackgroundFetch from "expo-background-fetch";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+
 const BACKGROUND_FETCH_TASK = "comic-status-fetch";
 
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {

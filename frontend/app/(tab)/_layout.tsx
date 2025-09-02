@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "@/components/Avatar";
 import { useUser } from "../../context/UserContext";
+import { ComicResultDirect } from "@/components/ComicResultDirect";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -30,116 +31,119 @@ function TabContent() {
   const insets = useSafeAreaInsets();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#B0A8C0",
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "500",
-        },
-        tabBarStyle: {
-          position: "absolute",
-          borderTopWidth: 0,
-          backgroundColor: "transparent",
-          elevation: 0,
-          height: 40 + insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-        // FIX: Add tabBarItemStyle to control the vertical alignment of the buttons.
-        tabBarItemStyle: {
-          // By default, content is centered. We change it to align to the top.
-          justifyContent: "flex-start",
-          // Now you can use paddingTop to push the icons down precisely.
-          paddingTop: 8,
-        },
-        tabBarBackground: () => (
-          <LinearGradient
-            colors={[
-              "rgba(40, 40, 40, 0.22)", // Top color
-              "rgba(0, 0, 0, 0.41)", // Bottom color
-            ]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
-        ),
-      }}
-    >
-      {/* Tab 1: Settings Screen (Left) */}
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "",
-          tabBarIcon: ({ focused, color, size }) => (
-            <View style={focused ? styles.activeIconContainer : null}>
-              {profile?.display_avatar_path ? (
-                <Avatar avatarUrl={profile.display_avatar_path} size={33} />
-              ) : (
+    <>
+      <ComicResultDirect />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: "#FFFFFF",
+          tabBarInactiveTintColor: "#B0A8C0",
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: "500",
+          },
+          tabBarStyle: {
+            position: "absolute",
+            borderTopWidth: 0,
+            backgroundColor: "transparent",
+            elevation: 0,
+            height: 40 + insets.bottom,
+            paddingBottom: insets.bottom,
+          },
+          // FIX: Add tabBarItemStyle to control the vertical alignment of the buttons.
+          tabBarItemStyle: {
+            // By default, content is centered. We change it to align to the top.
+            justifyContent: "flex-start",
+            // Now you can use paddingTop to push the icons down precisely.
+            paddingTop: 8,
+          },
+          tabBarBackground: () => (
+            <LinearGradient
+              colors={[
+                "rgba(40, 40, 40, 0.22)", // Top color
+                "rgba(0, 0, 0, 0.41)", // Bottom color
+              ]}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
+          ),
+        }}
+      >
+        {/* Tab 1: Settings Screen (Left) */}
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: "",
+            tabBarIcon: ({ focused, color, size }) => (
+              <View style={focused ? styles.activeIconContainer : null}>
+                {profile?.display_avatar_path ? (
+                  <Avatar avatarUrl={profile.display_avatar_path} size={33} />
+                ) : (
+                  <Ionicons
+                    name={focused ? "settings" : "settings-outline"}
+                    size={24}
+                    color={color}
+                  />
+                )}
+              </View>
+            ),
+          }}
+        />
+
+        {/* Tab 2: Home Screen (Middle) */}
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "",
+            tabBarIcon: ({ focused, color, size }) => (
+              <View style={focused ? styles.activeIconContainer : null}>
                 <Ionicons
-                  name={focused ? "settings" : "settings-outline"}
+                  name={focused ? "home" : "home-outline"}
                   size={24}
                   color={color}
                 />
-              )}
-            </View>
-          ),
-        }}
-      />
+              </View>
+            ),
+          }}
+        />
 
-      {/* Tab 2: Home Screen (Middle) */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "",
-          tabBarIcon: ({ focused, color, size }) => (
-            <View style={focused ? styles.activeIconContainer : null}>
-              <Ionicons
-                name={focused ? "home" : "home-outline"}
-                size={24}
-                color={color}
-              />
-            </View>
-          ),
-        }}
-      />
+        {/* Tab 3: Timeline Screen (Right) */}
+        <Tabs.Screen
+          name="timeline"
+          options={{
+            title: "",
+            tabBarIcon: ({ focused, color, size }) => (
+              <View style={focused ? styles.activeIconContainer : null}>
+                <Ionicons
+                  name={focused ? "time" : "time-outline"}
+                  size={24}
+                  color={color}
+                />
+              </View>
+            ),
+          }}
+        />
 
-      {/* Tab 3: Timeline Screen (Right) */}
-      <Tabs.Screen
-        name="timeline"
-        options={{
-          title: "",
-          tabBarIcon: ({ focused, color, size }) => (
-            <View style={focused ? styles.activeIconContainer : null}>
-              <Ionicons
-                name={focused ? "time" : "time-outline"}
-                size={24}
-                color={color}
-              />
-            </View>
-          ),
-        }}
-      />
-
-      {/* --- Hidden Screens --- */}
-      <Tabs.Screen
-        name="ProcessingScreen"
-        options={{ href: null, tabBarStyle: { display: "none" } }}
-      />
-      <Tabs.Screen
-        name="ComicResultScreen"
-        options={{ href: null, tabBarStyle: { display: "none" } }}
-      />
-      <Tabs.Screen
-        name="CreateToonScreen"
-        options={{ href: null, tabBarStyle: { display: "none" } }}
-      />
-      <Tabs.Screen
-        name="AvatarStudioScreen"
-        options={{ href: null, tabBarStyle: { display: "none" } }}
-      />
-    </Tabs>
+        {/* --- Hidden Screens --- */}
+        <Tabs.Screen
+          name="ProcessingScreen"
+          options={{ href: null, tabBarStyle: { display: "none" } }}
+        />
+        <Tabs.Screen
+          name="ComicResultScreen"
+          options={{ href: null, tabBarStyle: { display: "none" } }}
+        />
+        <Tabs.Screen
+          name="CreateToonScreen"
+          options={{ href: null, tabBarStyle: { display: "none" } }}
+        />
+        <Tabs.Screen
+          name="AvatarStudioScreen"
+          options={{ href: null, tabBarStyle: { display: "none" } }}
+        />
+      </Tabs>
+    </>
   );
 }
 

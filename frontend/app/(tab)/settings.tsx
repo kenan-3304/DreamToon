@@ -19,6 +19,7 @@ import * as Haptics from "expo-haptics";
 import { useUser } from "../../context/UserContext";
 import { supabase } from "../../utils/supabase";
 import { Avatar } from "../../components/Avatar";
+import { ScreenLayout } from "@/components/ScreenLayout";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -249,11 +250,7 @@ const SettingsScreen: React.FC = () => {
   }));
 
   return (
-    <LinearGradient
-      colors={["#667eea", "#764ba2", "#2d1b69", "#000"]}
-      locations={[0, 0.4, 0.8, 1]}
-      style={styles.container}
-    >
+    <ScreenLayout>
       {isLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#E0B0FF" />
@@ -425,7 +422,7 @@ const SettingsScreen: React.FC = () => {
           </Animated.View>
         </Animated.View>
       </Modal>
-    </LinearGradient>
+    </ScreenLayout>
   );
 };
 

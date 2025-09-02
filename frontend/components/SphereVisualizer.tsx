@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Dimensions, View } from "react-native";
+import { StyleSheet, Dimensions, View, Text } from "react-native";
 import { Canvas, Circle } from "@shopify/react-native-skia";
 import Animated, {
   useSharedValue,
@@ -38,6 +38,7 @@ interface DottedSphereProps {
   centerX: number;
   centerY: number;
   morphProgress: SharedValue<number>;
+  showHint?: boolean;
 }
 
 // separate Dot component that calculates its own properties.
@@ -151,6 +152,7 @@ const DottedSphere = ({
   centerX,
   centerY,
   morphProgress,
+  showHint = false,
 }: DottedSphereProps) => {
   const rotationY = useSharedValue(0);
   const defaultLevel = useSharedValue(0);
@@ -163,20 +165,35 @@ const DottedSphere = ({
   });
 
   return (
-    <Canvas style={styles.canvas}>
-      {/* We now map to our new, intelligent <Dot> component */}
-      {dots.map((dot, index) => (
-        <Dot
-          key={index}
-          dotData={dot}
-          rotationY={rotationY}
-          level={currentLevel}
-          centerX={centerX}
-          centerY={centerY}
-          morphProgress={morphProgress}
-        />
-      ))}
-    </Canvas>
+    <>
+      <Canvas style={styles.canvas}>
+        {/* We now map to our new, intelligent <Dot> component */}
+        {dots.map((dot, index) => (
+          <Dot
+            key={index}
+            dotData={dot}
+            rotationY={rotationY}
+            level={currentLevel}
+            centerX={centerX}
+            centerY={centerY}
+            morphProgress={morphProgress}
+          />
+        ))}
+      </Canvas>
+      {showHint && (
+        <Text
+          style={[
+            styles.hintText,
+            {
+              top: centerY + 150,
+              left: centerX - 90,
+            },
+          ]}
+        >
+          Tap again to save recording
+        </Text>
+      )}
+    </>
   );
 };
 
@@ -184,6 +201,16 @@ const styles = StyleSheet.create({
   canvas: {
     ...StyleSheet.absoluteFillObject,
     pointerEvents: "none",
+  },
+  hintText: {
+    position: "absolute",
+    color: "#FFFFFF",
+    fontSize: 14,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    zIndex: 999,
   },
 });
 
