@@ -11,14 +11,6 @@ from io import BytesIO
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-try:
-    genai.configure(
-        project=os.getenv("GCP_PROJECT_ID"),
-        location=os.getenv("GCP_LOCATION"),
-    )
-except Exception as e:
-    print(f"Warning: Could not configure Google GenAI client on startup. Error: {e}")
-
 def get_moderation(story) -> bool:
     response = client.moderations.create(
     model="omni-moderation-latest",
