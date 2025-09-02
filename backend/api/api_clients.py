@@ -3,6 +3,7 @@ import os
 import base64
 import requests
 import time
+import logging
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
@@ -46,7 +47,7 @@ def generate_image_google(prompt_text, avatar):
     """
     Generates an image using Google's Gemini Flash model for image generation.
     """
-    print("=== GOOGLE GEMINI (NANO BANANA) GENERATION STARTED ===")
+    logging.info("=== GOOGLE GEMINI GENERATION STARTED ===") # Use logging.info
     try:
         # The model for image generation is gemini-2.5-flash-image-preview
         model = genai.GenerativeModel("gemini-2.5-flash-image-preview")
@@ -75,13 +76,16 @@ def generate_image_google(prompt_text, avatar):
 
         image_bytes = image_part.inline_data.data
         
-        print(f"Google Gemini image generated successfully, size: {len(image_bytes)} bytes")
-        print("=== GOOGLE GEMINI (NANO BANANA) GENERATION COMPLETED ===")
+        logging.info(f"Google Gemini image generated successfully, size: {len(image_bytes)} bytes")
         return image_bytes
 
     except Exception as e:
-        print(f"!!! An error occurred with Google Gemini API: {e}")
+        logging.error(
+            "An error occurred with Google Gemini API:", 
+            exc_info=True # This captures the full traceback automatically
+        )
         raise
+
 
 
 

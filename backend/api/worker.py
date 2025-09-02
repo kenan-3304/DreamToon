@@ -5,10 +5,13 @@ import time
 import base64
 import os
 import random
+import logging
 from .db_client import supabase
 from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra, generate_image_google
 from .prompt_builder import build_image_prompt
 from .helper import current_model
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Enhanced error handling for worker
 class WorkerError(Exception):
@@ -52,11 +55,7 @@ def categorize_worker_error(e: Exception, context: str = "") -> str:
 def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
     i, panel, user_id, dream_id, avatar, seed = panel_info
-    print(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
-    print(f"[{dream_id}] Panel {i+1} info:")
-    print(f"[{dream_id}] - panel type: {type(panel)}")
-    print(f"[{dream_id}] - panel value: {panel}")
-
+    logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
 
     try:
         # Check if panel is valid
@@ -71,6 +70,7 @@ def generate_single_panel(panel_info: tuple):
         model = current_model()
 
         if (model == "google"):
+            print("using google")
             image_bytes = generate_image_google(final_prompt, avatar)
         elif (model == "flux"):
             image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
@@ -82,12 +82,15 @@ def generate_single_panel(panel_info: tuple):
         print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
 
         if not image_bytes:
+            logging.warning(
+                f"[{dream_id}] API call for Panel {i+1} succeeded but returned an empty image. Raising WorkerError."
+            )
+
             raise WorkerError(
                 "image_generation_error",
                 f"Failed to generate image for Panel {i+1}"
             )
-
-        print(f"[{dream_id}] Image generated successfully for Panel {i+1}, size: {len(image_bytes)} bytes")
+        logging.info(f"[{dream_id}] Image generated successfully for Panel {i+1}, size: {len(image_bytes)} bytes")
         
         # Upload to Supabase Storage
         panel_path = f"{user_id}/{dream_id}/{i+1}.png"
@@ -102,23 +105,26 @@ def generate_single_panel(panel_info: tuple):
                 f"Failed to upload Panel {i+1}: {upload_error}"
             )
         
-        print(f"[{dream_id}] ===== PANEL {i+1} THREAD COMPLETED =====")
+        logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD COMPLETED =====")
         return panel_path
         
     except WorkerError:
         # Re-raise WorkerError as-is
+        print("perhaps here is the issue")
         raise
     except Exception as e:
-        print(f"[{dream_id}] ===== PANEL {i+1} THREAD FAILED =====")
-        print(f"[{dream_id}] Error in Panel {i+1}: {e}")
-        print(f"[{dream_id}] Error type: {type(e)}")
-        import traceback
-        print(f"[{dream_id}] Full traceback for Panel {i+1}:")
-        traceback.print_exc()
+        logging.error(
+            f"[{dream_id}] Root cause for Panel {i+1} failure:", 
+            exc_info=True  # This automatically includes the full traceback of the original error (e)
+        )
         
-        # Convert to WorkerError with categorization
+        # The rest of your error handling can stay the same
         error_type = categorize_worker_error(e, f"Panel {i+1}")
-        raise WorkerError(error_type, f"Panel {i+1} generation failed: {e}")
+        raise WorkerError(
+            error_type, 
+            f"Panel {i+1} generation failed.",
+            details=str(e)
+        )
 
 
 # --- This is the main worker function ---
@@ -219,10 +225,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         print(f"[{dream_id}] ===== WORKER FUNCTION COMPLETED SUCCESSFULLY =====")
 
     except WorkerError as e:
-        print(f"[{dream_id}] ===== WORKER FUNCTION FAILED WITH CATEGORIZED ERROR =====")
-        print(f"[{dream_id}] Error type: {e.error_type}")
-        print(f"[{dream_id}] Error message: {e.message}")
-        print(f"[{dream_id}] Error details: {e.details}")
+        logging.error(f"[{dream_id}] WORKER FAILED WITH CATEGORIZED ERROR: {e.error_type} - {e.message} - Details: {e.details}")
         
         # Update database with error status and error details
         try:
@@ -238,12 +241,11 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         raise e
         
     except Exception as e:
-        print(f"[{dream_id}] ===== WORKER FUNCTION FAILED WITH UNKNOWN ERROR =====")
-        print(f"[{dream_id}] An error occurred: {e}")
-        print(f"[{dream_id}] Error type: {type(e)}")
-        import traceback
-        print(f"[{dream_id}] Full traceback:")
-        traceback.print_exc()
+        logging.error(
+            f"[{dream_id}] WORKER FAILED WITH UNKNOWN ERROR:",
+            exc_info=True # This replaces the need for traceback.print_exc()
+        )
+
         
         # Categorize the unknown error
         error_type = categorize_worker_error(e, "Main worker")
