@@ -12,6 +12,7 @@ ecdsa==0.19.1
 fastapi==0.116.1
 Flask==2.3.3
 Flask-Cors==4.0.0
+google-generativeai==0.7.2
 gotrue==2.12.3
 gunicorn==23.0.0
 h11==0.16.0

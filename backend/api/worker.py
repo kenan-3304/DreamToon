@@ -6,9 +6,9 @@ import base64
 import os
 import random
 from .db_client import supabase
-from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra
+from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra, generate_image_google
 from .prompt_builder import build_image_prompt
-from .helper import is_open_ai
+from .helper import current_model
 
 # Enhanced error handling for worker
 class WorkerError(Exception):
@@ -68,10 +68,16 @@ def generate_single_panel(panel_info: tuple):
         
         print(f"[{dream_id}] Calling generate_image_flux_ultra for Panel {i+1}...")
 
-        if (is_open_ai()):
-            image_bytes = generate_image(final_prompt, avatar)
-        else:
+        model = current_model()
+
+        if (model == "google"):
+            image_bytes = generate_image_google(final_prompt, avatar)
+        elif (model == "flux"):
             image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
+        else:
+            image_bytes = generate_image(final_prompt, avatar)
+
+    
         
         print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
 

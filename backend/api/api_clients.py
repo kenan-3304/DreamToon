@@ -3,11 +3,21 @@ import os
 import base64
 import requests
 import time
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
 from .prompt_builder import build_initial_prompt
 from io import BytesIO
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+try:
+    genai.configure(
+        project=os.getenv("GCP_PROJECT_ID"),
+        location=os.getenv("GCP_LOCATION"),
+    )
+except Exception as e:
+    print(f"Warning: Could not configure Google GenAI client on startup. Error: {e}")
 
 def get_moderation(story) -> bool:
     response = client.moderations.create(
@@ -39,6 +49,50 @@ def get_panel_descriptions(story, num_panels, style_description):
         return None
 
     return panel_data
+
+def generate_image_google(prompt_text, avatar):
+    """
+    Generates an image using Google's Gemini Flash model for image generation.
+    """
+    print("=== GOOGLE GEMINI (NANO BANANA) GENERATION STARTED ===")
+    try:
+        # The model for image generation is gemini-2.5-flash-image-preview
+        model = genai.GenerativeModel("gemini-2.5-flash-image-preview")
+
+        # The avatar image must be sent as an inline data part
+        avatar_image_part = {
+            "mime_type": "image/png",
+            "data": base64.b64decode(avatar)
+        }
+
+        # The request contains both the text prompt and the avatar image
+        response = model.generate_content(
+            [prompt_text, avatar_image_part],
+            generation_config={"response_modalities": ["IMAGE"]},
+            # Setting safety settings to be less restrictive
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+        )
+        
+        # Extract the image data from the response
+        image_part = response.candidates[0].content.parts[0]
+        if image_part.inline_data is None:
+            raise Exception("API did not return image data.")
+
+        image_bytes = image_part.inline_data.data
+        
+        print(f"Google Gemini image generated successfully, size: {len(image_bytes)} bytes")
+        print("=== GOOGLE GEMINI (NANO BANANA) GENERATION COMPLETED ===")
+        return image_bytes
+
+    except Exception as e:
+        print(f"!!! An error occurred with Google Gemini API: {e}")
+        raise
+
 
 
 def generate_image(prompt_text, avatar):
