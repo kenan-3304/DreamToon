@@ -204,7 +204,9 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
             image=[image_to_send], # Pass the image bytes directly
             prompt=prompt_text,
             n=1,
-            size="1024x1024"
+            size="1024x1024",
+            background="opaque"
+
         )
         
         # The response from gpt-image-1 is already base64
