@@ -47,6 +47,7 @@ def generate_image_google(prompt_text, avatar):
     """
     Generates an image using Google's Gemini Flash model for image generation.
     """
+    logging.warning("Newest deployment v3")
     logging.info("=== GOOGLE GEMINI GENERATION STARTED ===") # Use logging.info
     try:
         # The model for image generation is gemini-2.5-flash-image-preview
@@ -60,7 +61,7 @@ def generate_image_google(prompt_text, avatar):
 
         # The request contains both the text prompt and the avatar image
         response = model.generate_content(
-            [prompt_text],#, avatar_image_part],
+            [prompt_text, avatar_image_part],
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
