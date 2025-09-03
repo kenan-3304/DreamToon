@@ -98,30 +98,7 @@ export default function ComicResultScreen() {
       } else {
         setError("Could not load the comic. please try again.");
       }
-      // Fetch the full comic data using the ID
-      // try {
-      //   setError(null);
-      //   const res = await fetch(
-      //     `https://dreamtoon.onrender.com/comic-status/${id}`
-      //   );
-      //   const data = await res.json();
-      //   if (data.status === "complete") {
-      //     setPanelUrls(data.panel_urls);
-      //     if (data.title) setComicTitle(data.title);
-      //     if (data.created_at) {
-      //       const date = new Date(data.created_at);
-      //       setCreationDate(date.toLocaleDateString());
-      //     }
-      //   } else {
-      //     setError("Could not load the comic. Please try again.");
-      //   }
-      // } catch (e) {
-      //   setError(
-      //     "Failed to connect to the server. Please check your connection."
-      //   );
-      // } finally {
-      //   setIsLoading(false);
-      // }
+
       setIsLoading(false);
     };
 
@@ -134,7 +111,7 @@ export default function ComicResultScreen() {
 
   /*──────── Dynamic tile width ────────*/
   const calcPanelSize = (count: number) => {
-    if (count <= 2) return "48%";
+    if (count <= 2) return "47%";
     if (count <= 4) return "47%";
     return isIPad ? "42%" : "47%";
   };
