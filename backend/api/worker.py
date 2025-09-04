@@ -369,29 +369,4 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
 def run_debug_worker():
     """A simple test function to see if the worker is running at all."""
     logging.info("--- ✅ DEBUG WORKER (RELIABILITY TEST) HAS STARTED ---")
-    
-    success_count = 0
-    total_attempts = 4
-    
-    # This is a base64 string for a tiny, 1x1 red pixel. It's a guaranteed safe image.
-    test_avatar_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-    test_prompt = "a cute cartoon dog in a Studio Ghibli style"
-
-    for i in range(total_attempts):
-        logging.info(f"--- Attempt {i + 1}/{total_attempts} ---")
-        try:
-            image_bytes = generate_image_google(test_prompt, test_avatar_b64)
-            
-            if image_bytes and len(image_bytes) > 0:
-                logging.info(f"--- Attempt {i + 1} SUCCEEDED. Got image of size {len(image_bytes)} bytes ---")
-                success_count += 1
-            else:
-                logging.warning(f"--- Attempt {i + 1} FAILED silently (API returned an empty image). ---")
-                
-        except Exception as e:
-            logging.error(f"--- Attempt {i + 1} FAILED with an exception. ---", exc_info=True)
-        
-        # A short pause between API calls to be a good citizen
-        time.sleep(2)
-
-    logging.info(f"--- ✅ DEBUG WORKER FINISHED: {success_count}/{total_attempts} attempts were successful. ---")
+    return
