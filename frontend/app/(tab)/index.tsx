@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Dimensions,
   TouchableOpacity,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -642,15 +643,18 @@ const EnhancedDashboardScreen: React.FC = () => {
           </Pressable>
         )}
 
-        {mode === "style-selection" && (
-          <View style={styles.styleSelectionWrapper}>
-            <StyleSelector
-              onStyleSelect={handleStyleSelection}
-              mode="selection"
-              onClose={handleFullReset}
-            />
-          </View>
-        )}
+        <Modal
+          visible={mode === "style-selection"}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={handleFullReset} // Good practice for Android back button
+        >
+          <StyleSelector
+            onStyleSelect={handleStyleSelection}
+            mode="selection"
+            onClose={handleFullReset}
+          />
+        </Modal>
 
         {mode === "review" && (
           <View style={styles.reviewModeWrapper}>
@@ -846,13 +850,6 @@ const styles = StyleSheet.create({
   },
   reviewActions: { width: "90%", maxWidth: 350, gap: 20 },
   closeReviewBtn: { position: "absolute", top: 60, right: 20 },
-  styleSelectionWrapper: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#12081C",
-    zIndex: 20,
-  },
   selectedStyleText: {
     color: "#FFFFFF",
     fontSize: 18,

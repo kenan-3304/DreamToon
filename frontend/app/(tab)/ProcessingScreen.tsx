@@ -126,14 +126,15 @@ const styles = StyleSheet.create({
 
   infoText: {
     fontSize: 14,
-    color: "#c1c1c1",
+    color: "#FFFFFF", // Changed from "#c1c1c1" to more white
     textAlign: "center",
     marginTop: 12,
+    marginBottom: 30, // Added bottom margin to create more space
   },
 
   subtitle: {
     fontSize: 16,
-    color: "#a7a7a7",
+    color: "#888888", // Changed from "#a7a7a7" to more grey
     marginTop: 20, // Give it some space from the title
     textAlign: "center",
     lineHeight: 24,
