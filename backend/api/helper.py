@@ -82,7 +82,9 @@ def style_name_to_description(style_name):
         "Adventure Time": "A cartoon style inspired by Adventure Time, featuring simple rounded designs, 'noodle' limbs, and dot eyes. It uses vibrant flat colors, thick outlines, and whimsical, candy-colored backgrounds.",
         "DC Comics": "A modern DC Comics aesthetic with a gritty, graphic novel look. It features bold anatomy, dynamic poses, dramatic lighting, and detailed ink lines with cross-hatching for a high-contrast feel.",
         "Arcane": "A hand-painted realist style inspired by Arcane / Riot Games, featuring rich, painterly textures, dramatic chiaroscuro lighting, and an emotionally intense aesthetic. The character should have prestige-level quality, suitable for a dark, character-driven story.",
-        "Surrealist": "An aesthetic inspired by Surrealist paintings by Salvador Dalí or René Magritte, featuring distorted, dreamlike logic, melting or unexpected objects, and a realistic yet uncanny rendering style. The scene should feel symbolic and psychologically charged."
+        "Surrealist": "An aesthetic inspired by Surrealist paintings by Salvador Dalí or René Magritte, featuring distorted, dreamlike logic, melting or unexpected objects, and a realistic yet uncanny rendering style. The scene should feel symbolic and psychologically charged.",
+        "Disney / Pixar": "A 3D animated film style inspired by Disney and Pixar, featuring glossy, cinematic quality with soft, volumetric lighting and vibrant colors. The characters have expressive, large eyes and friendly, appealing designs suitable for family entertainment.",
+        "Retro 80s Anime": "A nostalgic anime style inspired by 80s OVA classics like Akira or Ghost in the Shell, featuring detailed and intricate linework, muted color palettes with pops of neon lighting, and subtle film grain effects. The aesthetic evokes cyberpunk and dystopian cityscapes with a hand-drawn, vintage feel."
     }
     return description.get(style_name, "A distinct art style.")
 
