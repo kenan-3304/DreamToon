@@ -123,13 +123,14 @@ def generate_image(prompt_text, avatar):
             
             image_bytes = base64.b64decode(base64_string)
             
-            return image_bytes
+            return image_bytes, None
         else:
-            print(f"Failed to generate image, Response: {response.output}")
-            return None
+            error_details = (f"Failed to generate image, Response: {response.output}")
+            print(error_details)
+            return None, error_details
     except Exception as e:
-        print(f"An API error occurred: {e}")
-        return None
+        error_details = (f"An API error occurred: {e}")
+        return None, error_details
 
 
 def generate_image_flux_ultra(prompt_text, avatar, seed=None): 

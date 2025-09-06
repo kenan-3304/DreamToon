@@ -68,6 +68,8 @@ def generate_single_panel(panel_info: tuple):
         print(f"[{dream_id}] generating image for Panel {i+1}...")
 
         model = current_model()
+        image_bytes = None
+        error_details = None
 
         if (model == "google"):
             print("using google===========")
@@ -77,7 +79,7 @@ def generate_single_panel(panel_info: tuple):
             image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
         else:
             print("using openai=================")
-            image_bytes = generate_image(final_prompt, avatar)
+            image_bytes, error_details = generate_image(final_prompt, avatar)
 
     
         
@@ -90,7 +92,8 @@ def generate_single_panel(panel_info: tuple):
 
             raise WorkerError(
                 "image_generation_error",
-                f"Failed to generate image for Panel {i+1}"
+                f"Failed to generate image for Panel {i+1}",
+                details=error_details
             )
         logging.info(f"[{dream_id}] Image generated successfully for Panel {i+1}, size: {len(image_bytes)} bytes")
         
