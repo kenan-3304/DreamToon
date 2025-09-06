@@ -78,8 +78,8 @@ const ProcessingScreen: React.FC = () => {
         />
         <Text style={styles.title}>Creating Your Comic</Text>
         <Text style={styles.infoText}>
-          You can safely leave this screen or close the app. We'll send you a
-          notification when it's ready!
+          Your comic is being created... Feel free to come back in a few minutes
+          to check on its progress.
         </Text>
       </View>
 

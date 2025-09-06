@@ -31,13 +31,8 @@ export const dashboardUtils = {
       return false;
     }
 
-    if (profile?.last_creation_date && isNotToday(profile.last_creation_date)) {
-      try {
-        updateProfile({ daily_creation_count: 0 });
-      } catch (error) {
-        console.error("Failed to reset daily creation count:", error);
-      }
-    }
+    // Remove the redundant reset logic - UserContext will handle this when incrementing
+    // The daily_creation_count will be automatically reset when incrementDailyCreationCount is called
 
     if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
       Alert.alert(

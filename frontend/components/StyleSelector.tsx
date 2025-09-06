@@ -88,6 +88,20 @@ const ALL_STYLES: Style[] = [
     image: require("../assets/images/surreal.jpg"),
     description: "Artistic, illogical dreamscapes",
   },
+  {
+    name: "Disney / Pixar",
+    prompt:
+      "Create a character in the 3D animated film style of Disney/Pixar. The image should be glossy, cinematic, and emotionally rich, with soft, volumetric lighting and vibrant colors. The character should have expressive, large eyes and a friendly, appealing design suitable for a family movie. Use the input image as loose reference for the character's pose and mood, not for realism.",
+    image: require("../assets/images/pixar.webp"),
+    description: "Glossy, cinematic adventures",
+  },
+  {
+    name: "Retro 80s Anime",
+    prompt:
+      "Create a character in the style of a retro 80s OVA anime like Akira or Ghost in the Shell. Use detailed and intricate linework, a muted color palette with pops of neon lighting, and a subtle film grain effect. The setting should feel like a cyberpunk or dystopian city. The character should have a nostalgic, hand-drawn look. Use the input image only as a conceptual reference for mood and pose.",
+    image: require("../assets/images/retro_anime.jpg"),
+    description: "Nostalgic cyberpunk action",
+  },
 ];
 
 interface StyleSelectorProps {

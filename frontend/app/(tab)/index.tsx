@@ -540,8 +540,8 @@ const EnhancedDashboardScreen: React.FC = () => {
         {containerCenter.x > 0 && (
           <DottedSphere
             level={audioLevel}
-            centerX={containerCenter.x}
-            centerY={containerCenter.y}
+            centerX={SCREEN_WIDTH / 2}
+            centerY={SCREEN_HEIGHT / 2 - 70}
             morphProgress={morphProgress}
             showHint={mode === "recording"}
           />
@@ -589,59 +589,72 @@ const EnhancedDashboardScreen: React.FC = () => {
           <Text style={styles.typeInstead}>Want to type instead?</Text>
         </Pressable>
 
-        {mode === "typing" && (
-          <Pressable
+        <Modal
+          visible={mode === "typing"}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={handleFullReset} // For the Android back button
+        >
+          <LinearGradient
+            colors={["#12081C", "#0D0A3C"]} // Deep space gradient
             style={styles.inputModeWrapper}
-            onPress={() => Keyboard.dismiss()}
           >
-            <Pressable style={styles.headerBtn} onPress={handleFullReset}>
-              <Ionicons
-                name="close"
-                size={getResponsiveValue(20, 28)}
-                color="#FFFFFF"
-              />
-            </Pressable>
             <Pressable
-              style={[styles.inputWrapper, isIPad && styles.inputWrapperTablet]}
-              onPress={(e) => e.stopPropagation()}
+              style={styles.inputModeWrapper}
+              onPress={() => Keyboard.dismiss()}
             >
-              <TextInput
-                ref={inputRef}
-                value={dreamText}
-                onChangeText={setDreamText}
-                placeholder="Describe your dream…"
-                placeholderTextColor="#D1A8C5"
-                multiline
-                maxLength={2000}
-                style={[styles.input, isIPad && styles.inputTablet]}
-              />
-              <Text
-                style={[styles.charCount, isIPad && styles.charCountTablet]}
+              <Pressable style={styles.headerBtn} onPress={handleFullReset}>
+                <Ionicons
+                  name="close"
+                  size={getResponsiveValue(20, 28)}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.inputWrapper,
+                  isIPad && styles.inputWrapperTablet,
+                ]}
+                onPress={(e) => e.stopPropagation()}
               >
-                {dreamText.length}/2000
-              </Text>
-              <View style={styles.buttonContainer}>
-                <ShinyGradientButton
-                  onPress={handleUploadText}
-                  disabled={!selectedStyle}
+                <TextInput
+                  ref={inputRef}
+                  value={dreamText}
+                  onChangeText={setDreamText}
+                  placeholder="Describe your dream…"
+                  placeholderTextColor="#D1A8C5"
+                  multiline
+                  maxLength={2000}
+                  style={[styles.input, isIPad && styles.inputTablet]}
+                />
+                <Text
+                  style={[styles.charCount, isIPad && styles.charCountTablet]}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : selectedStyle ? (
-                    "Create Comic"
-                  ) : (
-                    "Choose Style First"
-                  )}
-                </ShinyGradientButton>
-                {!selectedStyle && (
-                  <ShinyGradientButton onPress={enterStyleSelection}>
-                    Choose Style
+                  {dreamText.length}/2000
+                </Text>
+                <View style={styles.buttonContainer}>
+                  <ShinyGradientButton
+                    onPress={handleUploadText}
+                    disabled={!selectedStyle}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : selectedStyle ? (
+                      "Create Comic"
+                    ) : (
+                      "Choose Style First"
+                    )}
                   </ShinyGradientButton>
-                )}
-              </View>
+                  {!selectedStyle && (
+                    <ShinyGradientButton onPress={enterStyleSelection}>
+                      Choose Style
+                    </ShinyGradientButton>
+                  )}
+                </View>
+              </Pressable>
             </Pressable>
-          </Pressable>
-        )}
+          </LinearGradient>
+        </Modal>
 
         <Modal
           visible={mode === "style-selection"}
@@ -802,7 +815,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#12081C",
+    //backgroundColor: "#12081C",
     zIndex: 20,
   },
   inputWrapper: { width: "90%", maxWidth: 350 },
@@ -810,21 +823,26 @@ const styles = StyleSheet.create({
   input: {
     height: 200,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderWidth: 2,
+    borderColor: "rgba(224, 176, 255, 0.4)",
+    backgroundColor: "rgba(13, 10, 60, 0.5)",
     color: "#FFFFFF",
     padding: 16,
     textAlignVertical: "top",
     marginBottom: 16,
     fontSize: getResponsiveValue(16, 18),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   inputTablet: { height: 300, borderRadius: 24, padding: 20, marginBottom: 20 },
   charCount: {
-    color: "#FFFFFF",
+    color: "#E0B0FF",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 16,
+    fontWeight: "600",
   },
   charCountTablet: { fontSize: 16, marginBottom: 20 },
   reviewModeWrapper: {

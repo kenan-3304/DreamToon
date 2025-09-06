@@ -12,7 +12,9 @@ import { Session, User } from "@supabase/supabase-js";
 import { View, ActivityIndicator, AppState, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { avatarUtils } from "@/utils/avatarUtils";
+import { useRouter } from "expo-router";
 
+const router = useRouter();
 interface ComicData {
   panel_urls: string[];
   title?: string;
@@ -252,11 +254,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const removePendingAvatar = async (jobId: string) => {
     try {
-      setPendingAvatars((prev) => {
-        const updatedAvatars = prev.filter((id) => id !== jobId);
-        AsyncStorage.setItem("pendingAvatars", JSON.stringify(updatedAvatars));
-        return updatedAvatars;
-      });
+      const updatedAvatars = pendingAvatars.filter((id) => id !== jobId);
+      setPendingAvatars(updatedAvatars);
+      await AsyncStorage.setItem(
+        "pendingAvatars",
+        JSON.stringify(updatedAvatars)
+      );
     } catch (e) {
       console.error("Failed to remove pending avatar from storage", e);
     }
@@ -264,6 +267,53 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearCompletedComicData = () => {
     setCompletedComicData(null);
+  };
+
+  const incrementDailyCreationCount = async () => {
+    setProfile((currentProfile) => {
+      if (!currentProfile) {
+        return null;
+      }
+
+      const today = new Date().toDateString();
+      const lastCreationDate = currentProfile.last_creation_date
+        ? new Date(currentProfile.last_creation_date).toDateString()
+        : null;
+
+      const newCount =
+        today === lastCreationDate
+          ? (currentProfile.daily_creation_count || 0) + 1
+          : 1;
+
+      const newDate = new Date();
+
+      updateProfile({
+        daily_creation_count: newCount,
+        last_creation_date: newDate,
+      });
+
+      return {
+        ...currentProfile,
+        daily_creation_count: newCount,
+        last_creation_date: newDate,
+      };
+    });
+    // if (!profile) return;
+
+    // const today = new Date().toDateString();
+    // const lastCreationDate = profile.last_creation_date
+    //   ? new Date(profile.last_creation_date).toDateString()
+    //   : null;
+
+    // // If it's a new day, reset the count to 1
+    // // If it's the same day, increment the existing count
+    // const newCount =
+    //   today === lastCreationDate ? (profile.daily_creation_count || 0) + 1 : 1;
+
+    // await updateProfile({
+    //   daily_creation_count: newCount,
+    //   last_creation_date: new Date(),
+    // });
   };
 
   const getComicById = async (id: string): Promise<ComicData | null> => {
@@ -294,7 +344,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const checkAllPendingJobs = async () => {
       if (pendingComics.length === 0 && pendingAvatars.length === 0) {
-        stopPolling();
         return;
       }
       if (pendingComics.length > 0) {
@@ -309,12 +358,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
                 `Comic ${dreamId} finished with status: ${data.status}`
               );
 
+              // Increment daily creation count properly
+              await incrementDailyCreationCount();
+
               setCompletedComicData({
                 dreamId: dreamId,
                 panelUrls: data.panel_urls,
               });
-
-              // Handle error status with enhanced error messages
 
               removePendingComic(dreamId);
             } else if (data.status === "error") {
@@ -349,7 +399,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
                   case "generation":
                     errorTitle = "Image Generation Failed";
                     errorMessage =
-                      "We couldn't generate your comic images. This might be due to high server load. Please try again in a few minutes.";
+                      "We couldn't generate your comic images. This might be due to high server load or a moderation issue. Please try again in a few minutes.";
                     break;
                   case "llm_error":
                     errorTitle = "Story Processing Failed";
@@ -380,6 +430,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
               }
               removePendingComic(dreamId);
               Alert.alert(errorTitle, errorMessage);
+              router.replace("/(tab)");
             }
           } catch (error) {
             console.error(`Failed to poll for comic ${dreamId}:`, error);
@@ -420,42 +471,71 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    const stopPolling = () => {
-      if (pollingIntervalRef.current) {
+    const managePolling = () => {
+      const hasPendingJobs =
+        pendingComics.length > 0 || pendingAvatars.length > 0;
+      if (hasPendingJobs && pollingIntervalRef.current === null) {
+        console.log("STARTING POLLING");
+        checkAllPendingJobs();
+        pollingIntervalRef.current = setInterval(checkAllPendingJobs, 15000);
+      } else if (!hasPendingJobs && pollingIntervalRef.current) {
+        console.log("STOPPING POLLING (no more jobs)");
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
     };
 
-    const startPolling = () => {
-      if (pollingIntervalRef.current) return;
+    // const stopPolling = () => {
+    //   if (pollingIntervalRef.current) {
+    //     clearInterval(pollingIntervalRef.current);
+    //     pollingIntervalRef.current = null;
+    //   }
+    // };
 
-      checkAllPendingJobs();
-      pollingIntervalRef.current = setInterval(checkAllPendingJobs, 15000);
-    };
+    // const startPolling = () => {
+    //   if (pollingIntervalRef.current) return;
+
+    //   checkAllPendingJobs();
+    //   pollingIntervalRef.current = setInterval(checkAllPendingJobs, 15000);
+    // };
 
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === "active") {
-        if (pendingComics.length > 0 || pendingAvatars.length > 0) {
-          startPolling();
-        }
+        managePolling();
       } else {
-        stopPolling();
+        if (pollingIntervalRef.current) {
+          console.log("STOPPING POLLING (app backgrounded)");
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
       }
+
+      //   if (pendingComics.length > 0 || pendingAvatars.length > 0) {
+      //     startPolling();
+      //   }
+      // } else {
+      //   stopPolling();
+      // }
     };
+
+    managePolling();
 
     const subscription = AppState.addEventListener(
       "change",
       handleAppStateChange
     );
 
-    if (pendingComics.length > 0 || pendingAvatars) {
-      startPolling();
-    }
+    // if (pendingComics.length > 0 || pendingAvatars) {
+    //   startPolling();
+    // }
 
     return () => {
-      subscription.remove;
-      stopPolling();
+      subscription.remove();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      // stopPolling();
     };
   }, [pendingComics, pendingAvatars]);
 

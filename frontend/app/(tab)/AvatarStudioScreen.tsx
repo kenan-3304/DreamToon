@@ -101,7 +101,7 @@ export default function AvatarStudioScreen() {
     const lastDate = new Date(profile.last_avatar_created_at);
     const now = new Date();
     const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
-    return diffHours < 24 * 7;
+    return diffHours < 2;
   };
 
   useEffect(() => {
@@ -133,14 +133,16 @@ export default function AvatarStudioScreen() {
   const getCooldownText = () => {
     if (!profile?.last_avatar_created_at) return "";
     const lastDate = new Date(profile.last_avatar_created_at);
-    const releaseDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const releaseDate = new Date(lastDate.getTime() + 2 * 60 * 60 * 1000);
     const now = new Date();
     const diffSeconds = (releaseDate.getTime() - now.getTime()) / 1000;
     if (diffSeconds <= 0) return "";
-    const days = Math.floor(diffSeconds / (3600 * 24));
-    const hours = Math.floor((diffSeconds % (3600 * 24)) / 3600);
-    if (days > 0) return `Next avatar in ${days}d ${hours}h`;
-    return `Next avatar in ${hours}h`;
+
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+
+    if (hours > 0) return `Next avatar in ${hours}h ${minutes}m`;
+    return `Next avatar in ${minutes}m`;
   };
 
   const handleCreateFlow = async (style: { name: string; prompt: string }) => {

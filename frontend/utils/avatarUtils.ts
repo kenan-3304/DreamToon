@@ -209,6 +209,10 @@ export const avatarUtils = {
       }
     );
 
+    if (response.status === 404) {
+      console.log(`Job ${jobId} not found yet, treating as pending`);
+      return "processing";
+    }
     if (!response.ok) {
       throw new Error("Failed to check avatar status");
     }
