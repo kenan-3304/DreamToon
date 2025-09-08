@@ -59,7 +59,8 @@
     "lottie-react-native": "7.2.2",
     "expo-task-manager": "~13.1.6",
     "expo-background-fetch": "~13.1.6",
-    "expo-notifications": "~0.31.4"
+    "expo-notifications": "~0.31.4",
+    "expo-crypto": "~14.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

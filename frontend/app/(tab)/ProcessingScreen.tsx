@@ -130,6 +130,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     marginBottom: 30, // Added bottom margin to create more space
+    maxWidth: 300,
+    paddingHorizontal: 20,
   },
 
   subtitle: {

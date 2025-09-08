@@ -6,6 +6,7 @@ import {
 } from "@react-native-google-signin/google-signin";
 import appleAuth from "@invertase/react-native-apple-authentication";
 import { Alert } from "react-native";
+import * as Crypto from "expo-crypto";
 
 export default function useAuth() {
   const [loading, setLoading] = useState(false);
@@ -25,11 +26,17 @@ export default function useAuth() {
           "Apple Authentication is not supported on this device."
         );
       }
+      const rawNonce = Crypto.randomUUID();
 
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce
+      );
       // Start the Apple sign-in request
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+        nonce: hashedNonce,
       });
 
       // Get the identity token from the response
@@ -40,6 +47,7 @@ export default function useAuth() {
         const { error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: identityToken,
+          nonce: hashedNonce,
         });
 
         if (error) {

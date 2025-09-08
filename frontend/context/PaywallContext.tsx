@@ -1,3 +1,3 @@
-const paywallActive = false;
+const paywallActive = true;
 
 export default paywallActive;

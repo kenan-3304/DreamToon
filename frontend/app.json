@@ -10,8 +10,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.minks.dreamtoon",
+      "developmentTeam": "67AJ8B7RAP",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "16",
+      "buildNumber": "19",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "To record your voice as you describe a dream. The app then transcribes your recording to generate your comic panels.",
         "NSCameraUsageDescription": "To let you set a profile pictur to use as inspiration for a new comic panel.",
@@ -19,7 +20,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": ["fetch"]
       },
-      "appStoreUrl": "https://apps.apple.com/app/dreamtoon/id6747994787"
+      "appStoreUrl": "https://apps.apple.com/app/dreamtoon/id6747994787",
+      "appleTeamId": "67AJ8B7RAP"
     },
     "android": {
       "adaptiveIcon": {

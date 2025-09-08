@@ -399,6 +399,7 @@ const EnhancedDashboardScreen: React.FC = () => {
       }
 
       await addPendingComic(data.dream_id);
+      setMode("idle");
 
       router.push({
         pathname: "/(tab)/ProcessingScreen",
