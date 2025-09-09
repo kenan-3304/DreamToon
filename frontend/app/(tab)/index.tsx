@@ -65,9 +65,16 @@ const EnhancedDashboardScreen: React.FC = () => {
     updateProfile,
     refetchProfileAndData,
     addPendingComic,
+    unlockedStyles,
   } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
+  const [showReviewOptions, setShowReviewOptions] = useState(false);
+  // --- ADDED --- New state for the auto-selected style
+  const [autoSelectedStyle, setAutoSelectedStyle] = useState<string | null>(
+    null
+  );
+
   const [dreamText, setDreamText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -80,6 +87,23 @@ const EnhancedDashboardScreen: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [previousMode, setPreviousMode] = useState<AppMode>("idle");
   const [lastProfileRefresh, setLastProfileRefresh] = useState(0);
+
+  useEffect(() => {
+    if (profile && unlockedStyles) {
+      if (unlockedStyles.length === 1) {
+        setAutoSelectedStyle(unlockedStyles[0]);
+      } else if (
+        profile.avatar_style &&
+        unlockedStyles.includes(profile.avatar_style)
+      ) {
+        setAutoSelectedStyle(profile.avatar_style);
+      } else if (unlockedStyles.length > 0) {
+        setAutoSelectedStyle(unlockedStyles[0]);
+      } else {
+        setAutoSelectedStyle(null);
+      }
+    }
+  }, [profile, unlockedStyles]);
 
   // Refresh profile data when screen comes into focus (with debouncing)
   useFocusEffect(
@@ -227,6 +251,8 @@ const EnhancedDashboardScreen: React.FC = () => {
   );
 
   const startRecording = async () => {
+    setShowReviewOptions(false);
+
     triggerHaptic("medium");
 
     const { status } = await Audio.getPermissionsAsync();
@@ -292,13 +318,15 @@ const EnhancedDashboardScreen: React.FC = () => {
       const uri = recording.getURI();
       setRecordingUri(uri);
       setRecording(null);
-      setMode("review");
+      setMode("idle");
+      setShowReviewOptions(true);
     } catch (e) {
       console.error("Stop recording failed", e);
     }
   };
 
   const handleFullReset = () => {
+    setShowReviewOptions(false);
     triggerHaptic("light");
 
     dashboardOpacity.value = withTiming(1, { duration: 600 });
@@ -323,6 +351,14 @@ const EnhancedDashboardScreen: React.FC = () => {
     if (tick.current) clearInterval(tick.current);
   };
 
+  const handleRecordAgain = () => {
+    handleFullReset();
+
+    setTimeout(() => {
+      startRecording();
+    }, 100);
+  };
+
   const enterStyleSelection = () => {
     triggerHaptic("light");
     setPreviousMode(mode);
@@ -332,11 +368,18 @@ const EnhancedDashboardScreen: React.FC = () => {
   const handleStyleSelection = (style: { name: string; prompt: string }) => {
     triggerHaptic("light");
     setSelectedStyle(style.name);
-    setMode(previousMode);
+
+    updateProfile({ avatar_style: style.name });
+
+    if (showReviewOptions) {
+      setMode("idle");
+    } else {
+      setMode(previousMode);
+    }
   };
 
   const handlePressCentralButton = () => {
-    if (mode === "idle" || mode === "typing") {
+    if (mode === "idle") {
       startRecording();
     } else if (mode === "recording") {
       stopRecording();
@@ -348,8 +391,12 @@ const EnhancedDashboardScreen: React.FC = () => {
       return;
     }
 
-    if (!selectedStyle) {
-      setMode("style-selection");
+    const styleToUse = selectedStyle || autoSelectedStyle;
+
+    if (!styleToUse) {
+      // This fallback should rarely be needed now, but it's good practice
+      Alert.alert("Please select a style first.");
+      enterStyleSelection();
       return;
     }
 
@@ -368,7 +415,7 @@ const EnhancedDashboardScreen: React.FC = () => {
 
       formData.append("story", dreamText.trim());
       formData.append("num_panels", "6");
-      formData.append("style_name", selectedStyle);
+      formData.append("style_name", styleToUse);
 
       const response = await fetch(backendURL, {
         method: "POST",
@@ -438,10 +485,18 @@ const EnhancedDashboardScreen: React.FC = () => {
       return;
     }
 
-    if (!selectedStyle) {
-      setMode("style-selection");
+    const styleToUse = selectedStyle || autoSelectedStyle;
+
+    if (!styleToUse) {
+      Alert.alert("Please select a style first.");
+      enterStyleSelection();
       return;
     }
+
+    // if (!selectedStyle) {
+    //   setMode("style-selection");
+    //   return;
+    // }
 
     if (!recordingUri || isLoading) return;
 
@@ -458,7 +513,7 @@ const EnhancedDashboardScreen: React.FC = () => {
     } as any);
 
     formData.append("num_panels", "6");
-    formData.append("style_name", selectedStyle);
+    formData.append("style_name", styleToUse);
 
     try {
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
@@ -520,11 +575,14 @@ const EnhancedDashboardScreen: React.FC = () => {
       Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
-      setRecordingUri(null);
-      setSelectedStyle(null);
+      handleFullReset();
+      // setRecordingUri(null);
+      // setSelectedStyle(null);
     }
   };
 
+  // --- JSX Return Statement ---
+  // --- JSX Return Statement ---
   return (
     <ScreenLayout>
       <View style={styles.container}>
@@ -535,6 +593,31 @@ const EnhancedDashboardScreen: React.FC = () => {
               {profile?.name ?? "Dreamer"}
             </Text>
           </AnimatedView>
+
+          {/* UI to display style and change button */}
+          {mode === "idle" && !showReviewOptions && autoSelectedStyle && (
+            <TouchableOpacity
+              style={styles.styleInfoContainer}
+              onPress={
+                unlockedStyles && unlockedStyles.length > 1
+                  ? enterStyleSelection
+                  : null
+              }
+              disabled={!unlockedStyles || unlockedStyles.length <= 1}
+            >
+              <Text style={styles.styleInfoText}>
+                Style: {selectedStyle || autoSelectedStyle}
+              </Text>
+              {unlockedStyles && unlockedStyles.length > 1 && (
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={16}
+                  color="#E0B0FF"
+                />
+              )}
+            </TouchableOpacity>
+          )}
+
           <View style={{ flex: 1 }} />
         </AnimatedView>
 
@@ -548,36 +631,87 @@ const EnhancedDashboardScreen: React.FC = () => {
           />
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.centralButton,
-            mode === "recording" && styles.fullScreenPressable,
-          ]}
-          activeOpacity={0.9}
-          onPress={handlePressCentralButton}
-          disabled={mode === "review" || mode === "typing"}
-          onLayout={(event) => {
-            if (containerCenter.x === 0) {
-              const { x, y, width, height } = event.nativeEvent.layout;
-              setContainerCenter({ x: x + width / 2, y: y + height / 2 });
-            }
-          }}
-        >
-          {/* Enhanced ripple effect */}
-          <AnimatedView style={[styles.micRipple, rippleAnimatedStyle]} />
+        {/* This area now conditionally renders the mic OR the review options */}
+        <View style={styles.centralActionArea}>
+          {showReviewOptions ? (
+            // The new in-place review options UI
+            <AnimatedView style={styles.reviewActions}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={handleFullReset}
+              >
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <ShinyGradientButton onPress={handleUploadRecording}>
+                {isLoading ? <ActivityIndicator color="#FFFFFF" /> : "Generate"}
+              </ShinyGradientButton>
+              <View style={styles.secondaryActionsContainer}>
+                <TouchableOpacity
+                  onPress={handleRecordAgain}
+                  style={styles.secondaryButton}
+                >
+                  <Ionicons name="refresh" size={24} color="#FFFFFF" />
+                  <Text style={styles.secondaryButtonText}>Record Again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={enterStyleSelection}
+                  style={styles.secondaryButton}
+                >
+                  <Ionicons
+                    name="color-palette-outline"
+                    size={24}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.secondaryButtonText}>
+                    Current Style: {"\n"}
+                    {selectedStyle || autoSelectedStyle}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </AnimatedView>
+          ) : (
+            // The original microphone button
+            <TouchableOpacity
+              style={styles.centralButton}
+              activeOpacity={0.9}
+              onPress={handlePressCentralButton}
+              disabled={mode === "typing"}
+              onLayout={(event) => {
+                if (containerCenter.x === 0) {
+                  const { x, y, width, height } = event.nativeEvent.layout;
+                  setContainerCenter({
+                    x: x + width / 2,
+                    y: y + height / 2,
+                  });
+                }
+              }}
+            >
+              <AnimatedView style={[styles.micRipple, rippleAnimatedStyle]} />
+              <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
+              <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
+                <Ionicons
+                  name="mic-outline"
+                  size={getResponsiveValue(60, 80)}
+                  color="rgba(192, 170, 216, 0.98)"
+                />
+              </AnimatedView>
+            </TouchableOpacity>
+          )}
+        </View>
 
-          {/* Enhanced glow effect */}
-          <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
-
-          {/* Enhanced mic visuals */}
-          <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
-            <Ionicons
-              name="mic-outline"
-              size={getResponsiveValue(60, 80)}
-              color="rgba(192, 170, 216, 0.98)"
-            />
-          </AnimatedView>
-        </TouchableOpacity>
+        {unlockedStyles && unlockedStyles.length === 0 && mode === "idle" && (
+          <View style={styles.noStylesContainer}>
+            <Text style={styles.noStylesText}>
+              Create an avatar first to unlock comic styles!
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(tab)/AvatarStudioScreen")}
+              style={styles.noStylesButton}
+            >
+              <Text style={styles.noStylesButtonText}>Go to Avatar Studio</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Pressable
           onPress={() => {
@@ -594,10 +728,10 @@ const EnhancedDashboardScreen: React.FC = () => {
           visible={mode === "typing"}
           animationType="slide"
           presentationStyle="fullScreen"
-          onRequestClose={handleFullReset} // For the Android back button
+          onRequestClose={handleFullReset}
         >
           <LinearGradient
-            colors={["#12081C", "#0D0A3C"]} // Deep space gradient
+            colors={["#12081C", "#0D0A3C"]}
             style={styles.inputModeWrapper}
           >
             <Pressable
@@ -636,21 +770,32 @@ const EnhancedDashboardScreen: React.FC = () => {
                 <View style={styles.buttonContainer}>
                   <ShinyGradientButton
                     onPress={handleUploadText}
-                    disabled={!selectedStyle}
+                    // The button is now enabled if any style is available
+                    disabled={
+                      !(selectedStyle || autoSelectedStyle) || isLoading
+                    }
                   >
                     {isLoading ? (
                       <ActivityIndicator color="#FFFFFF" />
-                    ) : selectedStyle ? (
-                      "Create Comic"
                     ) : (
-                      "Choose Style First"
+                      "Create Comic"
                     )}
                   </ShinyGradientButton>
-                  {!selectedStyle && (
-                    <ShinyGradientButton onPress={enterStyleSelection}>
-                      Choose Style
-                    </ShinyGradientButton>
-                  )}
+
+                  {/* This button now shows the current style and allows changing it */}
+                  <TouchableOpacity
+                    onPress={enterStyleSelection}
+                    style={styles.modalChangeStyleButton}
+                  >
+                    <Text style={styles.modalChangeStyleText}>
+                      Style: {selectedStyle || autoSelectedStyle || "None"}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward-outline"
+                      size={16}
+                      color="#E0B0FF"
+                    />
+                  </TouchableOpacity>
                 </View>
               </Pressable>
             </Pressable>
@@ -661,7 +806,7 @@ const EnhancedDashboardScreen: React.FC = () => {
           visible={mode === "style-selection"}
           animationType="slide"
           presentationStyle="fullScreen"
-          onRequestClose={handleFullReset} // Good practice for Android back button
+          onRequestClose={handleFullReset}
         >
           <StyleSelector
             onStyleSelect={handleStyleSelection}
@@ -669,48 +814,12 @@ const EnhancedDashboardScreen: React.FC = () => {
             onClose={handleFullReset}
           />
         </Modal>
-
-        {mode === "review" && (
-          <View style={styles.reviewModeWrapper}>
-            <Text style={styles.statusText}>{recordingStatus}</Text>
-            <Text style={styles.timerText}>Total Time: {timer}</Text>
-            {selectedStyle && (
-              <Text style={styles.selectedStyleText}>
-                Style: {selectedStyle}
-              </Text>
-            )}
-            <View style={styles.reviewActions}>
-              <ShinyGradientButton
-                onPress={handleUploadRecording}
-                disabled={!selectedStyle}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : selectedStyle ? (
-                  "Create Comic"
-                ) : (
-                  "Choose Style First"
-                )}
-              </ShinyGradientButton>
-              {!selectedStyle && (
-                <ShinyGradientButton onPress={enterStyleSelection}>
-                  Choose Style
-                </ShinyGradientButton>
-              )}
-              <ShinyGradientButton onPress={handleFullReset}>
-                <Ionicons name="refresh" size={25} color="#FFFFFF" />
-              </ShinyGradientButton>
-            </View>
-            <Pressable style={styles.closeReviewBtn} onPress={handleFullReset}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        )}
       </View>
     </ScreenLayout>
   );
 };
 
+// --- StyleSheet ---
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center" },
   fullScreen: {
@@ -719,12 +828,10 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   centralButton: {
-    position: "absolute",
     width: getResponsiveValue(120, 180),
     height: getResponsiveValue(120, 180),
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
   },
   fullScreenPressable: {
     width: "100%",
@@ -766,7 +873,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(179, 158, 231, 0.5)",
   },
   headerBtn: { position: "absolute", top: 50, left: 20, zIndex: 10 },
-  greetingWrapper: { marginTop: 30 },
+  greetingWrapper: { marginTop: 10 },
   greetingText: {
     fontSize: getResponsiveValue(40, 56),
     color: "#FFFFFF",
@@ -789,7 +896,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 120,
     alignSelf: "center",
-    zIndex: 10, // Much higher than 20
+    zIndex: 20, // Ensure it's above the review options
   },
   typeInstead: {
     color: "#FFFFFF",
@@ -816,7 +923,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    //backgroundColor: "#12081C",
     zIndex: 20,
   },
   inputWrapper: { width: "90%", maxWidth: 350 },
@@ -867,7 +973,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     textAlign: "center",
   },
-  reviewActions: { width: "90%", maxWidth: 350, gap: 20 },
   closeReviewBtn: { position: "absolute", top: 60, right: 20 },
   selectedStyleText: {
     color: "#FFFFFF",
@@ -880,6 +985,124 @@ const styles = StyleSheet.create({
     gap: 20,
     alignItems: "center",
   },
+  centralActionArea: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    height: 250, // Give it enough height to contain all buttons
+    top: 280, // Position it vertically
+    zIndex: 10,
+  },
+  styleInfoContainer: {
+    marginTop: 25,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  styleInfoText: {
+    color: "#FFFFFF",
+    fontSize: getResponsiveValue(16, 18),
+    fontWeight: "600",
+    marginRight: 10,
+  },
+  changeStyleButton: {
+    color: "#E0B0FF",
+    fontSize: getResponsiveValue(16, 18),
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+  reviewActions: {
+    width: "90%",
+    maxWidth: 350,
+    alignItems: "center",
+    gap: 15, // A little space between main and secondary buttons
+  },
+  secondaryActionsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginTop: 10,
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+  },
+  secondaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  noStylesContainer: {
+    position: "absolute",
+    bottom: 200,
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  noStylesText: {
+    color: "#FFD6D6",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  noStylesButton: {
+    backgroundColor: "#E0B0FF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  noStylesButtonText: {
+    color: "#12081C",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    position: "absolute",
+    top: -320,
+    right: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    zIndex: 30,
+  },
+  currentStyleText: {
+    color: "#B0B0B0",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+    right: 110,
+    top: 20,
+    textAlign: "center",
+    alignSelf: "center",
+  },
+  modalChangeStyleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    padding: 10,
+    gap: 5,
+  },
+  modalChangeStyleText: {
+    color: "#E0B0FF",
+    fontSize: 16,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
 });
-
 export default EnhancedDashboardScreen;

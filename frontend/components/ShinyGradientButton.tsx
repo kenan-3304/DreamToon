@@ -228,7 +228,7 @@ export const ShinyGradientButton: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
   buttonContainer: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 50,
     overflow: "hidden",
     position: "relative",
   },

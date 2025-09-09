@@ -38,6 +38,7 @@ interface Profile {
   display_avatar_path?: string;
   daily_creation_count?: number;
   onboarding_complete?: boolean;
+  avatar_style?: string;
   last_creation_date?: Date;
 }
 

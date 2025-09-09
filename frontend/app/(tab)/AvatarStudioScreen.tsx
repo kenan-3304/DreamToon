@@ -58,9 +58,9 @@ export default function AvatarStudioScreen() {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
-  const [avatars, setAvatars] = useState<{ path: string; signedUrl: string }[]>(
-    []
-  );
+  const [avatars, setAvatars] = useState<
+    { path: string; signedUrl: string; style: string }[]
+  >([]);
 
   // const [isPolling, setIsPolling] = useState(false);
   // const [pollingJobId, setPollingJobId] = useState<string | null>(null);
@@ -111,7 +111,11 @@ export default function AvatarStudioScreen() {
         setAvatars(
           (data || [])
             .filter((item) => item.path)
-            .map(({ path, signedUrl }) => ({ path: path as string, signedUrl }))
+            .map(({ path, signedUrl, style }) => ({
+              path: path as string,
+              signedUrl,
+              style,
+            }))
         );
       })
       .catch((err) => {
@@ -245,14 +249,21 @@ export default function AvatarStudioScreen() {
     }
   };
 
-  const handleAvatarPress = (item: { path: string; signedUrl: string }) => {
+  const handleAvatarPress = (item: {
+    path: string;
+    signedUrl: string;
+    style: string;
+  }) => {
     triggerHaptic("light");
     Alert.alert("🎭 Manage Avatar", "What would you like to do?", [
       {
         text: "Set as Display Picture",
         onPress: async () => {
           try {
-            await updateProfile({ display_avatar_path: item.path });
+            await updateProfile({
+              display_avatar_path: item.path,
+              avatar_style: item.style,
+            });
             triggerHaptic("medium");
             Alert.alert("✨ Success", "Your profile picture has been updated!");
           } catch (error) {

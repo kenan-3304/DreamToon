@@ -64,7 +64,7 @@ export const avatarUtils = {
    * This is highly efficient for displaying a gallery.
    */
   async getMyAvatarsWithSignedUrls(): Promise<
-    { path: string; signedUrl: string }[]
+    { path: string; signedUrl: string; style: string }[]
   > {
     const {
       data: { user },
@@ -72,16 +72,16 @@ export const avatarUtils = {
     if (!user) throw new Error("User is not logged in.");
 
     // 1. Get all the file paths from the database
-    const { data: pathsData, error: pathsError } = await supabase
+    const { data: avatarsData, error: pathsError } = await supabase
       .from("avatars")
-      .select("avatar_path")
+      .select("avatar_path, style")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (pathsError) throw pathsError;
-    if (!pathsData || pathsData.length === 0) return [];
+    if (!avatarsData || avatarsData.length === 0) return [];
 
-    const paths = pathsData.map((p) => p.avatar_path);
+    const paths = avatarsData.map((p) => p.avatar_path);
 
     // 2. Get all signed URLs in a single API call for efficiency
     const { data: signedUrlsData, error: signedUrlsError } =
@@ -93,7 +93,16 @@ export const avatarUtils = {
     // The filter(item => item.path) is a safeguard against any null paths
     return signedUrlsData
       .filter((item) => item.path)
-      .map((item) => ({ path: item.path!, signedUrl: item.signedUrl }));
+      .map((item) => {
+        const original_avatar = avatarsData.find(
+          (avatar: any) => avatar.avatar_path === item.path
+        );
+        return {
+          path: item.path!,
+          signedUrl: item.signedUrl,
+          style: original_avatar?.style || "Unknown",
+        };
+      });
   },
 
   /**
