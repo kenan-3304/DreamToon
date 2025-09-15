@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase"; // Adjust this path if it's different
 import { Session } from "@supabase/supabase-js";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Platform } from "react-native";
-import { UserProvider } from "@/context/UserContext";
+import { UserProvider, useUser } from "@/context/UserContext";
 import Purchases from "react-native-purchases";
 import paywallActive from "../context/PaywallContext";
 
@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { InitialLoadingScreen } from "@/components/InitialLoadingScreen";
 
 const BACKGROUND_FETCH_TASK = "comic-status-fetch";
 
@@ -88,77 +89,46 @@ async function registerBackgroundFetchAsync() {
     startOnBoot: true,
   });
 }
-// Create a context to hold the session information
-const AuthContext = React.createContext<{
-  session: Session | null;
-  loading: boolean;
-}>({
-  session: null,
-  loading: true,
-});
 
-// This hook can be used to access the user session from anywhere in the app
-export function useSession() {
-  const value = React.useContext(AuthContext);
-  if (process.env.NODE_ENV !== "production") {
-    if (!value) {
-      throw new Error("useSession must be wrapped in a <SessionProvider />");
-    }
-  }
-  return value;
-}
-
-// The SessionProvider component manages loading the session and listening for changes
-function SessionProvider(props: React.PropsWithChildren) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+function RootNavigationController() {
+  const { session, loading } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
-    // Configure RevenueCat
-    if (paywallActive) {
-      if (Platform.OS === "ios") {
-        const revenuecatKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY;
-        if (!revenuecatKey) throw new Error("RevenueCat Apple key is not set!");
-        Purchases.configure({ apiKey: revenuecatKey });
-      }
+    // While the context is loading the session, we don't want to do anything.
+    if (loading) {
+      return;
     }
 
-    // Fetch the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    if (!session) {
+      router.replace("/(auth)/WelcomeScreen");
+    }
+  }, [session, loading]); // This effect runs whenever the session or loading state changes.
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+  if (loading) {
+    return <InitialLoadingScreen />;
+  }
+  if (session) {
+    return <Stack screenOptions={{ headerShown: false }} />;
+  }
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ session, loading }}>
-      {props.children}
-    </AuthContext.Provider>
-  );
+  return <InitialLoadingScreen />;
 }
 
-// The root layout component is now a simple container.
-// It provides the session and the Stack navigator, but does NO redirection.
 export default function RootLayout() {
   useEffect(() => {
     registerBackgroundFetchAsync();
+    // Your RevenueCat configuration can also go here.
+    if (Platform.OS === "ios") {
+      const revenuecatKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY;
+      if (revenuecatKey) {
+        Purchases.configure({ apiKey: revenuecatKey });
+      }
+    }
   }, []);
   return (
-    <SessionProvider>
-      <UserProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </UserProvider>
-    </SessionProvider>
+    <UserProvider>
+      <RootNavigationController />
+    </UserProvider>
   );
 }

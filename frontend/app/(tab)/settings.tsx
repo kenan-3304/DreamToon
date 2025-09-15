@@ -125,16 +125,8 @@ const SettingsScreen: React.FC = () => {
                 }
               );
 
-              if (error) {
-                console.error("Delete account error:", error);
-                Alert.alert(
-                  "Error",
-                  error.message || "Failed to delete account."
-                );
-              } else {
-                await logout();
-                router.replace("/(auth)/AuthScreen");
-              }
+              await logout();
+              router.replace("/(auth)/AuthScreen");
             } catch (error) {
               console.error("Delete account error:", error);
               Alert.alert(
@@ -148,6 +140,11 @@ const SettingsScreen: React.FC = () => {
         },
       ]
     );
+  };
+
+  const handleGoPremium = () => {
+    triggerHaptic("light");
+    router.push("/PaywallScreen");
   };
 
   const handleManageSubscription = () => {
@@ -200,13 +197,27 @@ const SettingsScreen: React.FC = () => {
         ),
       color: "#4ECDC4",
     },
-    {
-      icon: <Ionicons name="card" size={24} color="#7F9CF5" />,
-      title: "Manage Subscription",
-      subtitle: "View or cancel your subscription",
-      onPress: () => handleOptionPress(handleManageSubscription),
-      color: "#7F9CF5",
-    },
+
+    ...(profile?.subscription_status === "free"
+      ? [
+          {
+            icon: <Ionicons name="sparkles" size={24} color="#FFD93D" />,
+            title: "Go Premium",
+            subtitle: "Unlock all features & create unlimited comics",
+            onPress: () => handleOptionPress(handleGoPremium),
+            color: "#FFD93D",
+            isPremium: true, // Custom flag for special styling
+          },
+        ]
+      : [
+          {
+            icon: <Ionicons name="card" size={24} color="#7F9CF5" />,
+            title: "Manage Subscription",
+            subtitle: "View or cancel your subscription",
+            onPress: () => handleOptionPress(handleManageSubscription),
+            color: "#7F9CF5",
+          },
+        ]),
     {
       icon: <Ionicons name="notifications" size={24} color="#34D399" />,
       title: "Notifications",

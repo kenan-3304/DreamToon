@@ -66,14 +66,11 @@ const EnhancedDashboardScreen: React.FC = () => {
     refetchProfileAndData,
     addPendingComic,
     unlockedStyles,
+    loading,
   } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
   const [showReviewOptions, setShowReviewOptions] = useState(false);
-  // --- ADDED --- New state for the auto-selected style
-  const [autoSelectedStyle, setAutoSelectedStyle] = useState<string | null>(
-    null
-  );
 
   const [dreamText, setDreamText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -88,22 +85,25 @@ const EnhancedDashboardScreen: React.FC = () => {
   const [previousMode, setPreviousMode] = useState<AppMode>("idle");
   const [lastProfileRefresh, setLastProfileRefresh] = useState(0);
 
-  useEffect(() => {
-    if (profile && unlockedStyles) {
-      if (unlockedStyles.length === 1) {
-        setAutoSelectedStyle(unlockedStyles[0]);
-      } else if (
-        profile.avatar_style &&
-        unlockedStyles.includes(profile.avatar_style)
-      ) {
-        setAutoSelectedStyle(profile.avatar_style);
-      } else if (unlockedStyles.length > 0) {
-        setAutoSelectedStyle(unlockedStyles[0]);
-      } else {
-        setAutoSelectedStyle(null);
-      }
+  const autoSelectedStyle = useMemo(() => {
+    // If the necessary data isn't loaded, there's no style to select.
+    if (!profile || !unlockedStyles) {
+      return null;
     }
-  }, [profile, unlockedStyles]);
+
+    // Logic is the same as before, but we just return the value.
+    if (unlockedStyles.length === 1) {
+      return unlockedStyles[0];
+    }
+    if (profile.avatar_style && unlockedStyles.includes(profile.avatar_style)) {
+      return profile.avatar_style;
+    }
+    if (unlockedStyles.length > 0) {
+      return unlockedStyles[0];
+    }
+
+    return null;
+  }, [profile, unlockedStyles]); // This will only re-calculate when profile or styles change.
 
   // Refresh profile data when screen comes into focus (with debouncing)
   useFocusEffect(
@@ -581,8 +581,6 @@ const EnhancedDashboardScreen: React.FC = () => {
     }
   };
 
-  // --- JSX Return Statement ---
-  // --- JSX Return Statement ---
   return (
     <ScreenLayout>
       <View style={styles.container}>

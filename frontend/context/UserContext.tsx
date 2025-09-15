@@ -13,6 +13,7 @@ import { View, ActivityIndicator, AppState, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { avatarUtils } from "@/utils/avatarUtils";
 import { useRouter } from "expo-router";
+import { InitialLoadingScreen } from "@/components/InitialLoadingScreen";
 
 const router = useRouter();
 interface ComicData {
@@ -122,7 +123,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
             console.error("Failed to load cached profile", e);
           }
 
-          fetchProfile(currentUser);
+          await fetchProfile(currentUser);
         } else {
           setProfile(null);
           setUnlockedStyles([]);
@@ -510,13 +511,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           pollingIntervalRef.current = null;
         }
       }
-
-      //   if (pendingComics.length > 0 || pendingAvatars.length > 0) {
-      //     startPolling();
-      //   }
-      // } else {
-      //   stopPolling();
-      // }
     };
 
     managePolling();
@@ -525,10 +519,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       "change",
       handleAppStateChange
     );
-
-    // if (pendingComics.length > 0 || pendingAvatars) {
-    //   startPolling();
-    // }
 
     return () => {
       subscription.remove();
@@ -567,21 +557,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   //loading screen while initial session is being fetched
   return (
     <UserContext.Provider value={value}>
-      {loading ? (
-        // Give the user feedback while loading
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#0D0A3C",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <ActivityIndicator size="large" color="#00EAFF" />
-        </View>
-      ) : (
-        children
-      )}
+      {loading ? <InitialLoadingScreen /> : children}
     </UserContext.Provider>
   );
 };

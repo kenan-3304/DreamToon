@@ -185,6 +185,7 @@ const CreateToonScreen: React.FC = () => {
           onPress: async () => {
             try {
               await updateProfile({ onboarding_complete: true });
+
               router.replace("/(tab)");
             } catch (error) {
               Alert.alert(
@@ -273,25 +274,57 @@ const CreateToonScreen: React.FC = () => {
                 name: "Ghibli",
                 prompt:
                   "Create a stylized character drawing inspired by the art style of Studio Ghibli. Use soft, hand-painted watercolor textures with a lush natural background and gentle sunlight. The character should evoke a warm, nostalgic feeling, with expressive features and a sense of childlike wonder. The input image provides reference for mood, pose, and hair silhouette, not for realism.",
-                image: require("../../assets/images/studio_ghibli.png"),
+                image: require("../../assets/images/ghibli.webp"),
+                description: "Magical watercolor dreams",
               },
               {
                 name: "Adventure Time",
                 prompt:
                   "Create a cartoon-style character drawing in the art style of Adventure Time: simple, rounded character design, noodle limbs, dot eyes, vibrant flat colors, thick outlines, and a candy-colored background. The input image provides general reference for mood, lighting, and character silhouette, but should not be interpreted literally or photorealistically",
-                image: require("../../assets/images/adventure_time.png"),
+                image: require("../../assets/images/adventure.webp"),
+                description: "Candy-colored adventures",
               },
               {
                 name: "DC Comics",
                 prompt:
-                  "Create a stylized superhero character in the aesthetic of modern DC Comics. Use bold anatomy, dynamic posing, dramatic lighting, and detailed ink lines with cross-hatching. The character should have a gritty, high-contrast graphic novel look, and a cinematic and serious tone. Use the input image only as loose reference for posture and mood — do not replicate the person.",
-                image: require("../../assets/images/dc.jpg"),
+                  "Create a character in a modern American comic book style, defined by gritty realism, dramatic chiaroscuro lighting, and detailed ink work with heavy cross-hatching. The character should have heroic proportions and a dynamic, cinematic pose, evoking the feel of a graphic novel. CRUCIALLY: The character must be a unique creation. Avoid any resemblance to existing superheroes like Superman or Batman, including their specific costumes, emblems, or iconic color schemes. Use the input image only as loose reference for posture and mood — do not replicate the person.",
+                image: require("../../assets/images/dc_dark.jpg"),
+                description: "Epic superhero action",
               },
               {
                 name: "Simpsons",
                 prompt:
                   "Create a stylized cartoon character in the art style of The Simpsons. Use flat colors, yellow skin tone, oversized round eyes, and simple linework with bold outlines. Place the character in a satirical, suburban setting. Use the input image as loose reference for pose and general hairstyle, but avoid realism or facial replication.",
-                image: require("../../assets/images/simpsons.png"),
+                image: require("../../assets/images/simp.png"),
+                description: "Springfield style fun",
+              },
+              {
+                name: "Arcane",
+                prompt:
+                  "Create a stylized character drawing in the hand-painted realist style of Arcane / Riot Games. Use rich, painterly textures, dramatic chiaroscuro lighting, and an emotionally intense aesthetic. The character should have prestige-level quality, suitable for a dark, character-driven story. Use the input image as loose reference for posture and mood — do not replicate the person or strive for realism.",
+                image: require("../../assets/images/arcane.jpg"),
+                description: "Dramatic, painterly stories",
+              },
+              {
+                name: "Surrealist",
+                prompt:
+                  "Create a stylized character drawing in the aesthetic of a Surrealist painting by Salvador Dalí or René Magritte. Use distorted, dreamlike logic, melting or unexpected objects, and a realistic yet uncanny rendering style. The scene should feel symbolic and psychologically charged. Use the input image only as a conceptual reference for the character's general form and theme — embrace abstraction and metamorphosis.",
+                image: require("../../assets/images/surreal.jpg"),
+                description: "Artistic, illogical dreamscapes",
+              },
+              {
+                name: "Disney / Pixar",
+                prompt:
+                  "Create a character in the 3D animated film style of Disney/Pixar. The image should be glossy, cinematic, and emotionally rich, with soft, volumetric lighting and vibrant colors. The character should have expressive, large eyes and a friendly, appealing design suitable for a family movie. Use the input image as loose reference for the character's pose and mood, not for realism.",
+                image: require("../../assets/images/pixar.webp"),
+                description: "Glossy, cinematic adventures",
+              },
+              {
+                name: "Retro 80s Anime",
+                prompt:
+                  "Create a character in the style of a retro 80s OVA anime like Akira or Ghost in the Shell. Use detailed and intricate linework, a muted color palette with pops of neon lighting, and a subtle film grain effect. The setting should feel like a cyberpunk or dystopian city. The character should have a nostalgic, hand-drawn look. Use the input image only as a conceptual reference for mood and pose.",
+                image: require("../../assets/images/retro_anime.jpg"),
+                description: "Nostalgic cyberpunk action",
               },
             ].map((style) => (
               <Pressable

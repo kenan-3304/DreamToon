@@ -3,11 +3,10 @@ import { View, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import Purchases from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { useRouter } from "expo-router";
-import { useSession } from "../_layout"; // Import useSession from your root layout
-
+import { useUser } from "@/context/UserContext";
 const PaywallScreen: React.FC = () => {
   const router = useRouter();
-  const { session } = useSession(); // Get the current user session
+  const { session } = useUser(); // Get the current user session
 
   useEffect(() => {
     const presentPaywall = async () => {
@@ -32,7 +31,7 @@ const PaywallScreen: React.FC = () => {
             // User successfully subscribed or restored.
             // A webhook will handle updating your database in the background.
             // Navigate them into the main app.
-            router.replace("/(tab)/index");
+            router.replace("/(tab)/");
             break;
           case PAYWALL_RESULT.CANCELLED:
             // User closed the paywall. Navigate them back.

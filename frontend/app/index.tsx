@@ -1,10 +1,10 @@
 import React from "react";
 import { Redirect } from "expo-router";
-import { useSession } from "./_layout"; // Import the useSession hook from the layout
+import { useUser } from "../context/UserContext";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 
 const Index = () => {
-  const { session, loading } = useSession();
+  const { session, loading } = useUser();
 
   // While the session is loading, show a spinner.
   if (loading) {
