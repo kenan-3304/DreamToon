@@ -187,7 +187,7 @@ async def generate_comic(
                 num_panels,
                 style_description,
                 avatar_b64,
-                job_timeout=300  # 5 minute timeout
+                job_timeout=500  # around 8 minute timeout
             )
             
             print(f"[{dream_id}] Job enqueued successfully with ID: {job.id}")
