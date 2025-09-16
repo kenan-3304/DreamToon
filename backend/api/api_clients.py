@@ -24,13 +24,14 @@ def get_panel_descriptions(story, num_panels, style_description):
     initial_prompt = build_initial_prompt(num_panels, style_description)
     panel_data = None
 
+    full_prompt = f"{initial_prompt}\n\n Here is the story:\n{story}"
+
     try:
         response = client.responses.create(
             model="gpt-5",
-            instructions=initial_prompt,
-            input=story,
+            input=full_prompt,
             reasoning={"effort": "high"},
-            verbosity="low"
+            text={"verbosity":"low"}
         )
         panel_data = json.loads(response.output_text)
         
@@ -97,27 +98,25 @@ def generate_image(prompt_text, avatar):
         {"type": "input_text", "text": prompt_text},
         {
             "type": "input_image",
-            "image_url": f"data:image/png;base64,{avatar_base64}"
+            "image_url": f"data:image/png;base64,{avatar}"
         }
     ]
 
-    # These are the optimized tool settings for high-quality, consistent comic panels.
-    image_tool = {
-        "type": "image_generation",
-        "quality": "medium",
-        "input_fidelity": "high",
-        "moderation": "low",
-        "size": "1024x1024"
-    }
 
     try:
         response = client.responses.create(
             # Use the latest and most capable mini-model for this task.
             model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
-            tools=[image_tool],
+            tools=[
+                {
+                    "type": "image_generation",
+                    "size": "1024x1024",     
+                    "quality": "medium",       
+                    "moderation": "low"       
+                }
+            ],
         )
-
         # Safely extract the image result from the response output list.
         image_generation_call = next((out for out in response.output if out.type == "image_generation_call"), None)
 
@@ -291,7 +290,7 @@ def complete_prompt(panel_data, style_description):
             instructions=system_prompt,
             input=user_content,
             reasoning={"effort": "low"},  # Perfect for fast, rule-based tasks
-            verbosity="low"  # Ensures a clean, direct output without conversational filler
+            text={"verbosity": "low"}   # Ensures a clean, direct output without conversational filler
         )
         final_prompt = response.output_text.strip()
         return final_prompt
