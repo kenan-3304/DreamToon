@@ -36,8 +36,9 @@ def get_panel_descriptions(story, num_panels, style_description):
         
 
     except Exception as e:
+        # Instead of returning None, raise a descriptive error
         print(f"An error occurred during storyboard generation: {e}")
-        return None
+        raise ValueError(f"LLM API failed to return valid JSON. Details: {e}")
 
     return panel_data
 

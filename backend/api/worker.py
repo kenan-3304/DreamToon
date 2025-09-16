@@ -154,11 +154,6 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
                 f"Failed to generate story panels: {e}"
             )
 
-        # ------handle errors-------#
-        if panel_data.get("status") == "error":
-            error_msg = panel_data.get('message', 'Unknown LLM error')
-            raise WorkerError("llm_error", f"LLM error: {error_msg}")
-
         panels = panel_data.get("panels")
         if not panels:
             raise WorkerError(
