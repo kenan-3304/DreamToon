@@ -7,7 +7,7 @@ import logging
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from openai import OpenAI
-from .prompt_builder import build_initial_prompt
+from .prompt_builder import build_initial_prompt, build_final_image_prompt
 from io import BytesIO
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -25,16 +25,14 @@ def get_panel_descriptions(story, num_panels, style_description):
     panel_data = None
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": initial_prompt},
-                {"role": "user", "content": story}
-            ],
-            response_format={"type": "json_object"}
+        response = client.responses.create(
+            model="gpt-5",
+            instructions=initial_prompt,
+            input=story,
+            reasoning={"effort": "high"},
+            verbosity="low"
         )
-        
-        panel_data = json.loads(response.choices[0].message.content)
+        panel_data = json.loads(response.output_text)
         
 
     except Exception as e:
@@ -96,40 +94,45 @@ def generate_image(prompt_text, avatar):
 
     content_list = [
         {"type": "input_text", "text": prompt_text},
-        # Use the base64-encoded avatar image
         {
             "type": "input_image",
-            "image_url": f"data:image/png;base64,{avatar}"
+            "image_url": f"data:image/png;base64,{avatar_base64}"
         }
     ]
 
+    # These are the optimized tool settings for high-quality, consistent comic panels.
     image_tool = {
         "type": "image_generation",
-        "quality": "medium", # Keeping quality consistent
+        "quality": "medium",
+        "input_fidelity": "high",
+        "moderation": "low",
         "size": "1024x1024"
     }
 
     try:
         response = client.responses.create(
-            model="gpt-4o-mini",
+            # Use the latest and most capable mini-model for this task.
+            model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
             tools=[image_tool],
         )
 
+        # Safely extract the image result from the response output list.
         image_generation_call = next((out for out in response.output if out.type == "image_generation_call"), None)
 
         if image_generation_call and image_generation_call.result:
             base64_string = image_generation_call.result
-            
             image_bytes = base64.b64decode(base64_string)
-            
             return image_bytes, None
         else:
-            error_details = (f"Failed to generate image, Response: {response.output}")
+            # Provide detailed error info if the image generation call fails.
+            error_details = f"Failed to generate image. Response output: {response.output}"
             print(error_details)
             return None, error_details
+            
     except Exception as e:
-        error_details = (f"An API error occurred: {e}")
+        error_details = f"An API error occurred during image generation: {e}"
+        print(error_details)
         return None, error_details
 
 
@@ -272,6 +275,38 @@ def generate_avatar_from_image(image_bytes: bytes, prompt_text: str) -> bytes:
     except Exception as e:
         print(f"An OpenAI API error occurred during avatar generation: {e}")
         raise e
+
+def complete_prompt(panel_data, style_description):
+
+    image_prompt = build_final_image_prompt(panel_data, style_description)
+    
+    system_prompt = image_prompt[0]
+    user_content = image_prompt[1]
+
+    try:
+        # This is the API call to the fast, cheap model using the new Responses API
+        response = client.responses.create(
+            model="gpt-5-mini",
+            instructions=system_prompt,
+            input=user_content,
+            reasoning={"effort": "low"},  # Perfect for fast, rule-based tasks
+            verbosity="low"  # Ensures a clean, direct output without conversational filler
+        )
+        final_prompt = response.output_text.strip()
+        return final_prompt
+    except Exception as e:
+        print(f"An error occurred during prompt assembly: {e}")
+        # Fallback to a simple join if the API call fails, ensuring the pipeline doesn't crash
+        narrative_parts = [
+            panel_data.get("composition", ""),
+            panel_data.get("action_and_emotion", ""),
+            panel_data.get("setting_and_lighting", "")
+        ]
+        anchor_tags = panel_data.get("character_notes",)
+        full_prompt_parts = [style_description] + narrative_parts + anchor_tags
+        final_parts = [part for part in full_prompt_parts if part]
+        return ", ".join(final_parts)
+
 
 
 

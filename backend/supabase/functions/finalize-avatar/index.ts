@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       .update({
         last_avatar_created_at: new Date().toISOString(),
         display_avatar_path: avatarPath,
+        avatar_style: styleName,
       })
       .eq("id", userId);
     if (profileError) throw profileError;

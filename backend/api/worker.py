@@ -7,7 +7,7 @@ import os
 import random
 import logging
 from .db_client import supabase
-from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra, generate_image_google
+from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra, generate_image_google, complete_prompt
 from .prompt_builder import build_image_prompt
 from .helper import current_model
 
@@ -54,7 +54,7 @@ def categorize_worker_error(e: Exception, context: str = "") -> str:
 # --- This is a helper function to generate a single panel ---
 def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
-    i, panel, user_id, dream_id, avatar, seed = panel_info
+    i, panel, user_id, dream_id, avatar, seed, style_description = panel_info
     logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
 
     try:
@@ -62,7 +62,7 @@ def generate_single_panel(panel_info: tuple):
             
         # Here you would build your final prompt and call the services
         print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
-        final_prompt = build_image_prompt(panel)
+        final_prompt = complete_prompt(panel, style_description)
         print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
         
         print(f"[{dream_id}] generating image for Panel {i+1}...")
@@ -187,7 +187,7 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         comic_seed = random.randint(0, 2**32 - 1)
         print(f"[{dream_id}] Generated seed: {comic_seed}")
         
-        panel_tasks = [(i, p, user_id, dream_id, avatar_b64, comic_seed) for i, p in enumerate(panels)]
+        panel_tasks = [(i, p, user_id, dream_id, avatar_b64, comic_seed, style_description) for i, p in enumerate(panels)]
         print(f"[{dream_id}] Created {len(panel_tasks)} panel tasks")
         
         image_paths = []
