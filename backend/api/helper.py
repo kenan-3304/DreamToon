@@ -77,15 +77,15 @@ def style_name_to_description(style_name):
     Returns a one to two-sentence description of a given art style.
     """
     description = {
-        "Simpsons": "An art style mimicking The Simpsons, defined by its use of flat colors, a signature yellow skin tone, and oversized round eyes. It employs simple linework with bold outlines and is often set in a satirical, suburban environment.",
-        "Ghibli": "An art style inspired by Studio Ghibli, characterized by soft, hand-painted watercolor textures and lush, natural settings with gentle sunlight. This style evokes a warm, nostalgic feeling through expressive characters with a sense of childlike wonder.",
-        "Adventure Time": "A cartoon style inspired by Adventure Time, featuring simple rounded designs, 'noodle' limbs, and dot eyes. It uses vibrant flat colors, thick outlines, and whimsical, candy-colored backgrounds.",
-        "DC Comics": "A modern DC Comics aesthetic with a gritty, graphic novel look. It features bold anatomy, dynamic poses, dramatic lighting, and detailed ink lines with cross-hatching for a high-contrast feel.",
-        "Arcane": "A hand-painted realist style inspired by Arcane / Riot Games, featuring rich, painterly textures, dramatic chiaroscuro lighting, and an emotionally intense aesthetic. The character should have prestige-level quality, suitable for a dark, character-driven story.",
-        "Surrealist": "An aesthetic inspired by Surrealist paintings by Salvador Dalí or René Magritte, featuring distorted, dreamlike logic, melting or unexpected objects, and a realistic yet uncanny rendering style. The scene should feel symbolic and psychologically charged.",
-        "Disney / Pixar": "A 3D animated film style inspired by Disney and Pixar, featuring glossy, cinematic quality with soft, volumetric lighting and vibrant colors. The characters have expressive, large eyes and friendly, appealing designs suitable for family entertainment.",
-        "Retro 80s Anime": "A nostalgic anime style inspired by 80s OVA classics like Akira or Ghost in the Shell, featuring detailed and intricate linework, muted color palettes with pops of neon lighting, and subtle film grain effects. The aesthetic evokes cyberpunk and dystopian cityscapes with a hand-drawn, vintage feel."
-    }
+    "Simpsons": "A cartoon art style defined by flat colors, bold black outlines, and characters with a signature yellow skin tone and large, expressive round eyes. The aesthetic is clean and simple, often set in a satirical suburban environment.",
+    "Ghibli": "An art style inspired by classic Japanese animation, characterized by lush, hand-painted watercolor backgrounds, soft and gentle sunlight, and expressive characters. This style evokes a warm, nostalgic feeling with a focus on nature and wonder.",
+    "Adventure Time": "A minimalist cartoon style featuring simple, rounded character designs, flexible 'noodle' limbs, and dot eyes. It uses a vibrant palette of flat colors, thick outlines, and whimsical, candy-colored backgrounds.",
+    "DC Comics": "A modern graphic novel aesthetic with a gritty, high-contrast feel. It features anatomically precise figures, dynamic action poses, dramatic chiaroscuro lighting, and detailed ink lines with cross-hatching to create depth and texture.",
+    "Arcane": "A hand-painted realist style featuring rich, painterly textures and dramatic, emotionally intense lighting. The character and environmental quality is prestige-level, suitable for a dark, character-driven story with a sophisticated, cinematic feel.",
+    "Surrealist": "An aesthetic inspired by classic surrealist paintings, featuring distorted, dreamlike logic, unexpected objects, and a realistic yet uncanny rendering style. The scene should feel symbolic and psychologically charged, with a polished, oil-painting-like finish.",
+    "Disney / Pixar": "A glossy, cinematic 3D animated film style. It features soft, volumetric lighting, vibrant colors, and high-fidelity textures. The characters have expressive, large eyes and friendly, appealing designs suitable for family entertainment.",
+    "Retro 80s Anime": "A nostalgic anime style inspired by 80s sci-fi classics, featuring detailed and intricate linework, a muted color palette with pops of vibrant neon lighting, and subtle film grain effects. The aesthetic evokes dystopian, cyberpunk cityscapes with a hand-drawn, vintage feel."
+}
     return description.get(style_name, "A distinct art style.")
 
 def current_model():
