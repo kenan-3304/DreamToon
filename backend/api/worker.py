@@ -62,7 +62,7 @@ def generate_single_panel(panel_info: tuple):
             
         # Here you would build your final prompt and call the services
         print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
-        final_prompt = complete_prompt(panel, style_description)
+        final_prompt = build_image_prompt(panel, style_description)
         print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
         
         print(f"[{dream_id}] generating image for Panel {i+1}...")

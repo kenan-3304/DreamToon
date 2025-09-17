@@ -107,18 +107,21 @@ def build_image_prompt(panel_data):
     Returns:
         str: A single, comma-separated string ready for the DALL-E 3 API.
     """
-    narrative_parts = [
-        panel_data.get("composition", ""),
-        panel_data.get("action_and_emotion", ""),
-        panel_data.get("setting_and_lighting", "")
-    ]
+    composition = panel_data.get("composition", ""),
+    action = panel_data.get("action_and_emotion", ""),
+    setting = panel_data.get("setting_and_lighting", "")
+    
+    narrative_description = f"{composition}. {action}. {setting}"
+    character = panel_data.get("character_notes", [])
 
-    anchor_tags = panel_data.get("character_notes",)
 
-    full_prompt_parts = narrative_parts + anchor_tags
-    final_parts = [part for part in full_prompt_parts if part]
-
+    final_parts = [narrative_description] + style_and_character_tags
+    
+    # Filter out any empty strings that might have resulted from missing data
+    final_parts = [part for part in final_parts if part and part.strip()]
+    
     return ", ".join(final_parts)
+
 
 def build_final_image_prompt(panel_data, style_description):
     """
