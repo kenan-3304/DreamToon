@@ -112,10 +112,10 @@ def build_image_prompt(panel_data):
     setting = panel_data.get("setting_and_lighting", "")
     
     narrative_description = f"{composition}. {action}. {setting}"
-    character = panel_data.get("character_notes", [])
+    character_tags = panel_data.get("character_notes", [])
 
 
-    final_parts = [narrative_description] + style_and_character_tags
+    final_parts = [narrative_description] + character_tags
     
     # Filter out any empty strings that might have resulted from missing data
     final_parts = [part for part in final_parts if part and part.strip()]

@@ -62,7 +62,7 @@ def generate_single_panel(panel_info: tuple):
             
         # Here you would build your final prompt and call the services
         print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
-        final_prompt = build_image_prompt(panel, style_description)
+        final_prompt = build_image_prompt(panel)
         print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
         
         print(f"[{dream_id}] generating image for Panel {i+1}...")
@@ -134,12 +134,12 @@ def generate_single_panel(panel_info: tuple):
 
 # --- This is the main worker function ---
 def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
-    print(f"[{dream_id}] ===== WORKER FUNCTION STARTED =====")
-    print(f"[{dream_id}] Parameters received:")
-    print(f"[{dream_id}] - user_id: {user_id}")
-    print(f"[{dream_id}] - num_panels: {num_panels}")
-    print(f"[{dream_id}] - style_description: {style_description[:50]}...")
-    print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
+    # print(f"[{dream_id}] ===== WORKER FUNCTION STARTED =====")
+    # print(f"[{dream_id}] Parameters received:")
+    # print(f"[{dream_id}] - user_id: {user_id}")
+    # print(f"[{dream_id}] - num_panels: {num_panels}")
+    # print(f"[{dream_id}] - style_description: {style_description[:50]}...")
+    # print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
     
     try:
         print(f"[{dream_id}] Worker started for user {user_id}.")
