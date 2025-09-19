@@ -69,6 +69,7 @@ def build_initial_prompt(num_panels, style_name):
     Field Instructions:
     - key_characters.character_notes: Add key, permanent identifiers for each character (e.g., "main character", "green sea serpent", "man with red beard"). The first item MUST ALWAYS be "{style_name}".
     - panels.character_notes: This is the tactical tool for consistency. For every panel, this list MUST contain identifiers for EVERY character present in that panel.
+  CRITICAL INSTRUCTION: The first item in the 'character_notes' array for EVERY panel MUST be the overall style description: "{style_name}".
 
     SECTION 4: CREATIVE REFRAMING FOR POLICY COMPLIANCE
     CRITICAL RULE: You are the first line of defense for safety. If the story involves potentially sensitive themes, DO NOT reject it. Instead, apply the following Creative Reframing Principles when writing the action_and_emotion descriptions to ensure the script is dramatic and compelling without being graphically violent or referencing prohibited persons.  
