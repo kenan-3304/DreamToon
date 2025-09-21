@@ -56,7 +56,7 @@ def categorize_worker_error(e: Exception, context: str = "") -> str:
 async def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
     i, panel, user_id, dream_id, avatar, seed, style_description = panel_info
-    logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
+    logging.info(f"[{dream_id}] ===== PANEL {i+1} ASYNC THREAD STARTED =====")
 
     try:
         # Check if panel is valid
@@ -99,7 +99,7 @@ async def generate_single_panel(panel_info: tuple):
                 f"Failed to upload Panel {i+1}: {upload_error}"
             )
         
-        logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD COMPLETED =====")
+        logging.info(f"[{dream_id}] ===== PANEL {i+1} ASYNC THREAD COMPLETED =====")
         return panel_path
         
     except WorkerError:
