@@ -6,11 +6,13 @@ import time
 import logging
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from .prompt_builder import build_initial_prompt, build_final_image_prompt
 from io import BytesIO
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 def get_moderation(story) -> bool:
     response = client.moderations.create(
@@ -102,7 +104,7 @@ async def generate_image(prompt_text, avatar):
 
 
     try:
-        response = await client.responses.create(
+        response = await async_client.responses.create(
             # Use the latest and most capable mini-model for this task.
             model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
