@@ -32,7 +32,7 @@ def get_panel_descriptions(story, num_panels, style_description):
         response = client.responses.create(
             model="gpt-5",
             input=full_prompt,
-            reasoning={"effort": "high"},
+            reasoning={"effort": "medium"},
             text={"verbosity":"low"}
         )
         panel_data = json.loads(response.output_text)
