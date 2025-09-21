@@ -43,7 +43,7 @@ def get_panel_descriptions(story, num_panels, style_description):
 
     return panel_data
 
-def generate_image_google(prompt_text, avatar):
+async def generate_image_google(prompt_text, avatar):
     """
     Generates an image using Google's Gemini Flash model for image generation.
     """
@@ -88,9 +88,7 @@ def generate_image_google(prompt_text, avatar):
         raise
 
 
-
-
-def generate_image(prompt_text, avatar):
+async def generate_image(prompt_text, avatar):
 
     #we have to build the input list for the api call
 
@@ -104,7 +102,7 @@ def generate_image(prompt_text, avatar):
 
 
     try:
-        response = client.responses.create(
+        response = await client.responses.create(
             # Use the latest and most capable mini-model for this task.
             model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
@@ -136,7 +134,7 @@ def generate_image(prompt_text, avatar):
         return None, error_details
 
 
-def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
+async def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
 
     # Install `requests` (e.g. `pip install requests`) and `Pillow` (e.g. `pip install Pillow`), then run:
     
