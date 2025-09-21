@@ -38,7 +38,8 @@ app.add_middleware(
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 redis_conn = Redis.from_url(os.getenv("REDIS_URL"))
-q = Queue('comics_queue', connection=redis_conn)
+QUEUE_NAME = os.getenv("RQ_NAME", "comics_queue")
+q = Queue(QUEUE_NAME, connection=redis_conn)
 
 
 # Enhanced error handling with specific error types
