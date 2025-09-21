@@ -55,7 +55,7 @@ def build_initial_prompt(num_panels, style_name):
           "action_and_emotion": "e.g., 'The main character, now wearing shining plate armor, braces for impact as the serpent unleashes a torrent of water.'",
           "setting_and_lighting": "e.g., 'The same misty lake, now with the sun higher in the sky, creating harsh highlights on the water and armor.'",
           "character_notes": [
-            "style_name_placeholder",
+            "{style_name}",
             "main character",
             "wearing shining plate armor",
             "green sea serpent"

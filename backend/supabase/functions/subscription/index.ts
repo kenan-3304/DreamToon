@@ -43,7 +43,7 @@ serve(async (req) => {
           trial_ends_at: event.expiration_at_ms
             ? new Date(event.expiration_at_ms).toISOString()
             : null,
-          revenuecat_customer_id: event.customer_info.original_app_user_id, // Store the main RC ID
+          revenuecat_customer_id: event.customer_info?.original_app_user_id, // Store the main RC ID
         };
         break;
 
