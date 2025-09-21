@@ -72,7 +72,7 @@ async def generate_single_panel(panel_info: tuple):
         image_bytes, error_details = await generate_image(final_prompt, avatar)
 
         
-        print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
+        print(f"[{dream_id}] Image generation returned: {type(image_bytes)}")
 
         if not image_bytes:
             logging.warning(
@@ -189,23 +189,23 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         print(f"[{dream_id}] ===== WORKER FUNCTION COMPLETED SUCCESSFULLY =====")
 
     except (WorkerError, Exception) as e:
-            error_type = e.error_type if isinstance(e, WorkerError) else categorize_worker_error(e)
-            error_message = e.message if isinstance(e, WorkerError) else str(e)
-            
-            logging.error(f"[{dream_id}] WORKER FAILED WITH ERROR: {error_type} - {error_message}")
-            
-            # Update database with error status and error details
-            try:
-                supabase.from_("comics").update({
-                    "status": "error",
-                    "error_type": error_type,
-                    "error_message": error_message
-                }).eq("id", dream_id).execute()
-            except Exception as db_error:
-                logging.error(f"[{dream_id}] CRITICAL: Failed to update error status in database: {db_error}")
-            
-            # Re-raise the error so the job is marked as failed in the RQ dashboard
-            raise e
+        error_type = e.error_type if isinstance(e, WorkerError) else categorize_worker_error(e)
+        error_message = e.message if isinstance(e, WorkerError) else str(e)
+        
+        logging.error(f"[{dream_id}] WORKER FAILED WITH ERROR: {error_type} - {error_message}")
+        
+        # Update database with error status and error details
+        try:
+            supabase.from_("comics").update({
+                "status": "error",
+                "error_type": error_type,
+                "error_message": error_message
+            }).eq("id", dream_id).execute()
+        except Exception as db_error:
+            logging.error(f"[{dream_id}] CRITICAL: Failed to update error status in database: {db_error}")
+        
+        # Re-raise the error so the job is marked as failed in the RQ dashboard
+        raise e
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
     """
@@ -307,7 +307,7 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
         raise worker_error
 
 async def run_async_panel_generation(panels, user_id, dream_id, avatar_b64, style_description):
-        comic_seed = random.randint(0, 2**32 - 1)
+    comic_seed = random.randint(0, 2**32 - 1)
     
     tasks = [
         generate_single_panel((i, p, user_id, dream_id, avatar_b64, comic_seed, style_description))
