@@ -29,10 +29,17 @@ def get_panel_descriptions(story, num_panels, style_description):
     full_prompt = f"{initial_prompt}\n\n Here is the story:\n{story}"
 
     try:
+        # response = client.responses.create(
+        #     model="gpt-5",
+        #     input=full_prompt,
+        #     reasoning={"effort": "medium"},
+        #     text={"verbosity":"low"}
+        # )
+
         response = client.responses.create(
-            model="gpt-5",
+            model="gpt-5-mini",
             input=full_prompt,
-            reasoning={"effort": "medium"},
+            reasoning={"effort": "high"},
             text={"verbosity":"low"}
         )
         panel_data = json.loads(response.output_text)

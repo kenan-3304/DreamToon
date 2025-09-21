@@ -125,6 +125,7 @@ async def generate_single_panel(panel_info: tuple):
 def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
     
     try:
+        print("--- 🚀 EXECUTING ASYNCIO VERSION 3.0 🚀 ---")
         print(f"[{dream_id}] Worker started for user {user_id}.")
 
         print(f"[{dream_id}] Calling get_panel_descriptions...")
@@ -214,6 +215,7 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
     from rq import get_current_job
     job = get_current_job()
     job_id = job.id if job else "unknown"
+    
     print(f"--- Starting background avatar generation for user {user_id} (JOB ID {job_id}---")
     try:
         image_bytes = base64.b64decode(image_b64)
