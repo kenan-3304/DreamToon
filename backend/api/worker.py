@@ -59,15 +59,7 @@ async def generate_single_panel(panel_info: tuple):
     logging.info(f"[{dream_id}] ===== PANEL {i+1} ASYNC THREAD STARTED =====")
 
     try:
-        # Check if panel is valid
-            
-        # Here you would build your final prompt and call the services
-        print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
         final_prompt = build_image_prompt(panel)
-        print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
-        
-        print(f"[{dream_id}] generating image for Panel {i+1}...")
-
      
         image_bytes, error_details = await generate_image(final_prompt, avatar)
 
@@ -109,11 +101,9 @@ async def generate_single_panel(panel_info: tuple):
     except Exception as e:
         logging.error(
             f"[{dream_id}] Root cause for Panel {i+1} failure:", 
-            exc_info=True  # This automatically includes the full traceback of the original error (e)
+            exc_info=True 
         )
-        
-        # The rest of your error handling can stay the same
-        error_type = categorize_worker_error(e, f"Panel {i+1}")
+                error_type = categorize_worker_error(e, f"Panel {i+1}")
         raise WorkerError(
             error_type, 
             f"Panel {i+1} generation failed.",
@@ -125,10 +115,8 @@ async def generate_single_panel(panel_info: tuple):
 def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
     
     try:
-        print("--- 🚀 EXECUTING ASYNCIO VERSION 3.0 🚀 ---")
-        print(f"[{dream_id}] Worker started for user {user_id}.")
+        print("--- EXECUTING ASYNCIO VERSION ---")
 
-        print(f"[{dream_id}] Calling get_panel_descriptions...")
         try:
             panel_data = get_panel_descriptions(story, num_panels, style_description)
             print(f"[{dream_id}] get_panel_descriptions returned: {panel_data}")
@@ -207,6 +195,23 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         
         # Re-raise the error so the job is marked as failed in the RQ dashboard
         raise e
+
+async def run_async_panel_generation(panels, user_id, dream_id, avatar_b64, style_description):
+    #openai doesnt support seed anymore but keeping it becuase other models do
+    comic_seed = random.randint(0, 2**32 - 1)
+    
+    tasks = [
+        generate_single_panel((i, p, user_id, dream_id, avatar_b64, comic_seed, style_description))
+        for i, p in enumerate(panels)
+    ]
+    
+    logging.info(f"[{dream_id}] Starting {len(tasks)} async panel generation tasks...")
+    
+    results = await asyncio.gather(*tasks)
+    
+    logging.info(f"[{dream_id}] All async panel tasks finished.")
+    return results
+
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
     """
@@ -307,22 +312,6 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
             print(f"--- Failed to update error status in database: {db_error}")
         
         raise worker_error
-
-async def run_async_panel_generation(panels, user_id, dream_id, avatar_b64, style_description):
-    comic_seed = random.randint(0, 2**32 - 1)
-    
-    tasks = [
-        generate_single_panel((i, p, user_id, dream_id, avatar_b64, comic_seed, style_description))
-        for i, p in enumerate(panels)
-    ]
-    
-    logging.info(f"[{dream_id}] Starting {len(tasks)} async panel generation tasks...")
-    
-    results = await asyncio.gather(*tasks)
-    
-    logging.info(f"[{dream_id}] All async panel tasks finished.")
-    return results
-
 
 def run_debug_worker():
     """A simple test function to see if the worker is running at all."""

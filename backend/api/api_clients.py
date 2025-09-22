@@ -98,7 +98,10 @@ async def generate_image_google(prompt_text, avatar):
 
 
 async def generate_image(prompt_text, avatar):
-
+    """
+    This is the current image geneator that uses openAI API
+    
+    """
     #we have to build the input list for the api call
 
     content_list = [
@@ -112,7 +115,6 @@ async def generate_image(prompt_text, avatar):
 
     try:
         response = await async_client.responses.create(
-            # Use the latest and most capable mini-model for this task.
             model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
             tools=[
@@ -132,7 +134,6 @@ async def generate_image(prompt_text, avatar):
             image_bytes = base64.b64decode(base64_string)
             return image_bytes, None
         else:
-            # Provide detailed error info if the image generation call fails.
             error_details = f"Failed to generate image. Response output: {response.output}"
             print(error_details)
             return None, error_details
