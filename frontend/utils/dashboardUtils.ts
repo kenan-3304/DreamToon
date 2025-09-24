@@ -6,10 +6,11 @@ function isNotToday(lastCreated: string | Date) {
   const lastCreatedDate =
     typeof lastCreated === "string" ? new Date(lastCreated) : lastCreated;
 
+  // This UTC comparison will now work correctly with the timestamptz column
   return (
-    lastCreatedDate.getDate() !== today.getDate() ||
-    lastCreatedDate.getMonth() !== today.getMonth() ||
-    lastCreatedDate.getFullYear() !== today.getFullYear()
+    lastCreatedDate.getUTCDate() !== today.getUTCDate() ||
+    lastCreatedDate.getUTCMonth() !== today.getUTCMonth() ||
+    lastCreatedDate.getUTCFullYear() !== today.getUTCFullYear()
   );
 }
 
@@ -34,7 +35,13 @@ export const dashboardUtils = {
     // Remove the redundant reset logic - UserContext will handle this when incrementing
     // The daily_creation_count will be automatically reset when incrementDailyCreationCount is called
 
-    if (profile?.daily_creation_count && profile?.daily_creation_count >= 3) {
+    // Enforce limit only if last_creation_date is today
+    const todayCount =
+      profile?.last_creation_date && !isNotToday(profile.last_creation_date)
+        ? profile?.daily_creation_count || 0
+        : 0;
+
+    if (todayCount >= 3) {
       Alert.alert(
         "You have reached the creation limit for today",
         " Come back tomorrow for more"

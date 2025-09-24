@@ -180,7 +180,7 @@ const SettingsScreen: React.FC = () => {
   const settingsOptions = [
     {
       icon: <Ionicons name="person" size={24} color="#E0B0FF" />,
-      title: "Profile",
+      title: "Profile Name",
       subtitle: profile?.name || "Update your profile",
       onPress: () => handleOptionPress(openEditNameModal),
       color: "#E0B0FF",

@@ -2,7 +2,7 @@
   "expo": {
     "name": "DreamToon",
     "slug": "DreamToon",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/ToonIcon.png",
     "userInterfaceStyle": "dark",
@@ -86,6 +86,11 @@
         "projectId": "f90a1f67-a1d1-4942-ab7e-f984e2bf717e"
       }
     },
-    "description": "Transform your dreams into stunning comic panels with AI-powered storytelling"
+    "description": "Transform your dreams into stunning comic panels with AI-powered storytelling",
+    "backgroundColor": "667eea",
+    "splash": {
+      "backgroundColor": "#667eea",
+      "resizeMode": "contain"
+    }
   }
 }

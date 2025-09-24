@@ -67,6 +67,7 @@ const EnhancedDashboardScreen: React.FC = () => {
     addPendingComic,
     unlockedStyles,
     loading,
+    incrementDailyCreationCount,
   } = useUser();
 
   const [mode, setMode] = useState<AppMode>("idle");
@@ -151,17 +152,16 @@ const EnhancedDashboardScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // This entire block will only run AFTER the profile data has been loaded.
     if (profile) {
-      // Animate the greeting
-      greetingOpacity.value = withTiming(1, {
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-      });
-      greetingScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+      requestAnimationFrame(() => {
+        greetingOpacity.value = withTiming(1, {
+          duration: 800,
+          easing: Easing.out(Easing.cubic),
+        });
+        greetingScale.value = withSpring(1, { damping: 15, stiffness: 100 });
 
-      // Animate the main content area
-      contentOpacity.value = withTiming(1, { duration: 400 });
+        contentOpacity.value = withTiming(1, { duration: 400 });
+      });
     }
   }, [profile]); // This effect now controls ALL initial animations.
 
@@ -426,6 +426,7 @@ const EnhancedDashboardScreen: React.FC = () => {
     Keyboard.dismiss();
 
     try {
+      //MAKE SURTE THIDS IS SET RIGHT
       const backendURL = "https://dreamtoon.onrender.com/generate-comic/";
 
       const formData = new FormData();
@@ -464,7 +465,7 @@ const EnhancedDashboardScreen: React.FC = () => {
           throw new Error(data.detail || "Failed to start comic");
         }
       }
-
+      await incrementDailyCreationCount();
       await addPendingComic(data.dream_id);
       setMode("idle");
 
@@ -511,11 +512,6 @@ const EnhancedDashboardScreen: React.FC = () => {
       enterStyleSelection();
       return;
     }
-
-    // if (!selectedStyle) {
-    //   setMode("style-selection");
-    //   return;
-    // }
 
     if (!recordingUri || isLoading) return;
 
@@ -564,7 +560,7 @@ const EnhancedDashboardScreen: React.FC = () => {
           throw new Error(data.detail || "Failed to start comic");
         }
       }
-
+      await incrementDailyCreationCount();
       await addPendingComic(data.dream_id);
 
       router.push({

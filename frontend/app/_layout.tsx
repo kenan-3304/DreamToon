@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "../utils/supabase"; // Adjust this path if it's different
-import { Session } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
+
 import { Stack, useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { UserProvider, useUser } from "@/context/UserContext";
 import Purchases from "react-native-purchases";
 import paywallActive from "../context/PaywallContext";
@@ -12,9 +11,10 @@ import * as BackgroundFetch from "expo-background-fetch";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { InitialLoadingScreen } from "@/components/InitialLoadingScreen";
+import * as SplashScreen from "expo-splash-screen";
+
+SplashScreen.preventAutoHideAsync();
 
 const BACKGROUND_FETCH_TASK = "comic-status-fetch";
 
@@ -94,13 +94,19 @@ function RootNavigationController() {
   const { session, loading } = useUser();
   const router = useRouter();
 
+  const onLayoutRootView = useCallback(async () => {
+    if (loading === false) {
+      // This hides the splash screen once we are done loading.
+      await SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
   useEffect(() => {
     // Wait until the loading is finished before doing anything.
     if (loading) {
       return;
     }
 
-    // After loading, if there's no session, redirect to the auth flow.
     if (!session) {
       router.replace("/(auth)/WelcomeScreen");
     }
@@ -111,12 +117,14 @@ function RootNavigationController() {
 
   // If loading, show the initial loading screen.
   if (loading) {
-    return <InitialLoadingScreen />;
+    return null;
   }
 
-  // AFTER loading, ALWAYS render the Stack navigator.
-  // This gives the router a structure to navigate within.
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </View>
+  );
 }
 
 export default function RootLayout() {
