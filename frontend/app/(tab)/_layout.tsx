@@ -19,11 +19,7 @@ import { ComicResultDirect } from "@/components/ComicResultDirect";
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
-  return (
-    <UserProvider>
-      <TabContent />
-    </UserProvider>
-  );
+  return <TabContent />;
 }
 
 function TabContent() {

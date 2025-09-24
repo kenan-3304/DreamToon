@@ -60,6 +60,8 @@ interface UserContextType {
   completedComicData: CompletedComicInfo | null;
   clearCompletedComicData: () => void;
   getComicById: (id: string) => Promise<ComicData | null>;
+  incrementDailyCreationCount: () => Promise<void>;
+  decrementDailyCreationCount: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -271,51 +273,66 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     setCompletedComicData(null);
   };
 
+  // In /context/UserContext.tsx
+
   const incrementDailyCreationCount = async () => {
-    setProfile((currentProfile) => {
-      if (!currentProfile) {
-        return null;
-      }
+    if (!profile) return;
 
-      const today = new Date().toDateString();
-      const lastCreationDate = currentProfile.last_creation_date
-        ? new Date(currentProfile.last_creation_date).toDateString()
-        : null;
+    const today = new Date();
+    const lastCreation = profile.last_creation_date
+      ? new Date(profile.last_creation_date)
+      : null;
 
-      const newCount =
-        today === lastCreationDate
-          ? (currentProfile.daily_creation_count || 0) + 1
-          : 1;
+    // A clear, UTC-based comparison
+    const isSameUTCDay =
+      lastCreation &&
+      lastCreation.getUTCDate() === today.getUTCDate() &&
+      lastCreation.getUTCMonth() === today.getUTCMonth() &&
+      lastCreation.getUTCFullYear() === today.getUTCFullYear();
 
-      const newDate = new Date();
+    const newCount = isSameUTCDay ? (profile.daily_creation_count || 0) + 1 : 1;
 
-      updateProfile({
-        daily_creation_count: newCount,
-        last_creation_date: newDate,
-      });
+    const newDate = new Date();
 
-      return {
-        ...currentProfile,
-        daily_creation_count: newCount,
-        last_creation_date: newDate,
-      };
-    });
-    // if (!profile) return;
+    const updates = {
+      daily_creation_count: newCount,
+      last_creation_date: newDate, // Send full ISO string
+    };
 
-    // const today = new Date().toDateString();
-    // const lastCreationDate = profile.last_creation_date
-    //   ? new Date(profile.last_creation_date).toDateString()
-    //   : null;
+    try {
+      // This now works perfectly. `updateProfile` handles the state update.
+      await updateProfile(updates);
+    } catch (error) {
+      console.error("Failed to increment count:", error);
+    }
+  };
 
-    // // If it's a new day, reset the count to 1
-    // // If it's the same day, increment the existing count
-    // const newCount =
-    //   today === lastCreationDate ? (profile.daily_creation_count || 0) + 1 : 1;
+  // In /context/UserContext.tsx
 
-    // await updateProfile({
-    //   daily_creation_count: newCount,
-    //   last_creation_date: new Date(),
-    // });
+  const decrementDailyCreationCount = async () => {
+    if (!profile || !profile.last_creation_date) return;
+
+    const today = new Date();
+    const lastCreation = new Date(profile.last_creation_date);
+
+    // Use the same UTC-based comparison
+    const isSameUTCDay =
+      lastCreation.getUTCDate() === today.getUTCDate() &&
+      lastCreation.getUTCMonth() === today.getUTCMonth() &&
+      lastCreation.getUTCFullYear() === today.getUTCFullYear();
+
+    // Only decrement if the failed creation was from today
+    const newCount = isSameUTCDay
+      ? Math.max(0, (profile.daily_creation_count || 0) - 1)
+      : profile.daily_creation_count || 0;
+
+    const updates = { daily_creation_count: newCount };
+
+    try {
+      await updateProfile(updates);
+    } catch (error) {
+      console.error("Failed to decrement count:", error);
+    }
   };
 
   const getComicById = async (id: string): Promise<ComicData | null> => {
@@ -359,9 +376,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
               console.log(
                 `Comic ${dreamId} finished with status: ${data.status}`
               );
-
-              // Increment daily creation count properly
-              await incrementDailyCreationCount();
 
               setCompletedComicData({
                 dreamId: dreamId,
@@ -430,6 +444,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
                       "Something went wrong while creating your comic. Please try again.";
                 }
               }
+              await decrementDailyCreationCount();
               removePendingComic(dreamId);
               Alert.alert(errorTitle, errorMessage);
               routerRef.current.replace("/(tab)");
@@ -487,20 +502,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    // const stopPolling = () => {
-    //   if (pollingIntervalRef.current) {
-    //     clearInterval(pollingIntervalRef.current);
-    //     pollingIntervalRef.current = null;
-    //   }
-    // };
-
-    // const startPolling = () => {
-    //   if (pollingIntervalRef.current) return;
-
-    //   checkAllPendingJobs();
-    //   pollingIntervalRef.current = setInterval(checkAllPendingJobs, 15000);
-    // };
-
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === "active") {
         managePolling();
@@ -552,14 +553,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     completedComicData,
     clearCompletedComicData,
     getComicById,
+    incrementDailyCreationCount,
+    decrementDailyCreationCount,
   };
 
   //loading screen while initial session is being fetched
-  return (
-    <UserContext.Provider value={value}>
-      {loading ? <InitialLoadingScreen /> : children}
-    </UserContext.Provider>
-  );
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
 
 export const useUser = () => {
