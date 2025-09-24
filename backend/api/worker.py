@@ -103,7 +103,7 @@ async def generate_single_panel(panel_info: tuple):
             f"[{dream_id}] Root cause for Panel {i+1} failure:", 
             exc_info=True 
         )
-            error_type = categorize_worker_error(e, f"Panel {i+1}")
+        error_type = categorize_worker_error(e, f"Panel {i+1}")
         raise WorkerError(
             error_type, 
             f"Panel {i+1} generation failed.",
