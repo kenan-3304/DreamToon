@@ -95,24 +95,28 @@ function RootNavigationController() {
   const router = useRouter();
 
   useEffect(() => {
-    // While the context is loading the session, we don't want to do anything.
+    // Wait until the loading is finished before doing anything.
     if (loading) {
       return;
     }
 
+    // After loading, if there's no session, redirect to the auth flow.
     if (!session) {
       router.replace("/(auth)/WelcomeScreen");
     }
-  }, [session, loading]); // This effect runs whenever the session or loading state changes.
 
+    // If there IS a session, the user will be on the default screen ('index.tsx' by default),
+    // which should redirect them to the main app. We will fix that in the next step.
+  }, [session, loading]);
+
+  // If loading, show the initial loading screen.
   if (loading) {
     return <InitialLoadingScreen />;
   }
-  if (session) {
-    return <Stack screenOptions={{ headerShown: false }} />;
-  }
 
-  return <InitialLoadingScreen />;
+  // AFTER loading, ALWAYS render the Stack navigator.
+  // This gives the router a structure to navigate within.
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 export default function RootLayout() {

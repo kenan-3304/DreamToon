@@ -5,6 +5,7 @@ import time
 import base64
 import os
 import random
+import asyncio
 import logging
 from .db_client import supabase
 from .api_clients import get_panel_descriptions, generate_image, generate_avatar_from_image, generate_image_flux_ultra, generate_image_google, complete_prompt
@@ -52,38 +53,18 @@ def categorize_worker_error(e: Exception, context: str = "") -> str:
     return "unknown_error"
 
 # --- This is a helper function to generate a single panel ---
-def generate_single_panel(panel_info: tuple):
+async def generate_single_panel(panel_info: tuple):
     """Generates a single panel and returns its public URL."""
     i, panel, user_id, dream_id, avatar, seed, style_description = panel_info
-    logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD STARTED =====")
+    logging.info(f"[{dream_id}] ===== PANEL {i+1} ASYNC THREAD STARTED =====")
 
     try:
-        # Check if panel is valid
-            
-        # Here you would build your final prompt and call the services
-        print(f"[{dream_id}] Building image prompt for Panel {i+1}...")
         final_prompt = build_image_prompt(panel)
-        print(f"[{dream_id}] Final prompt length: {len(final_prompt)}")
+     
+        image_bytes, error_details = await generate_image(final_prompt, avatar)
+
         
-        print(f"[{dream_id}] generating image for Panel {i+1}...")
-
-        model = current_model()
-        image_bytes = None
-        error_details = None
-
-        if (model == "google"):
-            print("using google===========")
-            image_bytes = generate_image_google(final_prompt, avatar)
-        elif (model == "flux"):
-            print("using flux=============")
-            image_bytes = generate_image_flux_ultra(final_prompt, avatar, seed)
-        else:
-            print("using openai=================")
-            image_bytes, error_details = generate_image(final_prompt, avatar)
-
-    
-        
-        print(f"[{dream_id}] generate_image_flux_ultra returned: {type(image_bytes)}")
+        print(f"[{dream_id}] Image generation returned: {type(image_bytes)}")
 
         if not image_bytes:
             logging.warning(
@@ -110,7 +91,7 @@ def generate_single_panel(panel_info: tuple):
                 f"Failed to upload Panel {i+1}: {upload_error}"
             )
         
-        logging.info(f"[{dream_id}] ===== PANEL {i+1} THREAD COMPLETED =====")
+        logging.info(f"[{dream_id}] ===== PANEL {i+1} ASYNC THREAD COMPLETED =====")
         return panel_path
         
     except WorkerError:
@@ -120,10 +101,8 @@ def generate_single_panel(panel_info: tuple):
     except Exception as e:
         logging.error(
             f"[{dream_id}] Root cause for Panel {i+1} failure:", 
-            exc_info=True  # This automatically includes the full traceback of the original error (e)
+            exc_info=True 
         )
-        
-        # The rest of your error handling can stay the same
         error_type = categorize_worker_error(e, f"Panel {i+1}")
         raise WorkerError(
             error_type, 
@@ -134,17 +113,10 @@ def generate_single_panel(panel_info: tuple):
 
 # --- This is the main worker function ---
 def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_panels: int, style_description: str, avatar_b64):
-    # print(f"[{dream_id}] ===== WORKER FUNCTION STARTED =====")
-    # print(f"[{dream_id}] Parameters received:")
-    # print(f"[{dream_id}] - user_id: {user_id}")
-    # print(f"[{dream_id}] - num_panels: {num_panels}")
-    # print(f"[{dream_id}] - style_description: {style_description[:50]}...")
-    # print(f"[{dream_id}] - avatar_b64 length: {len(avatar_b64) if avatar_b64 else 'None'}")
     
     try:
-        print(f"[{dream_id}] Worker started for user {user_id}.")
+        print("--- EXECUTING ASYNCIO VERSION ---")
 
-        print(f"[{dream_id}] Calling get_panel_descriptions...")
         try:
             panel_data = get_panel_descriptions(story, num_panels, style_description)
             print(f"[{dream_id}] get_panel_descriptions returned: {panel_data}")
@@ -171,50 +143,31 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
             title = "Untitled Dream"
         
         #--------update supabase with new title------------#
-        print(f"[{dream_id}] Updating title to: {title}")
         try:
             supabase.from_("comics").update({"title": title}).eq("id", dream_id).execute()
         except Exception as e:
             print(f"[{dream_id}] Warning: Failed to update title: {e}")
 
         #--------set up and start parallel flow-------#
-        print(f"[{dream_id}] Setting up parallel tasks...")
-        comic_seed = random.randint(0, 2**32 - 1)
-        print(f"[{dream_id}] Generated seed: {comic_seed}")
-        
-        panel_tasks = [(i, p, user_id, dream_id, avatar_b64, comic_seed, style_description) for i, p in enumerate(panels)]
-        print(f"[{dream_id}] Created {len(panel_tasks)} panel tasks")
-        
-        image_paths = []
-        
-        print(f"[{dream_id}] Starting ThreadPoolExecutor with max_workers=2...")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            print(f"[{dream_id}] Executor created, submitting tasks...")
-            results = executor.map(generate_single_panel, panel_tasks)
-            print(f"[{dream_id}] Tasks submitted, collecting results...")
-            image_paths = list(results)
-            print(f"[{dream_id}] Collected {len(image_paths)} results")
+        image_paths_or_errors = asyncio.run(run_async_panel_generation(panels, user_id, dream_id, avatar_b64, style_description))
 
-        print(f"[{dream_id}] Filtering out None results...")
-        image_paths = [path for path in image_paths if path is not None]
-        print(f"[{dream_id}] Final image_paths count: {len(image_paths)}")
+        successful_paths = [path for path in image_paths_or_errors if not isinstance(path, WorkerError)]
+        failed_panels = [err for err in image_paths_or_errors if isinstance(err, WorkerError)]
 
-        # Check if we have enough panels
-        if len(image_paths) < len(panels):
-            print(f"[{dream_id}] Warning: Only generated {len(image_paths)} out of {len(panels)} panels")
-            if len(image_paths) == 0:
-                raise WorkerError(
-                    "image_generation_error",
-                    "Failed to generate any comic panels. Please try again."
-                )
+        if failed_panels:
+            logging.warning(f"[{dream_id}] {len(failed_panels)} panels failed to generate. Error: {failed_panels[0].message}")
+
+        # If ALL panels failed, we raise an error to stop the process
+        if not successful_paths:
+            raise failed_panels[0] if failed_panels else WorkerError("image_generation_error", "Failed to generate any panels.")
 
         #-----update supabase with comics and complete status---------#
-        print(f"[{dream_id}] Updating database with completion status...")
+        logging.info(f"[{dream_id}] Updating database with {len(successful_paths)} successful panels...")
         try:
             supabase.from_("comics").update({
                 "status": "complete",
-                "image_urls": image_paths,
-                "panel_count": len(panels)
+                "image_urls": successful_paths,
+                "panel_count": len(successful_paths)
             }).eq("id", dream_id).execute()
         except Exception as e:
             raise WorkerError(
@@ -224,44 +177,40 @@ def run_comic_generation_worker(dream_id: str, user_id: str, story: str, num_pan
         
         print(f"[{dream_id}] ===== WORKER FUNCTION COMPLETED SUCCESSFULLY =====")
 
-    except WorkerError as e:
-        logging.error(f"[{dream_id}] WORKER FAILED WITH CATEGORIZED ERROR: {e.error_type} - {e.message} - Details: {e.details}")
+    except (WorkerError, Exception) as e:
+        error_type = e.error_type if isinstance(e, WorkerError) else categorize_worker_error(e)
+        error_message = e.message if isinstance(e, WorkerError) else str(e)
+        
+        logging.error(f"[{dream_id}] WORKER FAILED WITH ERROR: {error_type} - {error_message}")
         
         # Update database with error status and error details
         try:
             supabase.from_("comics").update({
                 "status": "error",
-                "error_type": e.error_type,
-                "error_message": e.message
-            }).eq("id", dream_id).execute()
-        except Exception as db_error:
-            print(f"[{dream_id}] Failed to update error status in database: {db_error}")
-        
-        # Re-raise the error for the main API to handle
-        raise e
-        
-    except Exception as e:
-        logging.error(
-            f"[{dream_id}] WORKER FAILED WITH UNKNOWN ERROR:",
-            exc_info=True # This replaces the need for traceback.print_exc()
-        )
-
-        
-        # Categorize the unknown error
-        error_type = categorize_worker_error(e, "Main worker")
-        worker_error = WorkerError(error_type, f"Unexpected error: {e}")
-        
-        # Update database with error status
-        try:
-            supabase.from_("comics").update({
-                "status": "error",
                 "error_type": error_type,
-                "error_message": str(e)
+                "error_message": error_message
             }).eq("id", dream_id).execute()
         except Exception as db_error:
-            print(f"[{dream_id}] Failed to update error status in database: {db_error}")
+            logging.error(f"[{dream_id}] CRITICAL: Failed to update error status in database: {db_error}")
         
-        raise worker_error
+        # Re-raise the error so the job is marked as failed in the RQ dashboard
+        raise e
+
+async def run_async_panel_generation(panels, user_id, dream_id, avatar_b64, style_description):
+    #openai doesnt support seed anymore but keeping it becuase other models do
+    comic_seed = random.randint(0, 2**32 - 1)
+    
+    tasks = [
+        generate_single_panel((i, p, user_id, dream_id, avatar_b64, comic_seed, style_description))
+        for i, p in enumerate(panels)
+    ]
+    
+    logging.info(f"[{dream_id}] Starting {len(tasks)} async panel generation tasks...")
+    
+    results = await asyncio.gather(*tasks)
+    
+    logging.info(f"[{dream_id}] All async panel tasks finished.")
+    return results
 
 
 def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name: str):
@@ -271,6 +220,7 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
     from rq import get_current_job
     job = get_current_job()
     job_id = job.id if job else "unknown"
+    
     print(f"--- Starting background avatar generation for user {user_id} (JOB ID {job_id}---")
     try:
         image_bytes = base64.b64decode(image_b64)
@@ -362,7 +312,6 @@ def run_avatar_generation_worker(user_id: str, prompt: str, image_b64: str, name
             print(f"--- Failed to update error status in database: {db_error}")
         
         raise worker_error
-
 
 def run_debug_worker():
     """A simple test function to see if the worker is running at all."""

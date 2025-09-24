@@ -6,11 +6,13 @@ import time
 import logging
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from .prompt_builder import build_initial_prompt, build_final_image_prompt
 from io import BytesIO
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 def get_moderation(story) -> bool:
     response = client.moderations.create(
@@ -27,10 +29,17 @@ def get_panel_descriptions(story, num_panels, style_description):
     full_prompt = f"{initial_prompt}\n\n Here is the story:\n{story}"
 
     try:
+        # response = client.responses.create(
+        #     model="gpt-5",
+        #     input=full_prompt,
+        #     reasoning={"effort": "medium"},
+        #     text={"verbosity":"low"}
+        # )
+
         response = client.responses.create(
-            model="gpt-5",
+            model="gpt-5-mini",
             input=full_prompt,
-            reasoning={"effort": "high"},
+            reasoning={"effort": "low"},
             text={"verbosity":"low"}
         )
         panel_data = json.loads(response.output_text)
@@ -43,7 +52,7 @@ def get_panel_descriptions(story, num_panels, style_description):
 
     return panel_data
 
-def generate_image_google(prompt_text, avatar):
+async def generate_image_google(prompt_text, avatar):
     """
     Generates an image using Google's Gemini Flash model for image generation.
     """
@@ -88,10 +97,11 @@ def generate_image_google(prompt_text, avatar):
         raise
 
 
-
-
-def generate_image(prompt_text, avatar):
-
+async def generate_image(prompt_text, avatar):
+    """
+    This is the current image geneator that uses openAI API
+    
+    """
     #we have to build the input list for the api call
 
     content_list = [
@@ -104,8 +114,7 @@ def generate_image(prompt_text, avatar):
 
 
     try:
-        response = client.responses.create(
-            # Use the latest and most capable mini-model for this task.
+        response = await async_client.responses.create(
             model="gpt-5-mini",
             input=[{"role": "user", "content": content_list}],
             tools=[
@@ -125,7 +134,6 @@ def generate_image(prompt_text, avatar):
             image_bytes = base64.b64decode(base64_string)
             return image_bytes, None
         else:
-            # Provide detailed error info if the image generation call fails.
             error_details = f"Failed to generate image. Response output: {response.output}"
             print(error_details)
             return None, error_details
@@ -136,7 +144,7 @@ def generate_image(prompt_text, avatar):
         return None, error_details
 
 
-def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
+async def generate_image_flux_ultra(prompt_text, avatar, seed=None): 
 
     # Install `requests` (e.g. `pip install requests`) and `Pillow` (e.g. `pip install Pillow`), then run:
     

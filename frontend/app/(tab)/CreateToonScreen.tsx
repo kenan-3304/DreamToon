@@ -129,16 +129,16 @@ const CreateToonScreen: React.FC = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("subscription_status")
-        .eq("id", user.id)
-        .single();
+      // const { data: profile } = await supabase
+      //   .from("profiles")
+      //   .select("subscription_status")
+      //   .eq("id", user.id)
+      //   .single();
 
-      if (profile?.subscription_status === "free" && paywallActive) {
-        router.push("/(modals)/PaywallScreen");
-        return;
-      }
+      // // if (profile?.subscription_status === "free" && paywallActive) {
+      // //   router.push("/(modals)/PaywallScreen");
+      // //   return;
+      // // }
 
       // Create avatar
       const response = await avatarUtils.createAvatar(

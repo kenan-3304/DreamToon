@@ -15,7 +15,6 @@ import { avatarUtils } from "@/utils/avatarUtils";
 import { useRouter } from "expo-router";
 import { InitialLoadingScreen } from "@/components/InitialLoadingScreen";
 
-const router = useRouter();
 interface ComicData {
   panel_urls: string[];
   title?: string;
@@ -80,6 +79,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const pollingIntervalRef = useRef<number | null>(null);
   const [comicCache, setComicCache] = useState<{ [id: string]: ComicData }>({});
+  const router = useRouter(); // Correctly call the hook inside the component
+  const routerRef = useRef(router); // Create a ref to hold it
+  routerRef.current = router;
 
   useEffect(() => {
     //Try to look for pending comics from storage
@@ -183,8 +185,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.log("Error fetching user data:", error);
       // Reset states on error
-      setProfile(null);
-      setUnlockedStyles([]);
     }
   };
 
@@ -432,7 +432,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
               }
               removePendingComic(dreamId);
               Alert.alert(errorTitle, errorMessage);
-              router.replace("/(tab)");
+              routerRef.current.replace("/(tab)");
             }
           } catch (error) {
             console.error(`Failed to poll for comic ${dreamId}:`, error);

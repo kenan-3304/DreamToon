@@ -129,6 +129,7 @@ const EnhancedDashboardScreen: React.FC = () => {
   const rippleOpacity = useSharedValue(0);
   const greetingScale = useSharedValue(1);
   const greetingOpacity = useSharedValue(0);
+  const contentOpacity = useSharedValue(0);
 
   const inputRef = useRef<TextInput>(null);
   const tick = useRef<any>(null);
@@ -141,15 +142,6 @@ const EnhancedDashboardScreen: React.FC = () => {
     return "Good Evening";
   }, []);
 
-  // Animate greeting on mount
-  useEffect(() => {
-    greetingOpacity.value = withTiming(1, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-    greetingScale.value = withSpring(1, { damping: 15, stiffness: 100 });
-  }, []);
-
   useEffect(() => {
     Audio.requestPermissionsAsync();
 
@@ -157,6 +149,31 @@ const EnhancedDashboardScreen: React.FC = () => {
       if (tick.current) clearInterval(tick.current);
     };
   }, []);
+
+  useEffect(() => {
+    // This entire block will only run AFTER the profile data has been loaded.
+    if (profile) {
+      // Animate the greeting
+      greetingOpacity.value = withTiming(1, {
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+      });
+      greetingScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+
+      // Animate the main content area
+      contentOpacity.value = withTiming(1, { duration: 400 });
+    }
+  }, [profile]); // This effect now controls ALL initial animations.
+
+  const contentAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: contentOpacity.value,
+      // We add a slight scale-up to make the entrance feel more dynamic
+      transform: [
+        { scale: interpolate(contentOpacity.value, [0, 1], [0.98, 1]) },
+      ],
+    };
+  });
 
   // Enhanced mic animations with smooth breathing and ripple effects
   useEffect(() => {
@@ -417,6 +434,9 @@ const EnhancedDashboardScreen: React.FC = () => {
       formData.append("num_panels", "6");
       formData.append("style_name", styleToUse);
 
+      console.log("--- Sending this JWT to Render ---");
+      console.log(session?.access_token); // Add this line
+
       const response = await fetch(backendURL, {
         method: "POST",
         headers: {
@@ -475,8 +495,7 @@ const EnhancedDashboardScreen: React.FC = () => {
       Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
-      setDreamText("");
-      setSelectedStyle(null);
+      handleFullReset();
     }
   };
 
@@ -583,236 +602,246 @@ const EnhancedDashboardScreen: React.FC = () => {
 
   return (
     <ScreenLayout>
-      <View style={styles.container}>
-        <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
-          <AnimatedView style={[styles.greetingWrapper, greetingAnimatedStyle]}>
-            <Text style={styles.greetingText}>{greeting},</Text>
-            <Text style={styles.greetingNameText}>
-              {profile?.name ?? "Dreamer"}
-            </Text>
+      <Animated.View style={[{ flex: 1, width: "100%" }, contentAnimatedStyle]}>
+        <View style={styles.container}>
+          <AnimatedView style={[styles.fullScreen, dashboardAnimatedStyle]}>
+            <AnimatedView
+              style={[styles.greetingWrapper, greetingAnimatedStyle]}
+            >
+              <Text style={styles.greetingText}>{greeting},</Text>
+              <Text style={styles.greetingNameText}>
+                {profile?.name ?? "Dreamer"}
+              </Text>
+            </AnimatedView>
+
+            {/* UI to display style and change button */}
+            {mode === "idle" && !showReviewOptions && autoSelectedStyle && (
+              <TouchableOpacity
+                style={styles.styleInfoContainer}
+                onPress={
+                  unlockedStyles && unlockedStyles.length > 1
+                    ? enterStyleSelection
+                    : null
+                }
+                disabled={!unlockedStyles || unlockedStyles.length <= 1}
+              >
+                <Text style={styles.styleInfoText}>
+                  Style: {selectedStyle || autoSelectedStyle}
+                </Text>
+                {unlockedStyles && unlockedStyles.length > 1 && (
+                  <Ionicons
+                    name="chevron-forward-outline"
+                    size={16}
+                    color="#E0B0FF"
+                  />
+                )}
+              </TouchableOpacity>
+            )}
+
+            <View style={{ flex: 1 }} />
           </AnimatedView>
 
-          {/* UI to display style and change button */}
-          {mode === "idle" && !showReviewOptions && autoSelectedStyle && (
-            <TouchableOpacity
-              style={styles.styleInfoContainer}
-              onPress={
-                unlockedStyles && unlockedStyles.length > 1
-                  ? enterStyleSelection
-                  : null
-              }
-              disabled={!unlockedStyles || unlockedStyles.length <= 1}
-            >
-              <Text style={styles.styleInfoText}>
-                Style: {selectedStyle || autoSelectedStyle}
-              </Text>
-              {unlockedStyles && unlockedStyles.length > 1 && (
-                <Ionicons
-                  name="chevron-forward-outline"
-                  size={16}
-                  color="#E0B0FF"
-                />
-              )}
-            </TouchableOpacity>
+          {containerCenter.x > 0 && (
+            <DottedSphere
+              level={audioLevel}
+              centerX={SCREEN_WIDTH / 2}
+              centerY={SCREEN_HEIGHT / 2 - 70}
+              morphProgress={morphProgress}
+              showHint={mode === "recording"}
+            />
           )}
 
-          <View style={{ flex: 1 }} />
-        </AnimatedView>
-
-        {containerCenter.x > 0 && (
-          <DottedSphere
-            level={audioLevel}
-            centerX={SCREEN_WIDTH / 2}
-            centerY={SCREEN_HEIGHT / 2 - 70}
-            morphProgress={morphProgress}
-            showHint={mode === "recording"}
-          />
-        )}
-
-        {/* This area now conditionally renders the mic OR the review options */}
-        <View style={styles.centralActionArea}>
-          {showReviewOptions ? (
-            // The new in-place review options UI
-            <AnimatedView style={styles.reviewActions}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={handleFullReset}
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <ShinyGradientButton onPress={handleUploadRecording}>
-                {isLoading ? <ActivityIndicator color="#FFFFFF" /> : "Generate"}
-              </ShinyGradientButton>
-              <View style={styles.secondaryActionsContainer}>
+          {/* This area now conditionally renders the mic OR the review options */}
+          <View style={styles.centralActionArea}>
+            {showReviewOptions ? (
+              // The new in-place review options UI
+              <AnimatedView style={styles.reviewActions}>
                 <TouchableOpacity
-                  onPress={handleRecordAgain}
-                  style={styles.secondaryButton}
+                  style={styles.closeButton}
+                  onPress={handleFullReset}
                 >
-                  <Ionicons name="refresh" size={24} color="#FFFFFF" />
-                  <Text style={styles.secondaryButtonText}>Record Again</Text>
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={enterStyleSelection}
-                  style={styles.secondaryButton}
-                >
-                  <Ionicons
-                    name="color-palette-outline"
-                    size={24}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.secondaryButtonText}>
-                    Current Style: {"\n"}
-                    {selectedStyle || autoSelectedStyle}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </AnimatedView>
-          ) : (
-            // The original microphone button
-            <TouchableOpacity
-              style={styles.centralButton}
-              activeOpacity={0.9}
-              onPress={handlePressCentralButton}
-              disabled={mode === "typing"}
-              onLayout={(event) => {
-                if (containerCenter.x === 0) {
-                  const { x, y, width, height } = event.nativeEvent.layout;
-                  setContainerCenter({
-                    x: x + width / 2,
-                    y: y + height / 2,
-                  });
-                }
-              }}
-            >
-              <AnimatedView style={[styles.micRipple, rippleAnimatedStyle]} />
-              <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
-              <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
-                <Ionicons
-                  name="mic-outline"
-                  size={getResponsiveValue(60, 80)}
-                  color="rgba(192, 170, 216, 0.98)"
-                />
-              </AnimatedView>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {unlockedStyles && unlockedStyles.length === 0 && mode === "idle" && (
-          <View style={styles.noStylesContainer}>
-            <Text style={styles.noStylesText}>
-              Create an avatar first to unlock comic styles!
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/(tab)/AvatarStudioScreen")}
-              style={styles.noStylesButton}
-            >
-              <Text style={styles.noStylesButtonText}>Go to Avatar Studio</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Pressable
-          onPress={() => {
-            triggerHaptic("light");
-            setMode("typing");
-            dashboardOpacity.value = withTiming(0);
-          }}
-          style={styles.typeInsteadWrapper}
-        >
-          <Text style={styles.typeInstead}>Want to type instead?</Text>
-        </Pressable>
-
-        <Modal
-          visible={mode === "typing"}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={handleFullReset}
-        >
-          <LinearGradient
-            colors={["#12081C", "#0D0A3C"]}
-            style={styles.inputModeWrapper}
-          >
-            <Pressable
-              style={styles.inputModeWrapper}
-              onPress={() => Keyboard.dismiss()}
-            >
-              <Pressable style={styles.headerBtn} onPress={handleFullReset}>
-                <Ionicons
-                  name="close"
-                  size={getResponsiveValue(20, 28)}
-                  color="#FFFFFF"
-                />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.inputWrapper,
-                  isIPad && styles.inputWrapperTablet,
-                ]}
-                onPress={(e) => e.stopPropagation()}
-              >
-                <TextInput
-                  ref={inputRef}
-                  value={dreamText}
-                  onChangeText={setDreamText}
-                  placeholder="Describe your dream…"
-                  placeholderTextColor="#D1A8C5"
-                  multiline
-                  maxLength={2000}
-                  style={[styles.input, isIPad && styles.inputTablet]}
-                />
-                <Text
-                  style={[styles.charCount, isIPad && styles.charCountTablet]}
-                >
-                  {dreamText.length}/2000
-                </Text>
-                <View style={styles.buttonContainer}>
-                  <ShinyGradientButton
-                    onPress={handleUploadText}
-                    // The button is now enabled if any style is available
-                    disabled={
-                      !(selectedStyle || autoSelectedStyle) || isLoading
-                    }
+                <ShinyGradientButton onPress={handleUploadRecording}>
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    "Generate"
+                  )}
+                </ShinyGradientButton>
+                <View style={styles.secondaryActionsContainer}>
+                  <TouchableOpacity
+                    onPress={handleRecordAgain}
+                    style={styles.secondaryButton}
                   >
-                    {isLoading ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      "Create Comic"
-                    )}
-                  </ShinyGradientButton>
-
-                  {/* This button now shows the current style and allows changing it */}
+                    <Ionicons name="refresh" size={24} color="#FFFFFF" />
+                    <Text style={styles.secondaryButtonText}>Record Again</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={enterStyleSelection}
-                    style={styles.modalChangeStyleButton}
+                    style={styles.secondaryButton}
                   >
-                    <Text style={styles.modalChangeStyleText}>
-                      Style: {selectedStyle || autoSelectedStyle || "None"}
-                    </Text>
                     <Ionicons
-                      name="chevron-forward-outline"
-                      size={16}
-                      color="#E0B0FF"
+                      name="color-palette-outline"
+                      size={24}
+                      color="#FFFFFF"
                     />
+                    <Text style={styles.secondaryButtonText}>
+                      Current Style: {"\n"}
+                      {selectedStyle || autoSelectedStyle}
+                    </Text>
                   </TouchableOpacity>
                 </View>
-              </Pressable>
-            </Pressable>
-          </LinearGradient>
-        </Modal>
+              </AnimatedView>
+            ) : (
+              // The original microphone button
+              <TouchableOpacity
+                style={styles.centralButton}
+                activeOpacity={0.9}
+                onPress={handlePressCentralButton}
+                disabled={mode === "typing"}
+                onLayout={(event) => {
+                  if (containerCenter.x === 0) {
+                    const { x, y, width, height } = event.nativeEvent.layout;
+                    setContainerCenter({
+                      x: x + width / 2,
+                      y: y + height / 2,
+                    });
+                  }
+                }}
+              >
+                <AnimatedView style={[styles.micRipple, rippleAnimatedStyle]} />
+                <AnimatedView style={[styles.micGlow, micGlowAnimatedStyle]} />
+                <AnimatedView style={[styles.micVisuals, micAnimatedStyle]}>
+                  <Ionicons
+                    name="mic-outline"
+                    size={getResponsiveValue(60, 80)}
+                    color="rgba(192, 170, 216, 0.98)"
+                  />
+                </AnimatedView>
+              </TouchableOpacity>
+            )}
+          </View>
 
-        <Modal
-          visible={mode === "style-selection"}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={handleFullReset}
-        >
-          <StyleSelector
-            onStyleSelect={handleStyleSelection}
-            mode="selection"
-            onClose={handleFullReset}
-          />
-        </Modal>
-      </View>
+          {unlockedStyles && unlockedStyles.length === 0 && mode === "idle" && (
+            <View style={styles.noStylesContainer}>
+              <Text style={styles.noStylesText}>
+                Create an avatar first to unlock comic styles!
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(tab)/AvatarStudioScreen")}
+                style={styles.noStylesButton}
+              >
+                <Text style={styles.noStylesButtonText}>
+                  Go to Avatar Studio
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Pressable
+            onPress={() => {
+              triggerHaptic("light");
+              setMode("typing");
+              dashboardOpacity.value = withTiming(0);
+            }}
+            style={styles.typeInsteadWrapper}
+          >
+            <Text style={styles.typeInstead}>Want to type instead?</Text>
+          </Pressable>
+
+          <Modal
+            visible={mode === "typing"}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={handleFullReset}
+          >
+            <LinearGradient
+              colors={["#12081C", "#0D0A3C"]}
+              style={styles.inputModeWrapper}
+            >
+              <Pressable
+                style={styles.inputModeWrapper}
+                onPress={() => Keyboard.dismiss()}
+              >
+                <Pressable style={styles.headerBtn} onPress={handleFullReset}>
+                  <Ionicons
+                    name="close"
+                    size={getResponsiveValue(20, 28)}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.inputWrapper,
+                    isIPad && styles.inputWrapperTablet,
+                  ]}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <TextInput
+                    ref={inputRef}
+                    value={dreamText}
+                    onChangeText={setDreamText}
+                    placeholder="Describe your dream…"
+                    placeholderTextColor="#D1A8C5"
+                    multiline
+                    maxLength={2000}
+                    style={[styles.input, isIPad && styles.inputTablet]}
+                  />
+                  <Text
+                    style={[styles.charCount, isIPad && styles.charCountTablet]}
+                  >
+                    {dreamText.length}/2000
+                  </Text>
+                  <View style={styles.buttonContainer}>
+                    <ShinyGradientButton
+                      onPress={handleUploadText}
+                      // The button is now enabled if any style is available
+                      disabled={
+                        !(selectedStyle || autoSelectedStyle) || isLoading
+                      }
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        "Create Comic"
+                      )}
+                    </ShinyGradientButton>
+
+                    {/* This button now shows the current style and allows changing it */}
+                    <TouchableOpacity
+                      onPress={enterStyleSelection}
+                      style={styles.modalChangeStyleButton}
+                    >
+                      <Text style={styles.modalChangeStyleText}>
+                        Style: {selectedStyle || autoSelectedStyle || "None"}
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward-outline"
+                        size={16}
+                        color="#E0B0FF"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
+              </Pressable>
+            </LinearGradient>
+          </Modal>
+
+          <Modal
+            visible={mode === "style-selection"}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={handleFullReset}
+          >
+            <StyleSelector
+              onStyleSelect={handleStyleSelection}
+              mode="selection"
+              onClose={handleFullReset}
+            />
+          </Modal>
+        </View>
+      </Animated.View>
     </ScreenLayout>
   );
 };

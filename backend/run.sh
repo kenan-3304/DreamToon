@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start the RQ worker in the background
-rq worker comics_queue &
+rq worker $RQ_NAME &
 
 # Start the Gunicorn server to manage Uvicorn workers in the foreground
 # -w 4: Starts 4 worker processes

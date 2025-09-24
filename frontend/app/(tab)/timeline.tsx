@@ -22,6 +22,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabase";
 import { useUser } from "../../context/UserContext";
 import { ScreenLayout } from "@/components/ScreenLayout";
+import { useFocusEffect } from "@react-navigation/native";
 
 /*********************
  * Types & constants
@@ -36,6 +37,7 @@ const isTablet = () => {
 };
 
 const isIPad = Platform.OS === "ios" && isTablet();
+const CACHE_DURATION = 5 * 60 * 100;
 
 // Responsive breakpoints
 const BREAKPOINTS = {
@@ -74,52 +76,55 @@ interface ComicEntry {
 /*********************
  * Enhanced Floating wrapper
  *********************/
-const FloatingCard: React.FC<{ delay: number; children: React.ReactNode }> = ({
-  children,
-  delay,
-}) => {
+const FloatingCard: React.FC<{
+  delay: number;
+  isLoaded: boolean;
+  children: React.ReactNode;
+}> = ({ children, delay, isLoaded }) => {
   const translateY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Entrance animation
-    Animated.parallel([
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 600,
-        delay: delay * 100,
-        easing: Easing.out(Easing.back(1.2)),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 400,
-        delay: delay * 100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (isLoaded) {
+      // Entrance animation
+      Animated.parallel([
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 600,
+          delay: delay * 100,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 400,
+          delay: delay * 100,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
 
-    // Continuous floating animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateY, {
-          toValue: -8,
-          duration: 2000,
-          delay: delay * 200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [translateY, scale, opacity, delay]);
+      // Continuous floating animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(translateY, {
+            toValue: -8,
+            duration: 2000,
+            delay: delay * 200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isLoaded, translateY, scale, opacity, delay]);
 
   return (
     <Animated.View
@@ -174,7 +179,11 @@ export const TimelineScreen: React.FC = () => {
 
     // Debounce: prevent multiple rapid calls (5 second cooldown)
     const now = Date.now();
-    if (!isRefresh && now - lastFetchTime < 5000) {
+    if (
+      !isRefresh &&
+      comics.length > 0 &&
+      now - lastFetchTime < CACHE_DURATION
+    ) {
       console.log("Skipping fetch - too soon since last request");
       return;
     }
@@ -230,9 +239,12 @@ export const TimelineScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchComics();
-  }, [profile]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchComics();
+      return () => {};
+    }, [])
+  );
 
   const handleRefresh = () => {
     triggerHaptic("light");
@@ -359,7 +371,7 @@ export const TimelineScreen: React.FC = () => {
         ) : (
           <View style={styles.comicsContainer}>
             {filtered.map((c, idx) => (
-              <FloatingCard key={c.id} delay={idx}>
+              <FloatingCard key={c.id} delay={idx} isLoaded={!loading}>
                 <Pressable
                   style={[styles.card, isIPad && styles.cardTablet]}
                   onPress={() => handleComicPress(c)}
