@@ -14,7 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { InitialLoadingScreen } from "@/components/InitialLoadingScreen";
 import * as SplashScreen from "expo-splash-screen";
 
-SplashScreen.preventAutoHideAsync();
+//SplashScreen.preventAutoHideAsync();
 
 const BACKGROUND_FETCH_TASK = "comic-status-fetch";
 
@@ -93,26 +93,21 @@ async function registerBackgroundFetchAsync() {
 function RootNavigationController() {
   const { session, loading } = useUser();
   const router = useRouter();
-
-  const onLayoutRootView = useCallback(async () => {
-    if (loading === false) {
-      // This hides the splash screen once we are done loading.
-      await SplashScreen.hideAsync();
-    }
-  }, [loading]);
+  const [isTimeout, setIsTimedOut] = useState(false);
+  // const onLayoutRootView = useCallback(async () => {
 
   useEffect(() => {
-    const splashTimeout = setTimeout(() => {
-      console.log("Forcing splash screen hide due to timeout.");
-      SplashScreen.hideAsync();
+    const timer = setTimeout(() => {
+      // If the app is still in a loading state after 8 seconds...
+      if (loading) {
+        console.log("Loading timed out. Forcing UI to proceed.");
+        // ...update our local state to reflect the timeout.
+        setIsTimedOut(true);
+      }
     }, 8000); // 8-second timeout
 
-    // Clear the timeout if loading finishes in time
-    if (loading === false) {
-      clearTimeout(splashTimeout);
-    }
-
-    return () => clearTimeout(splashTimeout);
+    // Clean up the timer if the component unmounts or if loading finishes.
+    return () => clearTimeout(timer);
   }, [loading]);
 
   useEffect(() => {
@@ -124,18 +119,15 @@ function RootNavigationController() {
     if (!session) {
       router.replace("/(auth)/WelcomeScreen");
     }
-
-    // If there IS a session, the user will be on the default screen ('index.tsx' by default),
-    // which should redirect them to the main app. We will fix that in the next step.
   }, [session, loading]);
 
   // If loading, show the initial loading screen.
-  if (loading) {
-    return null;
+  if (loading && !setIsTimedOut) {
+    return <InitialLoadingScreen />;
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }} />
     </View>
   );
