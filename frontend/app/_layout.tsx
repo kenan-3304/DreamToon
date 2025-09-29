@@ -102,6 +102,20 @@ function RootNavigationController() {
   }, [loading]);
 
   useEffect(() => {
+    const splashTimeout = setTimeout(() => {
+      console.log("Forcing splash screen hide due to timeout.");
+      SplashScreen.hideAsync();
+    }, 8000); // 8-second timeout
+
+    // Clear the timeout if loading finishes in time
+    if (loading === false) {
+      clearTimeout(splashTimeout);
+    }
+
+    return () => clearTimeout(splashTimeout);
+  }, [loading]);
+
+  useEffect(() => {
     // Wait until the loading is finished before doing anything.
     if (loading) {
       return;
