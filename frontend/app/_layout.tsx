@@ -104,7 +104,7 @@ function RootNavigationController() {
         // ...update our local state to reflect the timeout.
         setIsTimedOut(true);
       }
-    }, 8000); // 8-second timeout
+    }, 6000); // 8-second timeout
 
     // Clean up the timer if the component unmounts or if loading finishes.
     return () => clearTimeout(timer);
@@ -122,7 +122,7 @@ function RootNavigationController() {
   }, [session, loading]);
 
   // If loading, show the initial loading screen.
-  if (loading && !setIsTimedOut) {
+  if (loading && !isTimeout) {
     return <InitialLoadingScreen />;
   }
 
