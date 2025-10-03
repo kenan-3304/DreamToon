@@ -440,7 +440,7 @@ async def get_all_comics(authorization: str = Header(None), year: Optional[int] 
                     comic["image_urls"] = []
 
         # This ensures you always return a list, even if it's empty
-        return result_data
+        return comics_data or []
     except Exception as e:
         print(f"Error in get_all_comics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch comics: {str(e)}")
