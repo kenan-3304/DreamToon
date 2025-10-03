@@ -439,13 +439,6 @@ async def get_all_comics(authorization: str = Header(None), year: Optional[int] 
                 else:
                     comic["image_urls"] = []
 
-        # Cache the result
-        result_data = comics_data or []
-        comics_cache[cache_key] = {
-            "data": result_data,
-            "timestamp": current_time
-        }
-        
         # This ensures you always return a list, even if it's empty
         return result_data
     except Exception as e:
