@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useContext,
   useRef,
+  useCallback,
   ReactNode,
   cache,
 } from "react";
@@ -86,6 +87,48 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   routerRef.current = router;
 
   useEffect(() => {
+    // 1. Define a function to handle the initial app load.
+    const initializeApp = async () => {
+      try {
+        // 2. Actively fetch the session from storage instead of passively waiting for an event.
+        const {
+          data: { session: initialSession },
+          error,
+        } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        // Set the initial state based on this direct fetch.
+        setSession(initialSession);
+        const currentUser = initialSession?.user ?? null;
+        setUser(currentUser);
+
+        // 3. Fetch the user's profile based on the restored session.
+        await fetchProfile(currentUser);
+      } catch (e) {
+        console.error("Error during app initialization:", e);
+      } finally {
+        // 4. Once initialization is fully complete (success or fail), stop the loading screen.
+        setLoading(false);
+      }
+    };
+
+    // Run the initialization function once when the provider mounts.
+    initializeApp();
+
+    // 5. Now, set up the listener for FUTURE auth changes (e.g., user signs in/out).
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     //Try to look for pending comics from storage
     const loadPendingJobs = async () => {
       try {
@@ -106,115 +149,97 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   //handle auth changes and initial load
-  useEffect(() => {
-    //Listen for any auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
 
-        //if there is a login fetch the profile if there is log out clear it
-        if (currentUser) {
-          try {
-            const cachedProfile = await AsyncStorage.getItem(
-              `profile-${currentUser.id}`
-            );
-            if (cachedProfile) {
-              setProfile(JSON.parse(cachedProfile));
-            }
-          } catch (e) {
-            console.error("Failed to load cached profile", e);
-          }
+  const fetchProfile = useCallback(async (userToFetch: User | null) => {
+    if (!userToFetch) {
+      setProfile(null);
+      setUnlockedStyles([]);
+      return;
+    }
 
-          await fetchProfile(currentUser);
-        } else {
-          setProfile(null);
-          setUnlockedStyles([]);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchProfile = async (user: User) => {
     try {
-      // Run fetches in parallel
-      const [profileResult, stylesResult] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
-        supabase.from("unlocked_styles").select("style").eq("user_id", user.id),
+      // Use Promise.allSettled to ensure both requests complete, even if one fails.
+      const [profileResult, stylesResult] = await Promise.allSettled([
+        supabase.from("profiles").select("*").eq("id", userToFetch.id).single(),
+        supabase
+          .from("unlocked_styles")
+          .select("style")
+          .eq("user_id", userToFetch.id),
       ]);
 
-      // Handle styles
-      if (stylesResult.data) {
-        setUnlockedStyles(stylesResult.data.map((s) => s.style));
-      } else if (stylesResult.error) {
-        throw stylesResult.error; // Rethrow style fetch error
-      }
-
-      // Handle profile
-      if (profileResult.data) {
-        setProfile(profileResult.data);
-
+      // 1. Check the profile result
+      if (profileResult.status === "fulfilled" && profileResult.value.data) {
+        setProfile(profileResult.value.data);
         await AsyncStorage.setItem(
-          `profile-${user.id}`,
-          JSON.stringify(profileResult.data)
+          `profile-${userToFetch.id}`,
+          JSON.stringify(profileResult.value.data)
         );
       } else if (
-        profileResult.error &&
-        profileResult.error.code === "PGRST116"
+        profileResult.status === "fulfilled" &&
+        profileResult.value.error?.code === "PGRST116"
       ) {
-        // Profile not found, create it
+        // Logic to create a new profile if it doesn't exist
         const { data: newProfile, error: createError } = await supabase
           .from("profiles")
           .insert({
-            id: user.id,
-            name: user.email?.split("@")[0] || "Dreamer",
+            id: userToFetch.id,
+            name: userToFetch.email?.split("@")[0] || "Dreamer",
             subscription_status: "free",
           })
           .select()
           .single();
-
         if (createError) throw createError;
         setProfile(newProfile);
-      } else if (profileResult.error) {
-        throw profileResult.error; // Rethrow other profile errors
-      }
-    } catch (error) {
-      console.log("Error fetching user data:", error);
-      // Reset states on error
-    }
-  };
-
-  const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) throw new Error("No User logged in.");
-
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ ...updates, id: user.id })
-        .eq("id", user.id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
+      } else if (profileResult.status === "rejected") {
+        console.error("Profile fetch failed:", profileResult.reason);
       }
 
-      //now update the profile
-      setProfile(data);
+      // 2. Check the styles result independently
+      if (stylesResult.status === "fulfilled" && stylesResult.value.data) {
+        setUnlockedStyles(stylesResult.value.data.map((s) => s.style));
+      } else {
+        // If styles fetch fails, default to an empty array but don't crash.
+        console.error(
+          "Styles fetch failed:",
+          stylesResult.status === "rejected"
+            ? stylesResult.reason
+            : stylesResult.value.error
+        );
+        setUnlockedStyles([]);
+      }
     } catch (error) {
-      console.log("Error updating profile:", error);
+      console.log("Error in fetchProfile:", error);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const updateProfile = useCallback(
+    async (updates: Partial<Profile>) => {
+      if (!user) throw new Error("No User logged in.");
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .update({ ...updates, id: user.id })
+          .eq("id", user.id)
+          .select()
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        //now update the profile
+        setProfile(data);
+      } catch (error) {
+        console.log("Error updating profile:", error);
+      }
+    },
+    [user]
+  );
+
+  const logout = useCallback(async () => {
     await supabase.auth.signOut();
-  };
+  }, []);
 
   const addPendingComic = async (dreamId: string) => {
     try {
@@ -362,6 +387,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const checkAllPendingJobs = async () => {
+      if (!user) return;
       if (pendingComics.length === 0 && pendingAvatars.length === 0) {
         return;
       }
@@ -529,7 +555,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       // stopPolling();
     };
-  }, [pendingComics, pendingAvatars]);
+  }, [pendingComics, pendingAvatars, user, fetchProfile, updateProfile]);
 
   const value = {
     session,

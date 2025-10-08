@@ -13,6 +13,7 @@ from rq import Queue
 from fastapi import FastAPI, HTTPException, Header, Request, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from .api_clients import transcribe_audio
 from .helper import encode_image_to_base64, is_content_safe_for_comic, authenticateUser, style_name_to_description, handle_comic_generation_error, detect_face_in_image
@@ -394,7 +395,7 @@ async def get_comic_status(dream_id: str):
 
 #get the signed id for all comic thumbnails
 @app.get("/comics/")
-async def get_all_comics(authorization: str = Header(None)):
+async def get_all_comics(authorization: str = Header(None), year: Optional[int] = None, month: Optional[int] = None):
     """Get the signed url for each first comic pic for the timeline.
 
         Args:
@@ -407,30 +408,25 @@ async def get_all_comics(authorization: str = Header(None)):
         print("--- GET /comics/ endpoint was hit ---")
         user = authenticateUser(authorization)
         
-        # Check cache first (cache for 30 seconds)
-        cache_key = f"comics_{user.id}"
-        current_time = time.time()
-        
-        if cache_key in comics_cache:
-            cached_data = comics_cache[cache_key]
-            if current_time - cached_data["timestamp"] < 30:  # 30 second cache
-                print(f"--- Returning cached comics for user {user.id} ---")
-                return cached_data["data"]
-    
-        #---------delete old comics----------#
-        try:
-            supabase.from_("comics").delete().match({
-                "user_id": user.id,
-                "status": "error"
-            }).execute()
-            print(f"Cleaned up failed comics for user {user.id}")
-        except Exception as e:
-            # If cleanup fails, just log it and continue. It's not a critical error.
-            print(f"Could not clean up failed comics: {e}")
+        query = supabase.from_("comics").select("*").eq("user_id", user.id)
 
-        # Fetch comics from the database
-        comics_response = supabase.from_("comics").select("*").eq("user_id", user.id).order("created_at", desc=True).execute()
+        if year is not None and month is not None:
+            # Create the start and end date for the given month
+            start_date = datetime(year, month, 1)
+            # Find the first day of the next month, then subtract one day to get the end of the current month
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1)
+            else:
+                end_date = datetime(year, month + 1, 1)
+            
+            # Add date range filters to the Supabase query
+            query = query.gte("created_at", start_date.isoformat())
+            query = query.lt("created_at", end_date.isoformat())
+
+        comics_response = query.order("created_at", desc=True).execute()
+        
         comics_data = comics_response.data
+       
         
         # This check prevents the server from crashing if no comics are found
         if comics_data:
@@ -443,15 +439,8 @@ async def get_all_comics(authorization: str = Header(None)):
                 else:
                     comic["image_urls"] = []
 
-        # Cache the result
-        result_data = comics_data or []
-        comics_cache[cache_key] = {
-            "data": result_data,
-            "timestamp": current_time
-        }
-        
         # This ensures you always return a list, even if it's empty
-        return result_data
+        return comics_data or []
     except Exception as e:
         print(f"Error in get_all_comics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch comics: {str(e)}")
